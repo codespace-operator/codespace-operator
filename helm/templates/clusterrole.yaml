@@ -1,0 +1,34 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "codespace-operator.fullname" . }}-manager-role
+rules:
+  # Core resources used by the operator
+  - apiGroups: [""]
+    resources: [secrets,configmaps,services,persistentvolumeclaims,serviceaccounts]
+    verbs: [create,update,patch,get,list,watch,delete]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [create,update,patch,get,list,watch,delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [create,update,patch,get,list,watch,delete]
+
+  # Our API group
+  - apiGroups: [codespace.codespace.dev]
+    resources: [sessions]
+    verbs: [get,list,watch,create,update,patch,delete]
+  - apiGroups: [codespace.codespace.dev]
+    resources: [sessions/status]
+    verbs: [get,update,patch]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "codespace-operator.fullname" . }}-metrics-reader
+rules:
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+{{- end }}

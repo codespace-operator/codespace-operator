@@ -1,0 +1,79 @@
+image:
+  repository: ghcr.io/codespace-operator/codespace-operator
+  tag: "0.1.0"
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+
+# Metrics server options (match cmd/main.go flags)
+metrics:
+  enabled: true
+  secure: true            # maps to --metrics-secure
+  bindAddress: :8443
+  service:
+    name: codespace-operator-controller-manager-metrics-service
+    type: ClusterIP
+    annotations: {}
+    port: 8443
+    targetPort: 8443
+  serviceMonitor:
+    enabled: false
+    namespace: ""         # default to .Release.Namespace when empty
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+webhook:
+  # The operator binary creates a webhook server; by default, no webhooks are registered.
+  # Leave disabled unless you later add webhooks.
+  enabled: false
+  certPath: ""           # directory mounted with certs
+  certName: tls.crt
+  certKey: tls.key
+
+# Toggle HTTP/2 support (disabled by default for security as in cmd/main.go)
+enableHTTP2: false
+
+resources:
+  limits: {}
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Extra args let you add/override flags passed to the manager
+extraArgs: []
+# Example:
+# extraArgs:
+#   - --leader-elect
+#   - --health-probe-bind-address=:8081
+
+# Pod annotations / labels
+podAnnotations: {}
+podLabels: {}
+
+# SecurityContext & containerSecurityContext can be made stricter as needed
+securityContext: {}
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+# (Optional) If you enable ingress for your own operator endpoints (rare), example below
+ingressClass:
+  enabled: false
+  name: "codespace-operator"
+  controller: "k8s.io/ingress-controller/codespace-operator"

@@ -1,0 +1,24 @@
+# PLACEHOLDER CRD FILE
+# Replace this file with the actual CRD from the repo:
+#   config/crd/bases/codespace.codespace.dev_sessions.yaml
+# Helm will install CRDs from this directory on 'helm install/upgrade'. They are not removed on uninstall by default.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sessions.codespace.codespace.dev
+spec:
+  group: codespace.codespace.dev
+  names:
+    kind: Session
+    listKind: SessionList
+    plural: sessions
+    singular: session
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
