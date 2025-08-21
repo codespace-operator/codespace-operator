@@ -40,6 +40,10 @@ spec:
               auth:
                 properties:
                   mode:
+                    default: none
+                    enum:
+                    - oauth2proxy
+                    - none
                     type: string
                   oidc:
                     properties:
@@ -48,6 +52,7 @@ spec:
                       clientSecretRef:
                         type: string
                       issuerURL:
+                        pattern: ^https?://
                         type: string
                     required:
                     - issuerURL
@@ -56,8 +61,10 @@ spec:
               home:
                 properties:
                   mountPath:
+                    minLength: 1
                     type: string
                   size:
+                    pattern: ^\d+(Gi|Mi)$
                     type: string
                   storageClassName:
                     type: string
@@ -83,8 +90,14 @@ spec:
                       type: string
                     type: array
                   ide:
+                    enum:
+                    - jupyterlab
+                    - vscode
+                    - rstudio
+                    - custom
                     type: string
                   image:
+                    minLength: 1
                     type: string
                 required:
                 - ide
@@ -93,8 +106,10 @@ spec:
               scratch:
                 properties:
                   mountPath:
+                    minLength: 1
                     type: string
                   size:
+                    pattern: ^\d+(Gi|Mi)$
                     type: string
                   storageClassName:
                     type: string
