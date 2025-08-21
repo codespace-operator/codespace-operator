@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ns="${NAMESPACE:-default}"
+
+usage(){ cat <<EOF
+csctl create <name> [jupyterlab|vscode]   - create a Session
+csctl delete <name>                       - delete a Session
+csctl url <name>                          - print Session URL (from status)
+EOF
+}
+
+ensure_crd() {
+  kubectl get crd sessions.codespace.codespace.dev >/dev/null
+}
+
+create() {
+  local name="$1"
+  local ide="${2:-jupyterlab}"
+  local image cmd port
+  case "$ide" in
+    jupyterlab)
+      image="jupyter/minimal-notebook:latest"
+      cmd='["start-notebook.sh","--NotebookApp.token="]'
+      ;;
+    vscode)
+      image="codercom/code-server:latest"
+      cmd='["--bind-addr","0.0.0.0:8080","--auth","none"]'
+      ;;
+    *) echo "unknown ide: $ide"; exit 1;;
+  esac
+  local host="${name}.localtest.me"
+  cat <<YAML | kubectl -n "$ns" apply -f -
+apiVersion: codespace.codespace.dev/v1alpha1
+kind: Session
+metadata:
+  name: ${name}
+spec:
+  profile:
+    ide: ${ide}
+    image: ${image}
+    cmd: ${cmd}
+  networking:
+    host: ${host}
+YAML
+
+  echo "Waiting for Ready..."
+  kubectl -n "$ns" wait --for=jsonpath='{.status.phase}'=Ready "session/${name}" --timeout=120s || true
+  url "$name"
+}
+
+delete() {
+  kubectl -n "$ns" delete session "$1" --ignore-not-found
+}
+
+url() {
+  local u
+  u="$(kubectl -n "$ns" get session "$1" -o jsonpath='{.status.url}')"
+  if [[ -z "$u" ]]; then
+    echo "URL not yet set; try again shortly."
+    exit 1
+  fi
+  echo "$u"
+}
+
+main(){
+  ensure_crd
+  case "${1:-}" in
+    create) shift; create "$@";;
+    delete) shift; delete "$@";;
+    url)    shift; url "$@";;
+    *) usage; exit 1;;
+  esac
+}
+main "$@"
