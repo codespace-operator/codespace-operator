@@ -60,7 +60,23 @@ var _ = Describe("Session Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &codespacev1alpha1.Session{}
+			resource := &codespacev1alpha1.Session{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+				Spec: codespacev1alpha1.SessionSpec{
+					Profile: codespacev1alpha1.ProfileSpec{
+						IDE:   "jupyterlab",
+						Image: "jupyter/minimal-notebook:latest",
+						Cmd:   []string{"start-notebook.sh", "--NotebookApp.token="},
+					},
+					Networking: &codespacev1alpha1.NetSpec{
+						Host: "test.localtest.me",
+					},
+				},
+			}
+
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

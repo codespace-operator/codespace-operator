@@ -53,9 +53,32 @@ type SessionReconciler struct {
 
 // Reconcile creates/updates child resources for a Session.
 func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+    logger := log.FromContext(ctx)
 
-	var sess codespacev1alpha1.Session
+    var sess codespacev1alpha1.Session
+    if err := r.Get(ctx, req.NamespacedName, &sess); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // ---- sensible defaults (avoid empty image/ide in tests and dev) ----
+    if sess.Spec.Profile.IDE == "" {
+        sess.Spec.Profile.IDE = "jupyterlab"
+    }
+    if sess.Spec.Profile.Image == "" {
+        switch sess.Spec.Profile.IDE {
+        case "jupyterlab":
+            sess.Spec.Profile.Image = "jupyter/minimal-notebook:latest"
+            if len(sess.Spec.Profile.Cmd) == 0 {
+                sess.Spec.Profile.Cmd = []string{"start-notebook.sh", "--NotebookApp.token="}
+            }
+        case "vscode":
+            sess.Spec.Profile.Image = "codercom/code-server:latest"
+            if len(sess.Spec.Profile.Cmd) == 0 {
+                sess.Spec.Profile.Cmd = []string{"--bind-addr", "0.0.0.0:8080", "--auth", "none"}
+            }
+        }
+    }
+
 	if err := r.Get(ctx, req.NamespacedName, &sess); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -262,9 +285,10 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 func (r *SessionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&codespacev1alpha1.Session{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Service{}).
-		Complete(r)
+    return ctrl.NewControllerManagedBy(mgr).
+        For(&codespacev1alpha1.Session{}).
+        Owns(&appsv1.Deployment{}).
+        Owns(&corev1.Service{}).
+        Owns(&netv1.Ingress{}).
+        Complete(r)
 }
