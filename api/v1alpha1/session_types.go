@@ -70,3 +70,8 @@ type SessionList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Session `json:"items"`
 }
+
+// Register the API types with the SchemeBuilder.
+func init() {
+	SchemeBuilder.Register(&Session{}, &SessionList{})
+}
