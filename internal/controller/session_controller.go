@@ -34,20 +34,20 @@ import (
 )
 
 var (
-    cfgOnce          sync.Once
-    namePrefix       = "cs-"                 // default prefix for child names
-    ssaFieldOwner    = "codespace-operator"  // default SSA field manager
+	cfgOnce       sync.Once
+	namePrefix    = "cs-"                // default prefix for child names
+	ssaFieldOwner = "codespace-operator" // default SSA field manager
 )
 
 func loadControllerConfig() {
-    cfgOnce.Do(func() {
-        if v := os.Getenv("SESSION_NAME_PREFIX"); v != "" {
-            namePrefix = v
-        }
-        if v := os.Getenv("FIELD_OWNER"); v != "" {
-            ssaFieldOwner = v
-        }
-    })
+	cfgOnce.Do(func() {
+		if v := os.Getenv("SESSION_NAME_PREFIX"); v != "" {
+			namePrefix = v
+		}
+		if v := os.Getenv("FIELD_OWNER"); v != "" {
+			ssaFieldOwner = v
+		}
+	})
 }
 
 // RBAC markers (operator-sdk reads these)
@@ -119,7 +119,6 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
-
 
 func (r *SessionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).

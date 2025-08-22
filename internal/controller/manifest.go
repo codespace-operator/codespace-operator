@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
 func (r *SessionReconciler) applyDefaults(sess *codespacev1alpha1.Session) {
 	if sess.Spec.Profile.IDE == "" {
 		sess.Spec.Profile.IDE = "jupyterlab"
@@ -43,11 +44,11 @@ func (r *SessionReconciler) applyDefaults(sess *codespacev1alpha1.Session) {
 			}
 		}
 	}
-    // default replicas to 1 if unset
-    if sess.Spec.Replicas == nil {
-        one := int32(1)
-        sess.Spec.Replicas = &one
-    }
+	// default replicas to 1 if unset
+	if sess.Spec.Replicas == nil {
+		one := int32(1)
+		sess.Spec.Replicas = &one
+	}
 }
 
 func (r *SessionReconciler) handleDelete(ctx context.Context, sess *codespacev1alpha1.Session) (ctrl.Result, error) {

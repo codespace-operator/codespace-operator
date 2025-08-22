@@ -30,7 +30,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # codespace.dev/codespace-operator-bundle:$VERSION and codespace.dev/codespace-operator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= codespace.dev/codespace-operator
-
+GATEWAY_IMG ?= ghcr.io/codespace-operator/codespace-gateway:0.1.0
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
@@ -165,11 +165,11 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager cmd/manager/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/manager/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -181,6 +181,24 @@ docker-build: ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
+
+.PHONY: ui-build
+ui-build:
+	cd ui && npm ci && npm run build
+
+.PHONY: docker-build-gateway
+docker-build-gateway: ui-build
+	docker build -t $(GATEWAY_IMG) -f ui/Dockerfile .
+
+.PHONY: helm-install
+helm-install:
+	helm upgrade --install codespace-operator ./helm \
+		--namespace codespace-operator-system --create-namespace \
+		--set image.repository=$(IMG_REPOSITORY) \
+		--set image.tag=$(IMG_TAG) \
+		--set gateway.enabled=true \
+		--set gateway.image.repository=$(GATEWAY_REPO) \
+		--set gateway.image.tag=$(GATEWAY_TAG)
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
