@@ -103,6 +103,9 @@ spec:
                 - ide
                 - image
                 type: object
+              replicas:
+                format: int32
+                type: integer
               scratch:
                 properties:
                   mountPath:

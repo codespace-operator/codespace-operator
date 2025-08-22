@@ -46,6 +46,7 @@ type SessionSpec struct {
 	Home       *PVCSpec    `json:"home,omitempty"`
 	Scratch    *PVCSpec    `json:"scratch,omitempty"`
 	Networking *NetSpec    `json:"networking,omitempty"`
+	Replicas   *int32      `json:"replicas,omitempty"`
 }
 
 type SessionStatus struct {
