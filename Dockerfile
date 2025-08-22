@@ -30,4 +30,6 @@ WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD ["/manager", "--health-check"] || exit 1
+
 ENTRYPOINT ["/manager"]
