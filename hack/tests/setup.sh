@@ -3,38 +3,13 @@ set -euo pipefail
 
 # ---------- Config ----------
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
-KIND_CONFIG="${KIND_CONFIG:-hack/kind.yaml}"
+KIND_CONFIG="${KIND_CONFIG:-hack/tests/kind.yaml}"
 NAMESPACE_SYS="codespace-operator-system"
-IMG="${IMG:-example.com/codespace-operator:dev}"
+IMG="${IMG:-ghcr.io/codespace-operator:dev}"
 WITH_TLS="${WITH_TLS:-false}"                 # "true" to enable cert-manager + self-signed issuer
 HOST_DOMAIN="${HOST_DOMAIN:-localtest.me}"    # e.g. localtest.me / localhost.direct / sslip.io
 DEMO_NAME="${DEMO_NAME:-demo}"               # demo session name
 APPLY_DEMO="${APPLY_DEMO:-true}"             # set to "false" to skip creating a demo Session
-
-# ---------- Kind config (created if missing) ----------
-mkdir -p hack
-if [[ ! -f "${KIND_CONFIG}" ]]; then
-  cat > "${KIND_CONFIG}" <<'YAML'
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-name: codespace
-nodes:
-- role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
-  extraPortMappings:
-  - containerPort: 80
-    hostPort: 8080
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 8443
-    protocol: TCP
-YAML
-fi
 
 echo ">>> Creating kind cluster '${CLUSTER_NAME}'..."
 if ! kind get clusters | grep -qx "${CLUSTER_NAME}"; then
