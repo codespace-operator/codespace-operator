@@ -1,4 +1,4 @@
-apiVersion: codespace.codespace.dev/v1alpha1
+apiVersion: codespace.codespace.dev/v1
 kind: Session
 metadata:
   name: __DEMO_NAME__

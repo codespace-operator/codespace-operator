@@ -22,8 +22,6 @@ import (
 	"os"
 	"path/filepath"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,7 +35,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	controller "github.com/codespace-operator/codespace-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -50,7 +48,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(codespacev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(codespacev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

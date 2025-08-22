@@ -3,7 +3,7 @@
 Spin up authenticated, per-user **web IDE sessions** (JupyterLab, VS Code, etc.) on Kubernetes with a single CR:
 
 ```yaml
-apiVersion: codespace.codespace.dev/v1alpha1
+apiVersion: codespace.codespace.dev/v1
 kind: Session
 metadata:
   name: alice
@@ -85,7 +85,7 @@ Build images:
 docker build -t ghcr.io/codespace-operator/codespace-operator:dev .
 
 # Gateway (builds UI inside the image and embeds it)
-docker build -t ghcr.io/codespace-operator/codespace-gateway:dev -f ui/Dockerfile .
+docker build -t ghcr.io/codespace-operator/codespace-server:dev -f ui/Dockerfile .
 ```
 
 Create cluster & load images:
@@ -93,7 +93,7 @@ Create cluster & load images:
 ```bash
 kind create cluster --name codespace --config hack/tests/kind.yaml
 kind load docker-image ghcr.io/codespace-operator/codespace-operator:dev --name codespace
-kind load docker-image ghcr.io/codespace-operator/codespace-gateway:dev --name codespace
+kind load docker-image ghcr.io/codespace-operator/codespace-server:dev --name codespace
 
 # Ingress controller for local testing
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
@@ -113,19 +113,19 @@ helm upgrade --install codespace-operator ./helm \
   --namespace codespace-operator-system --create-namespace \
   --set image.repository=ghcr.io/codespace-operator/codespace-operator \
   --set image.tag=dev \
-  --set gateway.enabled=true \
-  --set gateway.image.repository=ghcr.io/codespace-operator/codespace-gateway \
-  --set gateway.image.tag=dev \
-  --set gateway.ingress.enabled=true \
-  --set gateway.ingress.hosts[0].host=console.codespace.test \
-  --set gateway.ingress.hosts[0].path=/
+  --set server.enabled=true \
+  --set server.image.repository=ghcr.io/codespace-operator/codespace-server \
+  --set server.image.tag=dev \
+  --set server.ingress.enabled=true \
+  --set server.ingress.hosts[0].host=console.codespace.test \
+  --set server.ingress.hosts[0].path=/
 ```
 
 Wait for pods:
 
 ```bash
 kubectl -n codespace-operator-system rollout status deploy/codespace-operator-controller-manager --timeout=180s
-kubectl -n codespace-operator-system rollout status deploy/codespace-operator-gateway --timeout=180s
+kubectl -n codespace-operator-system rollout status deploy/codespace-operator-server --timeout=180s
 ```
 
 Open the **Admin UI**: http://console.codespace.test/
@@ -134,7 +134,7 @@ Create a demo `Session`:
 
 ```bash
 cat <<'YAML' | kubectl apply -f -
-apiVersion: codespace.codespace.dev/v1alpha1
+apiVersion: codespace.codespace.dev/v1
 kind: Session
 metadata:
   name: demo-session
@@ -177,7 +177,7 @@ kubectl -n codespace-operator-system logs -f deploy/codespace-operator-controlle
 1) Port-forward the gateway:
 
 ```bash
-kubectl -n codespace-operator-system port-forward svc/codespace-operator-gateway 8080:8080
+kubectl -n codespace-operator-system port-forward svc/codespace-operator-server 8080:8080
 ```
 
 2) In `ui/vite.config.ts`, add a dev proxy (only for `npm run dev`):
@@ -206,12 +206,12 @@ npm run dev
 **Rebuild the in-cluster gateway** after Go/UI changes:
 
 ```bash
-docker build -t ghcr.io/codespace-operator/codespace-gateway:dev -f cmd/gateway/Dockerfile .
-kind load docker-image ghcr.io/codespace-operator/codespace-gateway:dev --name codespace
+docker build -t ghcr.io/codespace-operator/codespace-server:dev -f cmd/server/Dockerfile .
+kind load docker-image ghcr.io/codespace-operator/codespace-server:dev --name codespace
 helm upgrade codespace-operator ./helm -n codespace-operator-system --reuse-values
 ```
 
-> Note: `cmd/gateway` embeds files from `cmd/gateway/static/`. We keep a tiny placeholder so `go:embed` works locally; the Docker build overwrites it with the real `ui/dist/` bundle.
+> Note: `cmd/server` embeds files from `cmd/server/static/`. We keep a tiny placeholder so `go:embed` works locally; the Docker build overwrites it with the real `ui/dist/` bundle.
 
 ---
 
@@ -250,7 +250,7 @@ Optional `home` / `scratch` PVCs:
   `npm i -D @vitejs/plugin-react` (already in `devDependencies`).
 
 - **`go:embed ... contains no embeddable files`** (gateway)  
-  Ensure `cmd/gateway/static/index.html` placeholder exists (committed). Docker build replaces it with `ui/dist/*`.
+  Ensure `cmd/server/static/index.html` placeholder exists (committed). Docker build replaces it with `ui/dist/*`.
 
 - **Manager Dockerfile fails with `cmd/main.go`**  
   We build `./cmd/manager` now. Use Go **1.22** base image.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -12,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
-	grpcapi "github.com/codespace-operator/codespace-operator/cmd/gateway/grpcapi"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
+	grpcapi "github.com/codespace-operator/codespace-operator/cmd/server/grpcapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,12 +28,13 @@ import (
 var staticFS embed.FS
 
 var gvr = schema.GroupVersionResource{
-	Group:    codespacev1alpha1.GroupVersion.Group,
-	Version:  codespacev1alpha1.GroupVersion.Version,
+	Group:    codespacev1.GroupVersion.Group,
+	Version:  codespacev1.GroupVersion.Version,
 	Resource: "sessions",
 }
 
 func main() {
+	ctx := context.Background()
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("in-cluster config: %v", err)
@@ -44,12 +46,12 @@ func main() {
 
 	mux := http.NewServeMux()
 	svr := grpcapi.New(dyn)
-	if err := grpcapi.Start(r.Context(), ":9090", mux, svr); err != nil { log.Fatal(err) }
-
-
+	if err := grpcapi.Start(ctx, ":9090", mux, svr); err != nil {
+		log.Fatal(err)
+	}
 	// SSE watch (UI): keep as-is, but expose under /api/v1/stream/sessions
 	mux.HandleFunc("/api/v1/stream/sessions", func(w http.ResponseWriter, r *http.Request) {
-	// (reuse your existing /api/watch/sessions handler body)
+		// (reuse existing /api/watch/sessions handler body)
 	})
 	// JSON API
 	mux.HandleFunc("/api/sessions", func(w http.ResponseWriter, r *http.Request) {
@@ -172,16 +174,18 @@ func main() {
 		}
 	})
 
-    uiFS, err := fs.Sub(staticFS, "static")
-    if err != nil { log.Fatal(err) }
+	uiFS, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // SPA fallback for client-side routes
-    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
-            r.URL.Path = "/index.html"
-        }
-        http.FileServer(http.FS(uiFS)).ServeHTTP(w, r)
-    })
+	// SPA fallback for client-side routes
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
+			r.URL.Path = "/index.html"
+		}
+		http.FileServer(http.FS(uiFS)).ServeHTTP(w, r)
+	})
 
 	addr := ":8080"
 	srv := &http.Server{
@@ -189,7 +193,7 @@ func main() {
 		Handler:           withCORS(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("gateway listening on %s", addr)
+	log.Printf("codespace-server listening on %s", addr)
 	log.Fatal(srv.ListenAndServe())
 }
 

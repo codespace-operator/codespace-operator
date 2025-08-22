@@ -23,7 +23,7 @@ import (
 	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SessionReconciler) reconcileService(ctx context.Context, sess *codespacev1alpha1.Session, name string, labels map[string]string) (*corev1.Service, error) {
+func (r *SessionReconciler) reconcileService(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*corev1.Service, error) {
 	ns := sess.Namespace
 	target := 4180
 	if !(sess.Spec.Auth.Mode == "oauth2proxy" && sess.Spec.Networking != nil && sess.Spec.Networking.Host != "") {
@@ -55,7 +55,7 @@ func (r *SessionReconciler) reconcileService(ctx context.Context, sess *codespac
 		)
 
 	owner := metav1apply.OwnerReference().
-		WithAPIVersion(codespacev1alpha1.GroupVersion.String()).
+		WithAPIVersion(codespacev1.GroupVersion.String()).
 		WithKind("Session").
 		WithName(sess.Name).
 		WithUID(sess.UID).

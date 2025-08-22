@@ -18,6 +18,6 @@ resources:
   domain: codespace.dev
   group: codespace
   kind: Session
-  path: github.com/codespace-operator/codespace-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/codespace-operator/codespace-operator/api/v1
+  version: v1
 version: "3"

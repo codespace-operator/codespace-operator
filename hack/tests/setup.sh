@@ -42,12 +42,12 @@ fi
 echo ">>> Building operator image (${IMG})..."
 make docker-build IMG="${IMG}"
 
-echo ">>> Building gateway image (${GATEWAY_IMG})..."
-make docker-build-gateway GATEWAY_IMG="${GATEWAY_IMG}"
+echo ">>> Building gateway image (${SERVER_IMG})..."
+make docker-build-server SERVER_IMG="${SERVER_IMG}"
 
 echo ">>> Loading images into kind..."
 kind load docker-image "${IMG}" --name "${CLUSTER_NAME}"
-kind load docker-image "${GATEWAY_IMG}" --name "${CLUSTER_NAME}"
+kind load docker-image "${SERVER_IMG}" --name "${CLUSTER_NAME}"
 
 echo ">>> Installing CRDs via Helm chart (or comment this and use 'make install')..."
 # If you prefer kubebuilder CRD install, uncomment the next line and remove '--create-namespace' helm install of CRDs

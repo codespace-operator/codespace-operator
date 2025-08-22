@@ -14,7 +14,7 @@ Metrics:
 
 To create a Session CR, apply your YAML like:
   kubectl apply -n {{ .Release.Namespace }} -f - <<'EOF'
-  apiVersion: codespace.codespace.dev/v1alpha1
+  apiVersion: codespace.codespace.dev/v1
   kind: Session
   metadata:
     name: sample

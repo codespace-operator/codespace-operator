@@ -18,7 +18,7 @@ serviceAccount:
 # Metrics server options (match cmd/main.go flags)
 metrics:
   enabled: true
-  secure: true            # maps to --metrics-secure
+  secure: true
   bindAddress: :8443
   service:
     name: codespace-operator-controller-manager-metrics-service
@@ -78,18 +78,19 @@ ingressClass:
   name: "codespace-operator"
   controller: "k8s.io/ingress-controller/codespace-operator"
 
-gateway:
+server:
   enabled: true
   image:
-    repository: ghcr.io/codespace-operator/codespace-gateway
+    repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   # where the HTTP server listens
   service:
     type: ClusterIP
     port: 8080
+    gRPCPort: 9090
     annotations: {}
-    name: codespace-operator-gateway
+    name: codespace-operator
   # optional UI ingress
   ingress:
     enabled: false

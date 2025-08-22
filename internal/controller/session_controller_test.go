@@ -28,7 +28,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 var _ = Describe("Session Controller", func() {
@@ -41,37 +41,35 @@ var _ = Describe("Session Controller", func() {
 			Name:      resourceName,
 			Namespace: "default",
 		}
-		session := &codespacev1alpha1.Session{}
+		session := &codespacev1.Session{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Session")
 			err := k8sClient.Get(ctx, typeNamespacedName, session)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &codespacev1alpha1.Session{
+				resource := &codespacev1.Session{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &codespacev1alpha1.Session{
+			resource := &codespacev1.Session{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: "default",
 				},
-				Spec: codespacev1alpha1.SessionSpec{
-					Profile: codespacev1alpha1.ProfileSpec{
+				Spec: codespacev1.SessionSpec{
+					Profile: codespacev1.ProfileSpec{
 						IDE:   "jupyterlab",
 						Image: "jupyter/minimal-notebook:latest",
 						Cmd:   []string{"start-notebook.sh", "--NotebookApp.token="},
 					},
-					Networking: &codespacev1alpha1.NetSpec{
+					Networking: &codespacev1.NetSpec{
 						Host: "test.codespace.test",
 					},
 				},
@@ -94,8 +92,6 @@ var _ = Describe("Session Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
 		})
 	})
 })

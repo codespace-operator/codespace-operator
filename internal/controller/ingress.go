@@ -23,14 +23,14 @@ import (
 	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
 	netv1apply "k8s.io/client-go/applyconfigurations/networking/v1"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SessionReconciler) reconcileIngress(ctx context.Context, sess *codespacev1alpha1.Session, name, svcName string) error {
+func (r *SessionReconciler) reconcileIngress(ctx context.Context, sess *codespacev1.Session, name, svcName string) error {
 	if sess.Spec.Networking == nil || sess.Spec.Networking.Host == "" {
 		return nil
 	}
@@ -68,7 +68,7 @@ func (r *SessionReconciler) reconcileIngress(ctx context.Context, sess *codespac
 	}
 
 	owner := metav1apply.OwnerReference().
-		WithAPIVersion(codespacev1alpha1.GroupVersion.String()).
+		WithAPIVersion(codespacev1.GroupVersion.String()).
 		WithKind("Session").
 		WithName(sess.Name).
 		WithUID(sess.UID).

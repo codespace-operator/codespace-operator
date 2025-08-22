@@ -23,7 +23,7 @@ import (
 	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SessionReconciler) reconcilePVC(ctx context.Context, sess *codespacev1alpha1.Session, name, suffix string, spec *codespacev1alpha1.PVCSpec) error {
+func (r *SessionReconciler) reconcilePVC(ctx context.Context, sess *codespacev1.Session, name, suffix string, spec *codespacev1.PVCSpec) error {
 	if spec == nil {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (r *SessionReconciler) reconcilePVC(ctx context.Context, sess *codespacev1a
 		WithSpec(pvcSpec)
 
 	owner := metav1apply.OwnerReference().
-		WithAPIVersion(codespacev1alpha1.GroupVersion.String()).
+		WithAPIVersion(codespacev1.GroupVersion.String()).
 		WithKind("Session").
 		WithName(sess.Name).
 		WithUID(sess.UID).

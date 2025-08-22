@@ -7,19 +7,19 @@ helm upgrade --install codespace-operator ./helm \
   --namespace "${NAMESPACE_SYS}" --create-namespace \
   --set image.repository="${IMG%:*}" \
   --set image.tag="${IMG##*:}" \
-  --set gateway.enabled=true \
-  --set gateway.image.repository="${GATEWAY_IMG%:*}" \
-  --set gateway.image.tag="${GATEWAY_IMG##*:}" \
-  --set gateway.ingress.enabled=true \
-  --set gateway.ingress.hosts[0].host="console.${HOST_DOMAIN}" \
-  --set gateway.ingress.hosts[0].path="/"
+  --set server.enabled=true \
+  --set server.image.repository="${SERVER_IMG%:*}" \
+  --set server.image.tag="${SERVER_IMG##*:}" \
+  --set server.ingress.enabled=true \
+  --set server.ingress.hosts[0].host="console.${HOST_DOMAIN}" \
+  --set server.ingress.hosts[0].path="/"
 
 kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-controller-manager --timeout=180s
-kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-gateway --timeout=180s
+kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-server --timeout=180s
 
 echo ">>> Quick gateway smoke test (ClusterIP)..."
 kubectl -n "${NAMESPACE_SYS}" run curl-gw --image=curlimages/curl:8.10.1 -i --rm -q --restart=Never -- \
-  sh -lc 'curl -sf http://codespace-operator-gateway:8080/ | head -c 80 && echo' || true
+  sh -lc 'curl -sf http://codespace-operator-server:8080/ | head -c 80 && echo' || true
 
 if [[ "${APPLY_DEMO}" == "true" ]]; then
   echo ">>> Applying demo Session '${DEMO_NAME}'..."
@@ -29,7 +29,7 @@ if [[ "${APPLY_DEMO}" == "true" ]]; then
   if [[ ! -f "${DEMO_SESSION_FILE}" ]]; then
     mkdir -p "$(dirname "${DEMO_SESSION_FILE}")"
     cat > "${DEMO_SESSION_FILE}" <<'YAML'
-apiVersion: codespace.codespace.dev/v1alpha1
+apiVersion: codespace.codespace.dev/v1
 kind: Session
 metadata:
   name: __DEMO_NAME__

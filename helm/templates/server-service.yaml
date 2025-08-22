@@ -1,0 +1,23 @@
+{{- if .Values.server.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.server.service.name | default (printf "%s" (include "codespace-operator.fullname" .)) }}
+  labels:
+    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+{{ toYaml .Values.server.service.annotations | indent 4 }}
+spec:
+  type: {{ .Values.server.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.server.service.port }}
+      targetPort: 8080
+    - name: grpc
+      port: {{ .Values.server.service.gRPCPort | default 9090 }}
+      targetPort: {{ .Values.server.service.gRPCPort | default 9090 }}
+{{- end }}

@@ -22,7 +22,7 @@ import (
 	"os"
 	"sync"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -69,7 +69,7 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	loadControllerConfig()
 	logger := log.FromContext(ctx)
 
-	var sess codespacev1alpha1.Session
+	var sess codespacev1.Session
 	if err := r.Get(ctx, req.NamespacedName, &sess); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -122,7 +122,7 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 func (r *SessionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&codespacev1alpha1.Session{}).
+		For(&codespacev1.Session{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&netv1.Ingress{}).

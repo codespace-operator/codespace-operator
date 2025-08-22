@@ -19,14 +19,14 @@ import (
 	"context"
 	"fmt"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *SessionReconciler) applyDefaults(sess *codespacev1alpha1.Session) {
+func (r *SessionReconciler) applyDefaults(sess *codespacev1.Session) {
 	if sess.Spec.Profile.IDE == "" {
 		sess.Spec.Profile.IDE = "jupyterlab"
 	}
@@ -51,18 +51,18 @@ func (r *SessionReconciler) applyDefaults(sess *codespacev1alpha1.Session) {
 	}
 }
 
-func (r *SessionReconciler) handleDelete(ctx context.Context, sess *codespacev1alpha1.Session) (ctrl.Result, error) {
+func (r *SessionReconciler) handleDelete(ctx context.Context, sess *codespacev1.Session) (ctrl.Result, error) {
 	controllerutil.RemoveFinalizer(sess, finalizer)
 	return ctrl.Result{}, r.Update(ctx, sess)
 }
 
-func (r *SessionReconciler) ensureFinalizer(ctx context.Context, sess *codespacev1alpha1.Session) error {
+func (r *SessionReconciler) ensureFinalizer(ctx context.Context, sess *codespacev1.Session) error {
 	if controllerutil.AddFinalizer(sess, finalizer) {
 		return r.Update(ctx, sess)
 	}
 	return nil
 }
-func (r *SessionReconciler) updateStatus(ctx context.Context, sess *codespacev1alpha1.Session, dep *appsv1.Deployment) error {
+func (r *SessionReconciler) updateStatus(ctx context.Context, sess *codespacev1.Session, dep *appsv1.Deployment) error {
 	url := ""
 	if sess.Spec.Networking != nil && sess.Spec.Networking.Host != "" {
 		url = "https://" + sess.Spec.Networking.Host
@@ -75,19 +75,19 @@ func (r *SessionReconciler) updateStatus(ctx context.Context, sess *codespacev1a
 	}
 	return r.Status().Update(ctx, sess)
 }
-func (r *SessionReconciler) desiredNamesLabels(sess *codespacev1alpha1.Session) (string, map[string]string) {
+func (r *SessionReconciler) desiredNamesLabels(sess *codespacev1.Session) (string, map[string]string) {
 	name := namePrefix + sess.Name
 	return name, map[string]string{"app": name}
 }
 
-func (r *SessionReconciler) determinePort(sess *codespacev1alpha1.Session) int32 {
+func (r *SessionReconciler) determinePort(sess *codespacev1.Session) int32 {
 	if sess.Spec.Profile.IDE == "vscode" {
 		return 8080
 	}
 	return 8888
 }
 
-func (r *SessionReconciler) buildVolumesAndMounts(sess *codespacev1alpha1.Session, name string) ([]corev1.Volume, []corev1.VolumeMount) {
+func (r *SessionReconciler) buildVolumesAndMounts(sess *codespacev1.Session, name string) ([]corev1.Volume, []corev1.VolumeMount) {
 	var vols []corev1.Volume
 	var mounts []corev1.VolumeMount
 	if sess.Spec.Home != nil {
@@ -109,7 +109,7 @@ func (r *SessionReconciler) buildVolumesAndMounts(sess *codespacev1alpha1.Sessio
 	return vols, mounts
 }
 
-func (r *SessionReconciler) buildContainers(sess *codespacev1alpha1.Session, port int32, mainC corev1.Container) []corev1.Container {
+func (r *SessionReconciler) buildContainers(sess *codespacev1.Session, port int32, mainC corev1.Container) []corev1.Container {
 	containers := []corev1.Container{mainC}
 	if sess.Spec.Auth.Mode == "oauth2proxy" && sess.Spec.Networking != nil && sess.Spec.Networking.Host != "" {
 		sidecar := corev1.Container{

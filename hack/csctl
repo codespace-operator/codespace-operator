@@ -31,7 +31,7 @@ create() {
   esac
   local host="${name}.codespace.test"
   cat <<YAML | kubectl -n "$ns" apply -f -
-apiVersion: codespace.codespace.dev/v1alpha1
+apiVersion: codespace.codespace.dev/v1
 kind: Session
 metadata:
   name: ${name}

@@ -1,0 +1,36 @@
+syntax = "proto3";
+package codespace.v1;
+option go_package = "github.com/codespace-operator/codespace-operator/pkg/gen/codespace/v1;codespacev1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+message Empty {}
+
+message SessionObject { google.protobuf.Struct object = 1; }
+message SessionList   { repeated google.protobuf.Struct items = 1; }
+
+message Namespace  { string namespace = 1; }
+message SessionRef { string namespace = 1; string name = 2; }
+message ScaleRequest { string namespace = 1; string name = 2; int32 replicas = 3; }
+
+message WatchEvent { string type = 1; google.protobuf.Struct object = 2; }
+
+service SessionService {
+  rpc List(Namespace) returns (SessionList) {
+    option (google.api.http) = { get: "/api/v1/sessions" };
+  }
+  rpc Get(SessionRef) returns (SessionObject) {
+    option (google.api.http) = { get: "/api/v1/sessions/{namespace}/{name}" };
+  }
+  rpc Create(SessionObject) returns (SessionObject) {
+    option (google.api.http) = { post: "/api/v1/sessions", body: "*" };
+  }
+  rpc Delete(SessionRef) returns (Empty) {
+    option (google.api.http) = { delete: "/api/v1/sessions/{namespace}/{name}" };
+  }
+  rpc Scale(ScaleRequest) returns (SessionObject) {
+    option (google.api.http) = { post: "/api/v1/sessions/{namespace}/{name}/scale", body: "*" };
+  }
+  rpc Watch(Namespace) returns (stream WatchEvent);
+}

@@ -26,13 +26,13 @@ import (
 	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
 
-	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codespacev1alpha1.Session, name string, labels map[string]string) (*appsv1.Deployment, error) {
+func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*appsv1.Deployment, error) {
 	ns := sess.Namespace
 	port := r.determinePort(sess)
 	vols, mounts := r.buildVolumesAndMounts(sess, name)
@@ -98,7 +98,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 		)
 
 	owner := metav1apply.OwnerReference().
-		WithAPIVersion(codespacev1alpha1.GroupVersion.String()).
+		WithAPIVersion(codespacev1.GroupVersion.String()).
 		WithKind("Session").
 		WithName(sess.Name).
 		WithUID(sess.UID).
