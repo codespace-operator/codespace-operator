@@ -1,4 +1,4 @@
-# cmd/gateway/Dockerfile
+# ui/Dockerfile
 FROM node:20-alpine AS ui
 WORKDIR /src/ui
 COPY ui/package.json ui/package-lock.json* ui/pnpm-lock.yaml* ./

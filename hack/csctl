@@ -29,7 +29,7 @@ create() {
       ;;
     *) echo "unknown ide: $ide"; exit 1;;
   esac
-  local host="${name}.localtest.me"
+  local host="${name}.codespace.test"
   cat <<YAML | kubectl -n "$ns" apply -f -
 apiVersion: codespace.codespace.dev/v1alpha1
 kind: Session

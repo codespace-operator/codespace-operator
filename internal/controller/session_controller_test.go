@@ -72,7 +72,7 @@ var _ = Describe("Session Controller", func() {
 						Cmd:   []string{"start-notebook.sh", "--NotebookApp.token="},
 					},
 					Networking: &codespacev1alpha1.NetSpec{
-						Host: "test.localtest.me",
+						Host: "test.codespace.test",
 					},
 				},
 			}

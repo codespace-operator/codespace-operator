@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/codespace-operator/codespace-operator
   tag: "0.1.0"
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
@@ -81,7 +81,7 @@ ingressClass:
 gateway:
   enabled: true
   image:
-    repository: ghcr.io/codespace-operator/gateway
+    repository: ghcr.io/codespace-operator/codespace-gateway
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   # where the HTTP server listens
@@ -96,9 +96,9 @@ gateway:
     className: ""
     annotations: {}
     hosts:
-      - host: console.localtest.me
+      - host: console.codespace.test
         path: /
-    tls: [] # - secretName: console-tls; hosts: [console.localtest.me]
+    tls: [] # - secretName: console-tls; hosts: [console.codespace.test]
   resources: {}
   nodeSelector: {}
   tolerations: []

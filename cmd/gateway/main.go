@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"path"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	codespacev1alpha1 "github.com/codespace-operator/codespace-operator/api/v1alpha1"
+	grpcapi "github.com/codespace-operator/codespace-operator/cmd/gateway/grpcapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -41,7 +43,14 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	svr := grpcapi.New(dyn)
+	if err := grpcapi.Start(r.Context(), ":9090", mux, svr); err != nil { log.Fatal(err) }
 
+
+	// SSE watch (UI): keep as-is, but expose under /api/v1/stream/sessions
+	mux.HandleFunc("/api/v1/stream/sessions", func(w http.ResponseWriter, r *http.Request) {
+	// (reuse your existing /api/watch/sessions handler body)
+	})
 	// JSON API
 	mux.HandleFunc("/api/sessions", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -163,15 +172,16 @@ func main() {
 		}
 	})
 
-	// Static UI (embedded from /static)
-	mux.Handle("/", http.FileServer(http.FS(staticFS)))
-	mux.HandleFunc("/ui/", func(w http.ResponseWriter, r *http.Request) {
-		// fallback to index.html for client routing
-		if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
-			r.URL.Path = "/static/index.html"
-		}
-		http.FileServer(http.FS(staticFS)).ServeHTTP(w, r)
-	})
+    uiFS, err := fs.Sub(staticFS, "static")
+    if err != nil { log.Fatal(err) }
+
+    // SPA fallback for client-side routes
+    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
+            r.URL.Path = "/index.html"
+        }
+        http.FileServer(http.FS(uiFS)).ServeHTTP(w, r)
+    })
 
 	addr := ":8080"
 	srv := &http.Server{

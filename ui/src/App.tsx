@@ -1,361 +1,451 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { toast, Toaster } from "sonner";
-import { Loader2, RefreshCw, Plus, Trash2, Pencil, ExternalLink, Scale, ServerCog } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import "@patternfly/react-core/dist/styles/base.css";
+import {
+  Page,
+  PageSection,
+  Masthead,
+  MastheadMain,
+  MastheadBrand,
+  MastheadContent,
+  Brand,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+  TextInput,
+  Button,
+  Modal,
+  Form,
+  FormGroup,
+  Select,
+  SelectOption,
+  Checkbox,
+  Spinner,
+  Title,
+  Alert,
+  AlertActionCloseButton,
+  AlertGroup,
+  Label,
+  Tooltip
+} from "@patternfly/react-core";
+import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
+import {
+  PlusCircleIcon,
+  ExternalLinkAltIcon,
+  TrashIcon,
+  SyncIcon,
+  SearchIcon,
+  ArrowUpIcon,
+  ArrowDownIcon
+} from "@patternfly/react-icons";
 
-type Session = {
-  metadata: { name: string; namespace: string; creationTimestamp?: string };
+// ---- Types that match the Session CRD ----
+// Minimal shape used by the UI
+export type Session = {
+  metadata: { name: string; namespace: string };
   spec: {
-    replicas?: number;
-    profile: { ide: string; image: string; cmd?: string[] };
+    profile: { ide: "jupyterlab" | "vscode" | "rstudio" | "custom"; image: string; cmd?: string[] };
     networking?: { host?: string };
+    replicas?: number;
   };
-  status?: { phase?: "Pending" | "Ready" | "Error"; url?: string };
+  status?: { phase?: string; url?: string; reason?: string };
 };
 
+// ---- Simple API client around the gateway endpoints ----
 const api = {
   async list(ns: string): Promise<Session[]> {
     const r = await fetch(`/api/sessions?namespace=${encodeURIComponent(ns)}`);
     if (!r.ok) throw new Error(await r.text());
-    return r.json();
+    return (await r.json()) as Session[];
   },
-  async create(sess: Session): Promise<Session> {
+  async create(body: Partial<Session>): Promise<Session> {
     const r = await fetch(`/api/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sess),
+      body: JSON.stringify(body)
     });
     if (!r.ok) throw new Error(await r.text());
-    return r.json();
+    return (await r.json()) as Session;
   },
-  async patch(ns: string, name: string, patch: any): Promise<Session> {
-    const r = await fetch(`/api/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/merge-patch+json" },
-      body: JSON.stringify(patch),
-    });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async remove(ns: string, name: string) {
+  async remove(ns: string, name: string): Promise<void> {
     const r = await fetch(`/api/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`, { method: "DELETE" });
     if (!r.ok) throw new Error(await r.text());
   },
-  async scale(ns: string, name: string, replicas: number) {
+  async scale(ns: string, name: string, replicas: number): Promise<Session> {
     const r = await fetch(`/api/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ replicas }),
+      body: JSON.stringify({ replicas })
     });
     if (!r.ok) throw new Error(await r.text());
+    return (await r.json()) as Session;
   },
+  watch(ns: string, onEvent: (ev: { type: string; object: Session }) => void): EventSource {
+    const es = new EventSource(`/api/watch/sessions?namespace=${encodeURIComponent(ns)}`);
+    es.onmessage = (m) => {
+      try {
+        const data = JSON.parse(m.data);
+        onEvent(data);
+      } catch {}
+    };
+    return es;
+  }
 };
 
-function Badge({ children, color }: { children: React.ReactNode; color: "green" | "amber" | "rose" | "slate" }) {
-  const map = {
-    green: "bg-emerald-600",
-    amber: "bg-amber-600",
-    rose: "bg-rose-600",
-    slate: "bg-slate-600",
-  } as const;
-  return <span className={`text-white text-xs px-2 py-0.5 rounded ${map[color]}`}>{children}</span>;
+function PhaseLabel({ phase }: { phase?: string }) {
+  const color: Record<string, "green" | "blue" | "orange" | "red" | "grey"> = {
+    Ready: "green",
+    Pending: "orange",
+    Error: "red"
+  };
+  const intent: Record<string, "success" | "info" | "warning" | "danger" | "none"> = {
+    Ready: "success",
+    Pending: "warning",
+    Error: "danger"
+  } as any;
+  const pfColor = intent[phase || "none"] || "info";
+  return <Label color={pfColor as any}>{phase || "—"}</Label>;
 }
 
-function Phase({ phase }: { phase?: string }) {
-  if (phase === "Ready") return <Badge color="green">Ready</Badge>;
-  if (phase === "Pending") return <Badge color="amber">Pending</Badge>;
-  if (phase === "Error") return <Badge color="rose">Error</Badge>;
-  return <Badge color="slate">—</Badge>;
+function useAlerts() {
+  const [alerts, setAlerts] = useState<{ key: string; title: string; variant: any }[]>([]);
+  return {
+    push: (title: string, variant: any = "info") =>
+      setAlerts((a) => [{ key: Math.random().toString(36).slice(2), title, variant }, ...a].slice(0, 5)),
+    Alerts: (
+      <AlertGroup isToast isLiveRegion>
+        {alerts.map((a) => (
+          <Alert
+            key={a.key}
+            title={a.title}
+            variant={a.variant}
+            timeout={6000}
+            actionClose={<AlertActionCloseButton onClose={() => setAlerts((s) => s.filter((x) => x.key !== a.key))} />}
+          />
+        ))}
+      </AlertGroup>
+    )
+  } as const;
 }
 
 export default function App() {
-  const [ns, setNs] = useState<string>(localStorage.getItem("co_ns") || "default");
-  const [items, setItems] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
-  const [newOpen, setNewOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [ide, setIde] = useState<"jupyterlab" | "vscode">("jupyterlab");
-  const [image, setImage] = useState("jupyter/minimal-notebook:latest");
-  const [cmd, setCmd] = useState("start-notebook.sh --NotebookApp.token=");
-  const [host, setHost] = useState("");
-  const [replicas, setReplicas] = useState(1);
-  const sseRef = useRef<EventSource | null>(null);
+  // State
+  const [namespace, setNamespace] = useState<string>(localStorage.getItem("co_ns") || "default");
+  const [rows, setRows] = useState<Session[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [query, setQuery] = useState<string>("");
 
+  // Create modal
+  const [isCreateOpen, setCreateOpen] = useState(false);
+  const [cName, setCName] = useState("");
+  const [cReplicas, setCReplicas] = useState<number>(1);
+  const [cIDEOpen, setCIDEOpen] = useState<boolean>(false);
+  const [cIDE, setCIDE] = useState<"jupyterlab" | "vscode">("jupyterlab");
+  const [cImage, setCImage] = useState<string>("jupyter/minimal-notebook:latest");
+  const [cCmd, setCCmd] = useState<string>("start-notebook.sh --NotebookApp.token=");
+  const [cHost, setCHost] = useState<string>("");
+  const [cConfirm, setCConfirm] = useState<boolean>(true);
+
+  const alerts = useAlerts();
+  const esRef = useRef<EventSource | null>(null);
+
+  // Load list
   useEffect(() => {
-    localStorage.setItem("co_ns", ns);
+    localStorage.setItem("co_ns", namespace);
     (async () => {
       setLoading(true);
       try {
-        setItems(await api.list(ns));
+        const data = await api.list(namespace);
+        setRows(data);
       } catch (e: any) {
-        toast.error(e.message || "Failed to load sessions");
+        alerts.push(e?.message || "Failed to load sessions", "danger");
       } finally {
         setLoading(false);
       }
     })();
-  }, [ns]);
+  }, [namespace]);
 
+  // Watch updates via SSE
   useEffect(() => {
-    if (sseRef.current) sseRef.current.close();
-    const es = new EventSource(`/api/watch/sessions?namespace=${encodeURIComponent(ns)}`);
-    sseRef.current = es;
-    es.onmessage = (ev) => {
-      try {
-        const evt = JSON.parse(ev.data) as { type: "ADDED" | "MODIFIED" | "DELETED"; object: Session };
-        setItems((cur) => {
-          const idx = cur.findIndex((x) => x.metadata.name === evt.object.metadata.name);
-          if (evt.type === "DELETED") return cur.filter((x) => x.metadata.name !== evt.object.metadata.name);
-          if (idx === -1) return [evt.object, ...cur];
-          const next = [...cur];
-          next[idx] = evt.object;
-          return next;
-        });
-      } catch {}
-    };
+    if (esRef.current) esRef.current.close();
+    const es = api.watch(namespace, (ev) => {
+      setRows((list) => {
+        const ix = list.findIndex((x) => x.metadata.name === ev.object.metadata.name);
+        if (ev.type === "DELETED") return list.filter((x) => x.metadata.name !== ev.object.metadata.name);
+        if (ix === -1) return [ev.object, ...list];
+        const next = [...list];
+        next[ix] = ev.object;
+        return next;
+      });
+    });
     es.onerror = () => {};
+    esRef.current = es;
     return () => es.close();
-  }, [ns]);
+  }, [namespace]);
 
-  const filtered = useMemo(
-    () =>
-      items.filter((s) => {
-        if (!q) return true;
-        const hay = `${s.metadata.name} ${s.spec.profile.image} ${s.spec.networking?.host || ""}`.toLowerCase();
-        return hay.includes(q.toLowerCase());
-      }),
-    [items, q]
-  );
-
-  const create = async () => {
-    const sess: Session = {
-      metadata: { name, namespace: ns },
-      spec: {
-        replicas,
-        profile: { ide, image, cmd: cmd.trim() ? cmd.split(/\s+/) : undefined },
-        networking: host ? { host } : undefined,
-      },
-    };
-    try {
-      const out = await api.create(sess);
-      toast.success(`Session ${out.metadata.name} created`);
-      setNewOpen(false);
-      setName("");
-    } catch (e: any) {
-      toast.error(e.message || "Create failed");
-    }
-  };
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((s) => {
+      const host = s.spec.networking?.host || "";
+      return (
+        s.metadata.name.toLowerCase().includes(q) ||
+        s.spec.profile.image.toLowerCase().includes(q) ||
+        host.toLowerCase().includes(q)
+      );
+    });
+  }, [rows, query]);
 
   const openURL = (s: Session) => {
     const url = s.status?.url || (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
-    if (!url) return toast.info("No URL yet");
+    if (!url) return alerts.push("No URL yet", "info");
     window.open(url, "_blank");
   };
 
+  const doCreate = async () => {
+    if (!cName) return alerts.push("Name is required", "warning");
+    const body: Partial<Session> = {
+      metadata: { name: cName, namespace },
+      spec: {
+        replicas: cReplicas,
+        profile: { ide: cIDE, image: cImage, cmd: cCmd.trim() ? cCmd.split(/\s+/) : undefined },
+        networking: cHost ? { host: cHost } : undefined
+      }
+    } as any;
+    try {
+      const created = await api.create(body);
+      alerts.push(`Session ${created.metadata.name} created`, "success");
+      setCreateOpen(false);
+      setCName("");
+    } catch (e: any) {
+      alerts.push(e?.message || "Create failed", "danger");
+    }
+  };
+
+  const doScale = async (s: Session, delta: number) => {
+    const current = typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
+    const next = Math.max(0, current + delta);
+    try {
+      await api.scale(s.metadata.namespace, s.metadata.name, next);
+      alerts.push(`Scaled to ${next}`, "success");
+    } catch (e: any) {
+      alerts.push(e?.message || "Scale failed", "danger");
+    }
+  };
+
+  const doDelete = async (s: Session) => {
+    if (!cConfirm) return alerts.push("Enable delete confirmation checkbox first", "warning");
+    if (!confirm(`Delete ${s.metadata.name}?`)) return;
+    try {
+      await api.remove(s.metadata.namespace, s.metadata.name);
+      alerts.push("Deleted", "success");
+    } catch (e: any) {
+      alerts.push(e?.message || "Delete failed", "danger");
+    }
+  };
+
   return (
-    <div className="min-h-screen">
-      <Toaster richColors closeButton />
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-20">
-        <div className="flex items-center gap-2">
-          <ServerCog className="h-6 w-6" />
-          <span className="font-semibold text-lg">Codespace Operator</span>
-          <span className="text-xs text-slate-500 ml-1">Admin UI</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            value={ns}
-            onChange={(e) => setNs(e.target.value)}
-            className="border rounded px-2 py-1 text-sm w-44"
-            placeholder="namespace"
-          />
-          <button
-            onClick={() => (async () => { setLoading(true); try { setItems(await api.list(ns)); } finally { setLoading(false); } })()}
-            className="p-2 rounded hover:bg-slate-100"
-            title="Refresh"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <main className="max-w-6xl mx-auto p-4">
-        <div className="flex items-center justify-between mb-3">
-          <input
-            className="border rounded px-3 py-2 w-80"
-            placeholder="Search by name / image / host"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <button
-            className="inline-flex items-center gap-2 bg-black text-white px-3 py-2 rounded"
-            onClick={() => setNewOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> New Session
-          </button>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white border rounded overflow-hidden">
-          <div className="grid grid-cols-9 text-xs font-semibold text-slate-600 px-3 py-2 border-b">
-            <div></div>
-            <div>Name</div>
-            <div>Namespace</div>
-            <div>IDE</div>
-            <div className="col-span-2">Image</div>
-            <div>Host</div>
-            <div>Phase</div>
-            <div className="text-right">Actions</div>
-          </div>
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
-            </div>
-          ) : (
-            <div>
-              <AnimatePresence initial={false}>
-                {filtered.map((s) => (
-                  <motion.div
-                    key={s.metadata.name}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="grid grid-cols-9 px-3 py-2 items-center border-t text-sm"
+    <Page
+      header={
+        <Masthead backgroundColor="light">
+          <MastheadMain>
+            <MastheadBrand>
+              <Brand src="" alt="Codespace Operator" />
+              <Title headingLevel="h2" style={{ marginLeft: 12 }}>
+                Codespace Operator
+              </Title>
+            </MastheadBrand>
+          </MastheadMain>
+          <MastheadContent>
+            <Toolbar isFullHeight isStatic>
+              <ToolbarContent>
+                <ToolbarItem>
+                  <TextInput
+                    aria-label="Namespace"
+                    value={namespace}
+                    onChange={(_, v) => setNamespace(v)}
+                    placeholder="namespace"
+                  />
+                </ToolbarItem>
+                <ToolbarItem>
+                  <Button
+                    variant="secondary"
+                    icon={<SyncIcon />}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        setRows(await api.list(namespace));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
                   >
-                    <div>
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full ${
-                          s.status?.phase === "Ready" ? "bg-emerald-600" : s.status?.phase === "Error" ? "bg-rose-600" : "bg-amber-600"
-                        }`}
-                      />
-                    </div>
-                    <div className="font-medium">{s.metadata.name}</div>
-                    <div>{s.metadata.namespace}</div>
-                    <div className="capitalize">{s.spec.profile.ide}</div>
-                    <div className="col-span-2 truncate" title={s.spec.profile.image}>
-                      {s.spec.profile.image}
-                    </div>
-                    <div>{s.spec.networking?.host || "—"}</div>
-                    <div>
-                      <Phase phase={s.status?.phase} />
-                    </div>
-                    <div className="text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button className="p-1 hover:bg-slate-100 rounded" title="Open" onClick={() => openURL(s)}>
-                          <ExternalLink className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="p-1 hover:bg-slate-100 rounded"
-                          title="Scale to 1"
-                          onClick={async () => {
-                            try {
-                              await api.scale(s.metadata.namespace, s.metadata.name, 1);
-                              toast.success("Scaled");
-                            } catch (e: any) {
-                              toast.error(e.message);
-                            }
-                          }}
-                        >
-                          <Scale className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="p-1 hover:bg-slate-100 rounded"
-                          title="Patch: replicas=2"
-                          onClick={async () => {
-                            try {
-                              await api.patch(s.metadata.namespace, s.metadata.name, { spec: { replicas: 2 } });
-                              toast.success("Patched");
-                            } catch (e: any) {
-                              toast.error(e.message);
-                            }
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="p-1 hover:bg-slate-100 rounded"
-                          title="Delete"
-                          onClick={async () => {
-                            if (!confirm(`Delete ${s.metadata.name}?`)) return;
-                            try {
-                              await api.remove(s.metadata.namespace, s.metadata.name);
-                              toast.success("Deleted");
-                            } catch (e: any) {
-                              toast.error(e.message);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {filtered.length === 0 && <div className="py-8 text-center text-slate-500 text-sm">No sessions</div>}
-            </div>
-          )}
-        </div>
-      </main>
+                    Refresh
+                  </Button>
+                </ToolbarItem>
+              </ToolbarContent>
+            </Toolbar>
+          </MastheadContent>
+        </Masthead>
+      }
+    >
+      {alerts.Alerts}
 
-      {/* Simple modal */}
-      {newOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-xl p-4 shadow">
-            <div className="text-lg font-semibold mb-3">Create Session</div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">Name
-                <input className="mt-1 border rounded px-2 py-1 w-full" value={name} onChange={(e) => setName(e.target.value)} />
-              </label>
-              <label className="text-sm">Replicas
-                <input type="number" min={1} className="mt-1 border rounded px-2 py-1 w-full" value={replicas}
-                  onChange={(e) => setReplicas(parseInt(e.target.value || "1"))} />
-              </label>
-              <label className="text-sm">IDE
-                <select
-                  className="mt-1 border rounded px-2 py-1 w-full"
-                  value={ide}
-                  onChange={(e) => {
-                    const v = e.target.value as "jupyterlab" | "vscode";
-                    setIde(v);
-                    if (v === "vscode") {
-                      setImage("codercom/code-server:latest");
-                      setCmd("--bind-addr 0.0.0.0:8080 --auth none");
-                    } else {
-                      setImage("jupyter/minimal-notebook:latest");
-                      setCmd("start-notebook.sh --NotebookApp.token=");
-                    }
-                  }}
-                >
-                  <option value="jupyterlab">JupyterLab</option>
-                  <option value="vscode">VS Code (code-server)</option>
-                </select>
-              </label>
-              <label className="text-sm">Image
-                <input className="mt-1 border rounded px-2 py-1 w-full" value={image} onChange={(e) => setImage(e.target.value)} />
-              </label>
-              <label className="text-sm col-span-2">Command
-                <input className="mt-1 border rounded px-2 py-1 w-full" value={cmd} onChange={(e) => setCmd(e.target.value)} />
-              </label>
-              <label className="text-sm col-span-2">Public Host (optional)
-                <input className="mt-1 border rounded px-2 py-1 w-full" placeholder="lab.example.com" value={host} onChange={(e) => setHost(e.target.value)} />
-              </label>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button className="px-3 py-2 rounded border" onClick={() => setNewOpen(false)}>Cancel</button>
-              <button
-                className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
-                onClick={create}
-                disabled={!name}
-              >
-                Create
-              </button>
-            </div>
-          </div>
+      <PageSection isWidthLimited>
+        <Toolbar>
+          <ToolbarContent>
+            <ToolbarItem>
+              <TextInput
+                aria-label="Search"
+                iconVariant="search"
+                value={query}
+                onChange={(_, v) => setQuery(v)}
+                placeholder="Search by name / image / host"
+              />
+            </ToolbarItem>
+            <ToolbarItem>
+              <Button icon={<PlusCircleIcon />} variant="primary" onClick={() => setCreateOpen(true)}>
+                New Session
+              </Button>
+            </ToolbarItem>
+          </ToolbarContent>
+        </Toolbar>
+
+        <div style={{ border: "1px solid var(--pf-global--BorderColor--100)", borderRadius: 6, overflow: "hidden" }}>
+          <Table aria-label="Sessions table" variant="compact" borders>
+            <Thead>
+              <Tr>
+                <Th>Name</Th>
+                <Th>Namespace</Th>
+                <Th>IDE</Th>
+                <Th>Image</Th>
+                <Th>Host</Th>
+                <Th>Phase</Th>
+                <Th textCenter>Replicas</Th>
+                <Th modifier="fitContent">Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {loading ? (
+                <Tr>
+                  <Td colSpan={8}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Spinner size="md" /> Loading…
+                    </div>
+                  </Td>
+                </Tr>
+              ) : filtered.length === 0 ? (
+                <Tr>
+                  <Td colSpan={8}>No sessions</Td>
+                </Tr>
+              ) : (
+                filtered.map((s) => (
+                  <Tr key={s.metadata.name}>
+                    <Td dataLabel="Name">{s.metadata.name}</Td>
+                    <Td dataLabel="Namespace">{s.metadata.namespace}</Td>
+                    <Td dataLabel="IDE">{s.spec.profile.ide}</Td>
+                    <Td dataLabel="Image" modifier="truncate">{s.spec.profile.image}</Td>
+                    <Td dataLabel="Host" modifier="truncate">{s.spec.networking?.host || ""}</Td>
+                    <Td dataLabel="Phase">
+                      <PhaseLabel phase={s.status?.phase} />
+                    </Td>
+                    <Td dataLabel="Replicas" textCenter>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Tooltip content="Scale down">
+                          <Button variant="plain" onClick={() => doScale(s, -1)} aria-label="Scale down">
+                            <ArrowDownIcon />
+                          </Button>
+                        </Tooltip>
+                        <strong>{typeof s.spec.replicas === "number" ? s.spec.replicas : 1}</strong>
+                        <Tooltip content="Scale up">
+                          <Button variant="plain" onClick={() => doScale(s, +1)} aria-label="Scale up">
+                            <ArrowUpIcon />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </Td>
+                    <Td dataLabel="Actions" modifier="fitContent">
+                      <div style={{ display: "inline-flex", gap: 8 }}>
+                        <Tooltip content="Open">
+                          <Button variant="secondary" icon={<ExternalLinkAltIcon />} onClick={() => openURL(s)} />
+                        </Tooltip>
+                        <Tooltip content="Delete (enable confirmation below)">
+                          <Button variant="danger" icon={<TrashIcon />} onClick={() => doDelete(s)} />
+                        </Tooltip>
+                      </div>
+                    </Td>
+                  </Tr>
+                ))
+              )}
+            </Tbody>
+          </Table>
         </div>
-      )}
-    </div>
+
+        <div style={{ marginTop: 8 }}>
+          <Checkbox
+            id="confirm-delete"
+            label="Require confirmation to delete"
+            isChecked={cConfirm}
+            onChange={(_, v) => setCConfirm(v)}
+          />
+        </div>
+      </PageSection>
+
+      {/* Create modal */}
+      <Modal
+        title="Create Session"
+        isOpen={isCreateOpen}
+        onClose={() => setCreateOpen(false)}
+        actions={[
+          <Button key="create" variant="primary" onClick={doCreate}>
+            Create
+          </Button>,
+          <Button key="cancel" variant="link" onClick={() => setCreateOpen(false)}>
+            Cancel
+          </Button>
+        ]}
+      >
+        <Form>
+          <FormGroup label="Name" isRequired fieldId="name">
+            <TextInput id="name" value={cName} onChange={(_, v) => setCName(v)} />
+          </FormGroup>
+          <FormGroup label="Replicas" fieldId="replicas">
+            <TextInput id="replicas" type="number" value={String(cReplicas)} onChange={(_, v) => setCReplicas(Math.max(0, parseInt(v || "0")))} />
+          </FormGroup>
+          <FormGroup label="IDE" fieldId="ide">
+            <Select
+              aria-label="IDE"
+              isOpen={cIDEOpen}
+              onToggle={(v) => setCIDEOpen(v)}
+              onSelect={(_, v) => {
+                const val = String(v) as any;
+                setCIDE(val);
+                setCIDEOpen(false);
+                if (val === "vscode") {
+                  setCImage("codercom/code-server:latest");
+                  setCCmd("--bind-addr 0.0.0.0:8080 --auth none");
+                } else {
+                  setCImage("jupyter/minimal-notebook:latest");
+                  setCCmd("start-notebook.sh --NotebookApp.token=");
+                }
+              }}
+              selections={cIDE}
+            >
+              <SelectOption value="jupyterlab">JupyterLab</SelectOption>
+              <SelectOption value="vscode">VS Code (code-server)</SelectOption>
+            </Select>
+          </FormGroup>
+          <FormGroup label="Image" isRequired fieldId="image">
+            <TextInput id="image" value={cImage} onChange={(_, v) => setCImage(v)} />
+          </FormGroup>
+          <FormGroup label="Command" fieldId="cmd">
+            <TextInput id="cmd" value={cCmd} onChange={(_, v) => setCCmd(v)} />
+          </FormGroup>
+          <FormGroup label="Public Host (optional)" fieldId="host">
+            <TextInput id="host" placeholder="lab.example.dev" value={cHost} onChange={(_, v) => setCHost(v)} />
+          </FormGroup>
+        </Form>
+      </Modal>
+    </Page>
   );
 }
