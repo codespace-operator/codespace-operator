@@ -16,12 +16,11 @@ serviceAccount:
   name: ""
 
 metrics:
+  name: ""
   enabled: true
   secure: true
   bindAddress: :8443
   service:
-    # default name is computed; you can override with tpl:
-    # name: '{{ include "codespace-operator.fullname" . }}-metrics-service'
     type: ClusterIP
     annotations: {}
     port: 8443
@@ -68,19 +67,25 @@ ingressClass:
   controller: "k8s.io/ingress-controller/codespace-operator"
 
 server:
+  # for openshift
+  route:
+    enabled: false
+    annotations: {}
+    tls:
+      termination: edge
+
   enabled: true
   image:
     repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"
     pullPolicy: IfNotPresent
+  env:
+    allowOrigin: ""        # set to http://localhost:5173 for local dev; empty = same-origin
   service:
     type: ClusterIP
-    # default is {{ include "codespace-operator.server.name" . }} (tpl-aware via helper)
-    # name: ""
-    port: 8080
-    gRPCPort: 9090
     annotations: {}
     name: codespace-operator
+    port: 8080
   probes:
     readinessPath: /readyz
     livenessPath: /healthz
@@ -91,9 +96,36 @@ server:
     hosts:
       - host: console.codespace.test
         path: /
-    tls: [] # e.g. - secretName: console-tls; hosts: [console.codespace.test]
-  resources: {}
+    tls: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  securityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop: ["ALL"]
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  useManagerServiceAccount: true  # reuses the session-controller SA (kept key for compatibility)
+  useManagerServiceAccount: false  # prefer separate SA (least privilege)
+  serviceAccount:
+    create: true
+    name: ""               # default: <release>-codespace-operator-server
+  rbac:
+    create: true           # create namespaced Role/RoleBinding for sessions
+  networkPolicy:
+    enabled: true
+    allowIngressFromSameNamespace: true
+    egressToKubeAPIServer: true

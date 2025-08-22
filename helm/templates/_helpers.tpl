@@ -52,11 +52,19 @@ app.kubernetes.io/instance: {{ .root.Release.Name }}
 {{/* Services */}}
 {{- define "codespace-operator.metrics.serviceName" -}}
 {{- $d := printf "%s-metrics-service" (include "codespace-operator.fullname" .) -}}
-{{- default $d .Values.metrics.service.name -}}
+{{- default (printf "%s-metrics-service" (include "codespace-operator.fullname" .)) .Values.metrics.service.name -}}
 {{- end -}}
 
 {{- define "codespace-operator.server.serviceName" -}}
 {{- $default := include "codespace-operator.server.name" . -}}
 {{- $val := .Values.server.service.name | default $default -}}
 {{- tpl $val . -}}
+{{- end -}}
+
+{{- define "codespace-operator.server.serviceAccountName" -}}
+{{- if .Values.server.serviceAccount.create -}}
+{{- default (printf "%s-server" (include "codespace-operator.fullname" .)) .Values.server.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.server.serviceAccount.name -}}
+{{- end -}}
 {{- end -}}

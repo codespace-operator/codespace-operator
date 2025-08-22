@@ -1,18 +1,12 @@
 import React, { useState } from "react";
-import { Button, Modal, Form, FormGroup, TextInput, Select, SelectOption, Checkbox } from "@patternfly/react-core";
+import { Button, Modal, Form, FormGroup, TextInput } from "@patternfly/react-core";
 import type { Session } from "../types";
 
-type Props = {
-  isOpen: boolean;
-  namespace: string;
-  onClose: () => void;
-  onCreate: (body: Partial<Session>) => Promise<void>;
-};
+type Props = { isOpen: boolean; namespace: string; onClose: () => void; onCreate: (body: Partial<Session>) => Promise<void>; };
 
 export function CreateSessionModal({ isOpen, namespace, onClose, onCreate }: Props) {
   const [cName, setCName] = useState("");
   const [cReplicas, setCReplicas] = useState<number>(1);
-  const [cIDEOpen, setCIDEOpen] = useState<boolean>(false);
   const [cIDE, setCIDE] = useState<"jupyterlab" | "vscode">("jupyterlab");
   const [cImage, setCImage] = useState<string>("jupyter/minimal-notebook:latest");
   const [cCmd, setCCmd] = useState<string>("start-notebook.sh --NotebookApp.token=");
@@ -38,12 +32,8 @@ export function CreateSessionModal({ isOpen, namespace, onClose, onCreate }: Pro
       isOpen={isOpen}
       onClose={onClose}
       actions={[
-        <Button key="create" variant="primary" onClick={submit} isDisabled={!cName}>
-          Create
-        </Button>,
-        <Button key="cancel" variant="link" onClick={onClose}>
-          Cancel
-        </Button>,
+        <Button key="create" variant="primary" onClick={submit} isDisabled={!cName}>Create</Button>,
+        <Button key="cancel" variant="link" onClick={onClose}>Cancel</Button>,
       ]}
     >
       <Form>
@@ -51,12 +41,7 @@ export function CreateSessionModal({ isOpen, namespace, onClose, onCreate }: Pro
           <TextInput id="name" value={cName} onChange={(_, v) => setCName(v)} />
         </FormGroup>
         <FormGroup label="Replicas" fieldId="replicas">
-          <TextInput
-            id="replicas"
-            type="number"
-            value={String(cReplicas)}
-            onChange={(_, v) => setCReplicas(Math.max(0, parseInt(v || "0")))}
-          />
+          <TextInput id="replicas" type="number" value={String(cReplicas)} onChange={(_, v) => setCReplicas(Math.max(0, parseInt(v || "0")))} />
         </FormGroup>
         <FormGroup label="IDE" fieldId="ide">
           <select

@@ -15,7 +15,11 @@ spec:
       labels:
 {{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 8 }}
     spec:
-      serviceAccountName: {{ if .Values.server.useManagerServiceAccount }}{{ include "codespace-operator.serviceAccountName" . }}{{ else }}{{ printf "%s-server" (include "codespace-operator.fullname" .) }}{{ end }}
+      serviceAccountName: {{ if .Values.server.useManagerServiceAccount }}{{ include "codespace-operator.serviceAccountName" . }}{{ else }}{{ include "codespace-operator.server.serviceAccountName" . }}{{ end }}
+      {{- with .Values.server.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+      {{- end }}
       containers:
         - name: server
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
@@ -23,8 +27,9 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-            - name: grpc
-              containerPort: {{ .Values.server.service.gRPCPort | default 9090 }}
+          env:
+            - name: ALLOW_ORIGIN
+              value: "{{ .Values.server.env.allowOrigin }}"
           readinessProbe:
             httpGet:
               path: {{ .Values.server.probes.readinessPath | default "/readyz" }}
@@ -45,6 +50,10 @@ spec:
             failureThreshold: 3
           {{- with .Values.server.resources }}
           resources:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          {{- with .Values.server.containerSecurityContext }}
+          securityContext:
 {{ toYaml . | indent 12 }}
           {{- end }}
       {{- with .Values.server.nodeSelector }}

@@ -110,7 +110,7 @@ Deploy with Helm (manager + gateway + UI):
 
 ```bash
 helm upgrade --install codespace-operator ./helm \
-  --namespace codespace-operator-system --create-namespace \
+  --namespace codespace-operator --create-namespace \
   --set image.repository=ghcr.io/codespace-operator/codespace-operator \
   --set image.tag=dev \
   --set server.enabled=true \
@@ -124,8 +124,8 @@ helm upgrade --install codespace-operator ./helm \
 Wait for pods:
 
 ```bash
-kubectl -n codespace-operator-system rollout status deploy/codespace-operator-session-controller --timeout=180s
-kubectl -n codespace-operator-system rollout status deploy/codespace-operator-server --timeout=180s
+kubectl -n codespace-operator rollout status deploy/codespace-operator-session-controller --timeout=180s
+kubectl -n codespace-operator rollout status deploy/codespace-operator-server --timeout=180s
 ```
 
 Open the **Admin UI**: http://console.codespace.test/
@@ -167,7 +167,7 @@ go run ./cmd/manager
 Logs while running in cluster:
 
 ```bash
-kubectl -n codespace-operator-system logs -f deploy/codespace-operator-session-controller
+kubectl -n codespace-operator logs -f deploy/codespace-operator-session-controller
 ```
 
 ### Gateway + UI
@@ -177,7 +177,7 @@ kubectl -n codespace-operator-system logs -f deploy/codespace-operator-session-c
 1) Port-forward the gateway:
 
 ```bash
-kubectl -n codespace-operator-system port-forward svc/codespace-operator-server 8080:8080
+kubectl -n codespace-operator port-forward svc/codespace-operator-server 8080:8080
 ```
 
 2) In `ui/vite.config.ts`, add a dev proxy (only for `npm run dev`):
@@ -208,7 +208,7 @@ npm run dev
 ```bash
 docker build -t ghcr.io/codespace-operator/codespace-server:dev -f cmd/server/Dockerfile .
 kind load docker-image ghcr.io/codespace-operator/codespace-server:dev --name codespace
-helm upgrade codespace-operator ./helm -n codespace-operator-system --reuse-values
+helm upgrade codespace-operator ./helm -n codespace-operator --reuse-values
 ```
 
 > Note: `cmd/server` embeds files from `cmd/server/static/`. We keep a tiny placeholder so `go:embed` works locally; the Docker build overwrites it with the real `ui/dist/` bundle.
@@ -266,7 +266,7 @@ Optional `home` / `scratch` PVCs:
 ## Uninstall / cleanup
 
 ```bash
-helm -n codespace-operator-system uninstall codespace-operator || true
+helm -n codespace-operator uninstall codespace-operator || true
 make uninstall || true   # CRDs (if installed via `make install`)
 kind delete cluster --name codespace || true
 ```

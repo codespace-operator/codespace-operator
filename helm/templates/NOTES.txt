@@ -3,15 +3,6 @@ Thanks for installing the Codespace Operator!
 NAMESPACE: {{ .Release.Namespace }}
 NAME: {{ include "codespace-operator.fullname" . }}
 
-Metrics:
-  {{- if and .Values.metrics.enabled (ne .Values.metrics.bindAddress "0") }}
-  Service: {{ .Values.metrics.service.name | default (printf "%s-metrics-service" (include "codespace-operator.fullname" .)) }}
-  Port: {{ .Values.metrics.service.port }}
-  Scheme: {{ ternary "https" "http" .Values.metrics.secure }}
-  {{- else }}
-  Metrics are disabled (metrics.enabled=false or bindAddress=0).
-  {{- end }}
-
 To create a Session CR, apply your YAML like:
   kubectl apply -n {{ .Release.Namespace }} -f - <<'EOF'
   apiVersion: codespace.codespace.dev/v1

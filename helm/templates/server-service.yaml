@@ -15,7 +15,4 @@ spec:
     - name: http
       port: {{ .Values.server.service.port }}
       targetPort: 8080
-    - name: grpc
-      port: {{ .Values.server.service.gRPCPort | default 9090 }}
-      targetPort: {{ .Values.server.service.gRPCPort | default 9090 }}
 {{- end }}

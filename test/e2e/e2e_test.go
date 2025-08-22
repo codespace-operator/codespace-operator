@@ -31,7 +31,7 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "codespace-operator-system"
+const namespace = "codespace-operator"
 
 // serviceAccountName created for the project
 const serviceAccountName = "codespace-operator-session-controller"

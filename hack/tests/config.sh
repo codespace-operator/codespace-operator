@@ -1,7 +1,7 @@
 # ---------- Config ----------
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
 KIND_CONFIG="${KIND_CONFIG:-hack/tests/kind.yaml}"
-NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator-system}"
+NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator}"
 
 IMG="${IMG:-ghcr.io/codespace-operator/codespace-operator:dev}"
 SERVER_IMG="${SERVER_IMG:-ghcr.io/codespace-operator/codespace-server:dev}"

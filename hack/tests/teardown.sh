@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
-NAMESPACE_SYS="codespace-operator-system"
+NAMESPACE_SYS="codespace-operator"
 DEMO_NAME="${DEMO_NAME:-demo}"
 APPLY_DEMO="${APPLY_DEMO:-true}"
 

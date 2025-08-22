@@ -1,0 +1,31 @@
+{{- if and .Values.server.enabled .Values.server.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "codespace-operator.server.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 6 }}
+  policyTypes: ["Ingress","Egress"]
+  ingress:
+  {{- if .Values.server.networkPolicy.allowIngressFromSameNamespace }}
+    - from:
+        - podSelector: {}   # allow same-namespace traffic (ingress controller/clients)
+  {{- else }}
+    - {}
+  {{- end }}
+  egress:
+  {{- if .Values.server.networkPolicy.egressToKubeAPIServer }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+  {{- else }}
+    - {}
+  {{- end }}
+{{- end }}
