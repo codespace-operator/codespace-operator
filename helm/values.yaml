@@ -77,3 +77,31 @@ ingressClass:
   enabled: false
   name: "codespace-operator"
   controller: "k8s.io/ingress-controller/codespace-operator"
+
+gateway:
+  enabled: true
+  image:
+    repository: ghcr.io/codespace-operator/gateway
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  # where the HTTP server listens
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+    name: codespace-operator-gateway
+  # optional UI ingress
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: console.localtest.me
+        path: /
+    tls: [] # - secretName: console-tls; hosts: [console.localtest.me]
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Set to reuse the manager's ServiceAccount and ClusterRole
+  useManagerServiceAccount: true
