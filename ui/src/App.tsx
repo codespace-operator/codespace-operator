@@ -58,11 +58,10 @@ export default function App() {
   const Sidebar = (
     <PageSidebar
       isSidebarOpen={isNavOpen}
-      nav={
-        <Nav aria-label="Primary nav" theme="dark">
+      sidebarContent={
+        <Nav aria-label="Primary nav" className="pf-m-dark">
           <NavList>
-            <NavItem isActive>Sessions</NavItem>
-            {/* room for future: Images, Settings, etc. */}
+            <NavItem itemId={0} isActive>Sessions</NavItem>
           </NavList>
         </Nav>
       }
@@ -71,10 +70,9 @@ export default function App() {
 
   return (
     <Page
-      header={<Header namespace={namespace} onNamespace={setNamespace} onRefresh={refresh} />}
+      header={<Header namespace={namespace} onNamespace={setNamespace} onRefresh={refresh} onToggleSidebar={() => setNavOpen(v => !v)} />}
       sidebar={Sidebar}
       isManagedSidebar
-      onNavToggle={() => setNavOpen((v) => !v)}
     >
       <AlertGroup isToast isLiveRegion>
         {alerts.list.map((a) => (
@@ -95,7 +93,6 @@ export default function App() {
             <ToolbarItem>
               <TextInput
                 aria-label="Search"
-                iconVariant="search"
                 value={query}
                 onChange={(_, v) => setQuery(v)}
                 placeholder="Search by name / image / host"

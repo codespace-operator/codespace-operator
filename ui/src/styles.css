@@ -1,4 +1,4 @@
 /* src/styles.css */
-@import "@patternfly/react-core/dist/styles/base.css"; /* PF base first */
-@import "./theme.css";                                 /* your tokens next */
-@import "./index.css";                                 /* tailwind last */
+@import "@patternfly/react-core/dist/styles/base.css";
+@import "./theme.css";
+@import "../index.css"; /* was ./index.css */

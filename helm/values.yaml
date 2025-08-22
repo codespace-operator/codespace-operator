@@ -84,7 +84,7 @@ server:
   service:
     type: ClusterIP
     annotations: {}
-    name: codespace-operator
+    name: ""
     port: 8080
   probes:
     readinessPath: /readyz
