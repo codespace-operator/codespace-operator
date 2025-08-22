@@ -124,7 +124,7 @@ helm upgrade --install codespace-operator ./helm \
 Wait for pods:
 
 ```bash
-kubectl -n codespace-operator-system rollout status deploy/codespace-operator-controller-manager --timeout=180s
+kubectl -n codespace-operator-system rollout status deploy/codespace-operator-session-controller --timeout=180s
 kubectl -n codespace-operator-system rollout status deploy/codespace-operator-server --timeout=180s
 ```
 
@@ -167,7 +167,7 @@ go run ./cmd/manager
 Logs while running in cluster:
 
 ```bash
-kubectl -n codespace-operator-system logs -f deploy/codespace-operator-controller-manager
+kubectl -n codespace-operator-system logs -f deploy/codespace-operator-session-controller
 ```
 
 ### Gateway + UI

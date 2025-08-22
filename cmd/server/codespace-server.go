@@ -5,7 +5,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -16,9 +15,7 @@ import (
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	grpcapi "github.com/codespace-operator/codespace-operator/cmd/server/grpcapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -35,6 +32,8 @@ var gvr = schema.GroupVersionResource{
 
 func main() {
 	ctx := context.Background()
+
+	// In-cluster client for K8s API (used by readiness + SSE)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("in-cluster config: %v", err)
@@ -45,104 +44,36 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
+	// Start gRPC (:9090) and mount the JSON gRPC-Gateway under /api/v1/*
 	svr := grpcapi.New(dyn)
 	if err := grpcapi.Start(ctx, ":9090", mux, svr); err != nil {
 		log.Fatal(err)
 	}
-	// SSE watch (UI): keep as-is, but expose under /api/v1/stream/sessions
-	mux.HandleFunc("/api/v1/stream/sessions", func(w http.ResponseWriter, r *http.Request) {
-		// (reuse existing /api/watch/sessions handler body)
-	})
-	// JSON API
-	mux.HandleFunc("/api/sessions", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			ns := q(r, "namespace", "default")
-			list, err := dyn.Resource(gvr).Namespace(ns).List(r.Context(), metav1.ListOptions{})
-			if err != nil {
-				errJSON(w, err)
-				return
-			}
-			writeJSON(w, list.Object["items"])
-		case http.MethodPost:
-			var u unstructured.Unstructured
-			if err := json.NewDecoder(r.Body).Decode(&u.Object); err != nil {
-				errJSON(w, err)
-				return
-			}
-			ns := u.GetNamespace()
-			if ns == "" {
-				ns = "default"
-			}
-			obj, err := dyn.Resource(gvr).Namespace(ns).Create(r.Context(), &u, metav1.CreateOptions{})
-			if err != nil {
-				errJSON(w, err)
-				return
-			}
-			writeJSON(w, obj.Object)
-		default:
-			http.NotFound(w, r)
-		}
+
+	// --- Probes ---
+	// Liveness: always fast and local
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("/api/sessions/", func(w http.ResponseWriter, r *http.Request) {
-		// /api/sessions/:ns/:name[/scale]
-		p := strings.TrimPrefix(r.URL.Path, "/api/sessions/")
-		parts := strings.Split(p, "/")
-		if len(parts) < 2 {
-			http.NotFound(w, r)
+	// Readiness: quick API reachability check (bounded to 1s)
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		readyCtx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+		defer cancel()
+		ns := q(r, "namespace", "default")
+		if _, err := dyn.Resource(gvr).Namespace(ns).List(readyCtx, metav1.ListOptions{Limit: 1}); err != nil {
+			errJSON(w, err)
 			return
 		}
-		ns, name := parts[0], parts[1]
-
-		switch {
-		case r.Method == http.MethodGet && len(parts) == 2:
-			obj, err := dyn.Resource(gvr).Namespace(ns).Get(r.Context(), name, metav1.GetOptions{})
-			if err != nil {
-				errJSON(w, err)
-				return
-			}
-			writeJSON(w, obj.Object)
-
-		case r.Method == http.MethodDelete && len(parts) == 2:
-			if err := dyn.Resource(gvr).Namespace(ns).Delete(r.Context(), name, metav1.DeleteOptions{}); err != nil {
-				errJSON(w, err)
-				return
-			}
-			w.WriteHeader(http.StatusNoContent)
-
-		case r.Method == http.MethodPatch && len(parts) == 2:
-			raw, _ := io.ReadAll(r.Body)
-			obj, err := dyn.Resource(gvr).Namespace(ns).Patch(r.Context(), name, types.MergePatchType, raw, metav1.PatchOptions{})
-			if err != nil {
-				errJSON(w, err)
-				return
-			}
-			writeJSON(w, obj.Object)
-
-		case r.Method == http.MethodPost && len(parts) == 3 && parts[2] == "scale":
-			var body struct {
-				Replicas int32 `json:"replicas"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				errJSON(w, err)
-				return
-			}
-			patch := []byte(fmt.Sprintf(`{"spec":{"replicas":%d}}`, body.Replicas))
-			obj, err := dyn.Resource(gvr).Namespace(ns).Patch(r.Context(), name, types.MergePatchType, patch, metav1.PatchOptions{})
-			if err != nil {
-				errJSON(w, err)
-				return
-			}
-			writeJSON(w, obj.Object)
-
-		default:
-			http.NotFound(w, r)
-		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
 	})
 
-	// SSE watch
-	mux.HandleFunc("/api/watch/sessions", func(w http.ResponseWriter, r *http.Request) {
+	// --- Server-Sent Events stream (UI) ---
+	// Frontend should listen on: GET /api/v1/stream/sessions?namespace=<ns>
+	mux.HandleFunc("/api/v1/stream/sessions", func(w http.ResponseWriter, r *http.Request) {
 		ns := q(r, "namespace", "default")
 		watcher, err := dyn.Resource(gvr).Namespace(ns).Watch(r.Context(), metav1.ListOptions{Watch: true})
 		if err != nil {
@@ -153,6 +84,7 @@ func main() {
 
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
 		flusher, _ := w.(http.Flusher)
 
 		for {
@@ -164,22 +96,26 @@ func main() {
 					return
 				}
 				if ev.Type == watch.Error {
+					// Optionally emit an error event; for now, skip.
 					continue
 				}
 				out := map[string]any{"type": ev.Type, "object": ev.Object}
 				b, _ := json.Marshal(out)
 				fmt.Fprintf(w, "data: %s\n\n", b)
-				flusher.Flush()
+				if flusher != nil {
+					flusher.Flush()
+				}
 			}
 		}
 	})
 
+	// --- Static UI (embedded) ---
 	uiFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// SPA fallback for client-side routes
+	// SPA fallback for client-side routes: serve index.html on "directory" or route-like paths.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
 			r.URL.Path = "/index.html"
@@ -193,9 +129,12 @@ func main() {
 		Handler:           withCORS(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+	log.Printf("gRPC listening on :9090")
 	log.Printf("codespace-server listening on %s", addr)
 	log.Fatal(srv.ListenAndServe())
 }
+
+// --- helpers ---
 
 func q(r *http.Request, key, dflt string) string {
 	if v := r.URL.Query().Get(key); v != "" {
@@ -203,21 +142,26 @@ func q(r *http.Request, key, dflt string) string {
 	}
 	return dflt
 }
+
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
 }
+
 func errJSON(w http.ResponseWriter, err error) {
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 }
+
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Frontend calls the JSON API via the same 8080 origin (or through an Ingress).
+		// Keep permissive for now; tighten as needed.
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS")
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 		next.ServeHTTP(w, r)

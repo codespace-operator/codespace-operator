@@ -66,8 +66,8 @@ func main() {
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
+		"Enable leader election for controller session-controller. "+
+			"Enabling this will ensure there is only one active controller session-controller.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
@@ -155,7 +155,7 @@ func main() {
 	//
 	// TODO(user): If you enable certManager, uncomment the following lines:
 	// - [METRICS-WITH-CERTS] at config/default/kustomization.yaml to generate and use certificates
-	// managed by cert-manager for the metrics server.
+	// managed by cert-session-controller for the metrics server.
 	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
 	if len(metricsCertPath) > 0 {
 		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
@@ -190,13 +190,13 @@ func main() {
 		// LeaseDuration time first.
 		//
 		// In the default scaffold provided, the program ends immediately after
-		// the manager stops, so would be fine to enable this option. However,
+		// the session-controller stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
+		// after the session-controller stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to start session-controller")
 		os.Exit(1)
 	}
 
@@ -210,17 +210,17 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
-		setupLog.Info("Adding metrics certificate watcher to manager")
+		setupLog.Info("Adding metrics certificate watcher to session-controller")
 		if err := mgr.Add(metricsCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add metrics certificate watcher to manager")
+			setupLog.Error(err, "unable to add metrics certificate watcher to session-controller")
 			os.Exit(1)
 		}
 	}
 
 	if webhookCertWatcher != nil {
-		setupLog.Info("Adding webhook certificate watcher to manager")
+		setupLog.Info("Adding webhook certificate watcher to session-controller")
 		if err := mgr.Add(webhookCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add webhook certificate watcher to manager")
+			setupLog.Error(err, "unable to add webhook certificate watcher to session-controller")
 			os.Exit(1)
 		}
 	}
@@ -234,9 +234,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting session-controller")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		setupLog.Error(err, "problem running session-controller")
 		os.Exit(1)
 	}
 }

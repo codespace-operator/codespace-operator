@@ -2,18 +2,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.metrics.service.name | default (printf "%s-metrics-service" (include "codespace-operator.fullname" .)) }}
+  name: {{ include "codespace-operator.metrics.serviceName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.labels" . | indent 4 }}
   annotations:
 {{ toYaml .Values.metrics.service.annotations | indent 4 }}
 spec:
   type: {{ .Values.metrics.service.type }}
   selector:
-    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.selectorLabels" (dict "name" (include "codespace-operator.name" .) "root" .) | indent 4 }}
   ports:
     - name: metrics
       port: {{ .Values.metrics.service.port }}

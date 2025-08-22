@@ -18,6 +18,5 @@ spec:
 {{- end }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.labels" . | indent 6 }}
 {{- end }}

@@ -2,21 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "codespace-operator.fullname" . }}-server
+  name: {{ include "codespace-operator.server.name" . }}
   labels:
-    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.labels" . | indent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "codespace-operator.name" . }}-server
-      app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "codespace-operator.name" . }}-server
-        app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 8 }}
     spec:
       serviceAccountName: {{ if .Values.server.useManagerServiceAccount }}{{ include "codespace-operator.serviceAccountName" . }}{{ else }}{{ printf "%s-server" (include "codespace-operator.fullname" .) }}{{ end }}
       containers:
@@ -27,10 +24,10 @@ spec:
             - name: http
               containerPort: 8080
             - name: grpc
-              containerPort: 9090
+              containerPort: {{ .Values.server.service.gRPCPort | default 9090 }}
           readinessProbe:
             httpGet:
-              path: /readyz
+              path: {{ .Values.server.probes.readinessPath | default "/readyz" }}
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 2
@@ -39,7 +36,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: {{ .Values.server.probes.livenessPath | default "/healthz" }}
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 10

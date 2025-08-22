@@ -12,7 +12,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: session-controller
       app.kubernetes.io/name: codespace-operator
   policyTypes:
     - Ingress

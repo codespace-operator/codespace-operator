@@ -2,17 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.server.service.name | default (printf "%s" (include "codespace-operator.fullname" .)) }}
+  name: {{ include "codespace-operator.server.serviceName" . }}
   labels:
-    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.labels" . | indent 4 }}
   annotations:
 {{ toYaml .Values.server.service.annotations | indent 4 }}
 spec:
   type: {{ .Values.server.service.type }}
   selector:
-    app.kubernetes.io/name: {{ include "codespace-operator.name" . }}-server
-    app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 4 }}
   ports:
     - name: http
       port: {{ .Values.server.service.port }}

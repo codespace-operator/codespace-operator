@@ -15,33 +15,30 @@ serviceAccount:
   create: true
   name: ""
 
-# Metrics server options (match cmd/main.go flags)
 metrics:
   enabled: true
   secure: true
   bindAddress: :8443
   service:
-    name: codespace-operator-controller-manager-metrics-service
+    # default name is computed; you can override with tpl:
+    # name: '{{ include "codespace-operator.fullname" . }}-metrics-service'
     type: ClusterIP
     annotations: {}
     port: 8443
     targetPort: 8443
   serviceMonitor:
     enabled: false
-    namespace: ""         # default to .Release.Namespace when empty
+    namespace: ""
     interval: 30s
     scrapeTimeout: 10s
     labels: {}
 
 webhook:
-  # The operator binary creates a webhook server; by default, no webhooks are registered.
-  # Leave disabled unless you later add webhooks.
   enabled: false
-  certPath: ""           # directory mounted with certs
+  certPath: ""
   certName: tls.crt
   certKey: tls.key
 
-# Toggle HTTP/2 support (disabled by default for security as in cmd/main.go)
 enableHTTP2: false
 
 resources:
@@ -54,25 +51,17 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-# Extra args let you add/override flags passed to the manager
 extraArgs: []
-# Example:
-# extraArgs:
-#   - --leader-elect
-#   - --health-probe-bind-address=:8081
 
-# Pod annotations / labels
 podAnnotations: {}
 podLabels: {}
 
-# SecurityContext & containerSecurityContext can be made stricter as needed
 securityContext: {}
 containerSecurityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   runAsNonRoot: true
 
-# (Optional) If you enable ingress for your own operator endpoints (rare), example below
 ingressClass:
   enabled: false
   name: "codespace-operator"
@@ -84,14 +73,17 @@ server:
     repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"
     pullPolicy: IfNotPresent
-  # where the HTTP server listens
   service:
     type: ClusterIP
+    # default is {{ include "codespace-operator.server.name" . }} (tpl-aware via helper)
+    # name: ""
     port: 8080
     gRPCPort: 9090
     annotations: {}
     name: codespace-operator
-  # optional UI ingress
+  probes:
+    readinessPath: /readyz
+    livenessPath: /healthz
   ingress:
     enabled: false
     className: ""
@@ -99,10 +91,9 @@ server:
     hosts:
       - host: console.codespace.test
         path: /
-    tls: [] # - secretName: console-tls; hosts: [console.codespace.test]
+    tls: [] # e.g. - secretName: console-tls; hosts: [console.codespace.test]
   resources: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  # Set to reuse the manager's ServiceAccount and ClusterRole
-  useManagerServiceAccount: true
+  useManagerServiceAccount: true  # reuses the session-controller SA (kept key for compatibility)

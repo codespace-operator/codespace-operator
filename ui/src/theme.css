@@ -1,0 +1,40 @@
+/* src/theme.css */
+/* ---- PatternFly token overrides (PF v5 + PF v6) ---- */
+:root {
+  /* Primary palette */
+  --pf-global--primary-color--100: #0066cc;     /* PF v5 */
+  --pf-global--primary-color--200: #004b95;     /* PF v5 */
+  --pf-v6-global--primary-color--100: #0066cc;  /* PF v6 */
+  --pf-v6-global--primary-color--200: #004b95;  /* PF v6 */
+
+  /* Links */
+  --pf-global--link--Color: #0066cc;              /* PF v5 */
+  --pf-global--link--Color--hover: #004b95;       /* PF v5 */
+  --pf-v6-global--link--Color: #0066cc;           /* PF v6 */
+  --pf-v6-global--link--Color--hover: #004b95;    /* PF v6 */
+
+  /* Page background (correct tokens) */
+  --pf-c-page--BackgroundColor: #f5f7fa;          /* PF v5 */
+  --pf-v6-c-page--BackgroundColor: #f5f7fa;       /* PF v6 */
+  --pf-v6-c-page__main--BackgroundColor: #f5f7fa; /* PF v6 main */
+
+  /* Card tweaks */
+  --pf-c-card--BackgroundColor: #ffffff;                    /* PF v5 */
+  --pf-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.03);
+  --pf-v6-c-card--BackgroundColor: #ffffff;                 /* PF v6 */
+  --pf-v6-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.03);
+
+  /* Primary buttons */
+  --pf-c-button--m-primary--BackgroundColor: var(--pf-global--primary-color--100);          /* PF v5 */
+  --pf-c-button--m-primary--hover--BackgroundColor: var(--pf-global--primary-color--200);   /* PF v5 */
+  --pf-v6-c-button--m-primary--BackgroundColor: var(--pf-v6-global--primary-color--100);    /* PF v6 */
+  --pf-v6-c-button--m-primary--hover--BackgroundColor: var(--pf-v6-global--primary-color--200); /* PF v6 */
+}
+
+/* Ensure page bg shows even if PF structure changes slightly */
+.pf-c-page,
+.pf-c-page__main,
+.pf-v6-c-page,
+.pf-v6-c-page__main {
+  background-color: var(--pf-v6-c-page__main--BackgroundColor, var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))) !important;
+}

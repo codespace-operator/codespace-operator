@@ -1,6 +1,6 @@
 apiVersion: v2
 name: codespace-operator
-description: A Helm chart for deploying the Codespace Operator (controller-manager)
+description: A Helm chart for deploying the Codespace Operator (session-controller)
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

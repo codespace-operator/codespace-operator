@@ -14,7 +14,7 @@ helm upgrade --install codespace-operator ./helm \
   --set server.ingress.hosts[0].host="console.${HOST_DOMAIN}" \
   --set server.ingress.hosts[0].path="/"
 
-kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-controller-manager --timeout=180s
+kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator --timeout=180s
 kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-server --timeout=180s
 
 echo ">>> Quick gateway smoke test (ClusterIP)..."
