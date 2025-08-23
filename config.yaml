@@ -1,0 +1,52 @@
+# config/server-config.yaml - Server configuration example
+port: 8080
+host: ""  # Empty for all interfaces, or specify like "127.0.0.1"
+read_timeout: 5
+write_timeout: 10
+allow_origin: "*"  # For development, use specific domain in production
+kube_qps: 50.0
+kube_burst: 100
+debug: false
+
+---
+# config/controller-config.yaml - Controller configuration example
+metrics_addr: ":8080"
+probe_addr: ":8081"
+enable_leader_election: true
+leader_election_id: "a51c5837.codespace.dev"
+
+# Certificate settings (for production)
+metrics_cert_path: ""
+metrics_cert_name: "tls.crt"
+metrics_cert_key: "tls.key"
+webhook_cert_path: ""
+webhook_cert_name: "tls.crt"
+webhook_cert_key: "tls.key"
+
+# Security settings
+secure_metrics: true
+enable_http2: false
+
+# Session settings
+session_name_prefix: "cs-"
+field_owner: "codespace-operator"
+
+# Development
+debug: false
+
+---
+# docker-compose.override.yml - For local development
+version: '3.8'
+services:
+  codespace-server:
+    environment:
+      - CODESPACE_SERVER_PORT=9090
+      - CODESPACE_SERVER_DEBUG=true
+      - CODESPACE_SERVER_ALLOW_ORIGIN=http://localhost:3000
+    ports:
+      - "9090:9090"
+
+  session-controller:
+    environment:
+      - CODESPACE_CONTROLLER_DEBUG=true
+      - CODESPACE_CONTROLLER_ENABLE_LEADER_ELECTION=false
