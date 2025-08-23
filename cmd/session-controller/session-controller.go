@@ -2,10 +2,12 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,9 +73,15 @@ func main() {
 		"Field manager name for server-side apply operations")
 	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
 
-	// Add zap flags
+	// Add zap flags to a separate FlagSet that we can bind
+	fs := flag.NewFlagSet("", flag.ContinueOnError)
 	opts := zap.Options{Development: true}
-	opts.BindFlags(rootCmd.Flags())
+	opts.BindFlags(fs)
+
+	// Add the zap flags to cobra by iterating through them
+	fs.VisitAll(func(f *flag.Flag) {
+		rootCmd.Flags().AddGoFlag(f)
+	})
 
 	if err := rootCmd.Execute(); err != nil {
 		setupLog.Error(err, "Command execution failed")
@@ -147,9 +155,18 @@ func runController(cmd *cobra.Command, args []string) {
 		cfg.Debug = debug
 	}
 
-	// Setup logging
+	// Setup logging - create new zap options and configure from flags
 	opts := zap.Options{Development: cfg.Debug}
-	opts.BindFlags(cmd.Flags())
+	
+	// We need to bind the zap flags again to get their values
+	// First, add pflag values to the Go flag package
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		// Only process flags that are zap-related
+		if goFlag := flag.Lookup(f.Name); goFlag != nil {
+			goFlag.Value.Set(f.Value.String())
+		}
+	})
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	if cfg.Debug {
