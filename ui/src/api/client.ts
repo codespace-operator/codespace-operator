@@ -97,15 +97,14 @@ export const api = {
   },
 
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
-    // SSE cannot send Authorization headers. Send the token as a query param,
-    // or switch to a cookie on the server. (Prefer short-lived tokens if using query.)
     const token = getToken();
+    const hasCookie = document.cookie.includes("codespace_jwt=");
     const url =
       `${base}/api/v1/stream/sessions` +
       `?namespace=${encodeURIComponent(ns)}` +
-      (token ? `&access_token=${encodeURIComponent(token)}` : "");
+      (!hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "");
 
-    const es = new EventSource(url);
+    const es = new EventSource(url, { withCredentials: true as any });
     es.onmessage = onEvent;
     return es;
   },

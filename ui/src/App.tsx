@@ -24,12 +24,11 @@ import { SessionsTable } from "./components/SessionsTable";
 import { CreateSessionModal } from "./components/CreateSessionModal";
 import { useAlerts, useFilteredSessions, useSessions } from "./hooks/useSessions";
 import type { Session } from "./types";
-import { InfoPage } from "./pages/Info";
-import { LoginPage } from "./pages/Login";
+import { InfoPage } from "./pages/InfoPage";
+import { LoginPage } from "./pages/LoginPage";
+import { UserInfoPage } from "./pages/UserInfo";
 import { useAuth } from "./hooks/useAuth";
 import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
-
-type RouteKey = "sessions" | "info" | "login";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -38,6 +37,21 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
+}
+
+// Full-screen login layout without sidebars
+function LoginLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: 'var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {children}
+    </div>
+  );
 }
 
 export default function App() {
@@ -79,33 +93,93 @@ export default function App() {
     }
   };
 
+  // Navigation items - only show when authenticated
+  const getNavItems = () => {
+    if (!isAuthenticated) return [];
+    
+    return [
+      {
+        id: "workloads",
+        title: "Workloads",
+        children: [
+          { id: "sessions", title: "Sessions", to: "/sessions" }
+        ]
+      },
+      {
+        id: "administration", 
+        title: "Administration",
+        children: [
+          { id: "user-info", title: "User Management", to: "/user-info" },
+          { id: "cluster-info", title: "Cluster Settings", to: "/info" }
+        ]
+      }
+    ];
+  };
+
   const Sidebar = (
     <PageSidebar
       isSidebarOpen={isNavOpen}
       sidebarContent={
         <Nav aria-label="Primary nav" theme="dark">
           <NavList>
-            {isAuthenticated && (
-              <>
-                <NavItem isActive={location.pathname.startsWith("/sessions")}>
-                  <Link className="pf-c-nav__link" to="/sessions">Sessions</Link>
+            {getNavItems().map((section) => (
+              <React.Fragment key={section.id}>
+                <NavItem className="pf-c-nav__section-title">
+                  {section.title}
                 </NavItem>
-                <NavItem isActive={location.pathname.startsWith("/info")}>
-                  <Link className="pf-c-nav__link" to="/info">Info</Link>
-                </NavItem>
-              </>
-            )}
-            <NavItem isActive={location.pathname.startsWith("/login")}>
-              <Link className="pf-c-nav__link" to="/login">
-                {isAuthenticated ? `Account (${user})` : "Login"}
-              </Link>
-            </NavItem>
+                {section.children.map((item) => (
+                  <NavItem 
+                    key={item.id} 
+                    isActive={location.pathname.startsWith(item.to)}
+                    className="pf-m-indent"
+                  >
+                    <Link className="pf-c-nav__link" to={item.to}>
+                      {item.title}
+                    </Link>
+                  </NavItem>
+                ))}
+              </React.Fragment>
+            ))}
           </NavList>
         </Nav>
       }
     />
   );
 
+  // If on login page, show full-screen login layout
+  if (location.pathname === "/login") {
+    return (
+      <LoginLayout>
+        <AlertGroup isToast isLiveRegion>
+          {alerts.list.map((a) => (
+            <Alert
+              key={a.key}
+              title={a.title}
+              variant={a.variant}
+              timeout={6000}
+              actionClose={<AlertActionCloseButton onClose={() => alerts.close(a.key)} />}
+            />
+          ))}
+        </AlertGroup>
+        
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                onLoggedIn={() => {
+                  const from = (location.state as any)?.from?.pathname || "/sessions";
+                  navigate(from, { replace: true });
+                }}
+              />
+            }
+          />
+        </Routes>
+      </LoginLayout>
+    );
+  }
+
+  // Main application layout with sidebar
   return (
     <Page
       masthead={
@@ -114,9 +188,10 @@ export default function App() {
           onNamespace={setNamespace}
           onRefresh={refresh}
           onToggleSidebar={() => setNavOpen((v) => !v)}
+          user={user}
         />
       }
-      sidebar={Sidebar}
+      sidebar={isAuthenticated ? Sidebar : undefined}
       isManagedSidebar
     >
       <AlertGroup isToast isLiveRegion>
@@ -138,14 +213,22 @@ export default function App() {
             <RequireAuth>
               <>
                 <PageSection variant={PageSectionVariants.light} isWidthLimited>
+                  <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center">
+                    <div>
+                      <h1 className="pf-c-title pf-m-2xl">Sessions</h1>
+                      <p className="pf-u-color-200">
+                        Manage your development environments and IDE sessions
+                      </p>
+                    </div>
+                  </div>
                   <Toolbar>
                     <ToolbarContent>
                       <ToolbarItem>
                         <TextInput
-                          aria-label="Search"
+                          aria-label="Search sessions"
                           value={query}
                           onChange={(_, v) => setQuery(v)}
-                          placeholder="Search by name / image / host"
+                          placeholder="Filter by name, image, or host..."
                         />
                       </ToolbarItem>
                       <ToolbarItem>
@@ -154,7 +237,7 @@ export default function App() {
                           variant="primary"
                           onClick={() => setCreateOpen(true)}
                         >
-                          New Session
+                          Create Session
                         </Button>
                       </ToolbarItem>
                     </ToolbarContent>
@@ -205,23 +288,20 @@ export default function App() {
         />
 
         <Route
-          path="/info"
+          path="/user-info"
           element={
             <RequireAuth>
-              <InfoPage />
+              <UserInfoPage />
             </RequireAuth>
           }
         />
 
         <Route
-          path="/login"
+          path="/info"
           element={
-            <LoginPage
-              onLoggedIn={() => {
-                const from = (location.state as any)?.from?.pathname || "/sessions";
-                navigate(from, { replace: true });
-              }}
-            />
+            <RequireAuth>
+              <InfoPage />
+            </RequireAuth>
           }
         />
 

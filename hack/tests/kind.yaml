@@ -1,6 +1,10 @@
+# hack/tests/kind.yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: codespace
+networking:
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 6443
 nodes:
 - role: control-plane
   kubeadmConfigPatches:
@@ -10,17 +14,11 @@ nodes:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
   extraPortMappings:
-  # Map standard HTTP/HTTPS ports to WSL-accessible ports
   - containerPort: 80
     hostPort: 80
     protocol: TCP
+    listenAddress: "0.0.0.0"
   - containerPort: 443
     hostPort: 443
     protocol: TCP
-  # Also expose NodePort range for direct access
-  - containerPort: 30000
-    hostPort: 30000
-    protocol: TCP
-  - containerPort: 30001
-    hostPort: 30001
-    protocol: TCP
+    listenAddress: "0.0.0.0"

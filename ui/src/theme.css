@@ -67,7 +67,69 @@
   background-color: rgba(255,255,255,0.02);
 }
 
-/* ----- Modal fixes ----- */
+/* ----- Login Page Styles ----- */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d30 100%);
+  padding: 2rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: #1f1f1f !important;
+}
+
+.login-card .pf-c-card__body {
+  padding: 2rem;
+}
+
+/* ----- Navigation ----- */
+.pf-c-nav__section-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.025em !important;
+  padding: 0.75rem 1rem 0.25rem !important;
+  border-bottom: none !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.pf-c-nav__item.pf-m-indent > .pf-c-nav__link {
+  padding-left: 1.5rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Ensure dark sidebar navigation links are properly styled and clickable */
+.pf-c-nav.pf-m-dark .pf-c-nav__link {
+  color: var(--pf-c-nav--m-dark__link--Color, #c7c7c7) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  display: block !important;
+  padding: var(--pf-global--spacer--sm, 0.5rem) var(--pf-global--spacer--md, 1rem) !important;
+  border-radius: 3px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.pf-c-nav.pf-m-dark .pf-c-nav__link:hover {
+  color: var(--pf-c-nav--m-dark__link--hover--Color, #ffffff) !important;
+  background-color: var(--pf-c-nav--m-dark__link--hover--BackgroundColor, rgba(255,255,255,0.04)) !important;
+}
+
+.pf-c-nav.pf-m-dark .pf-c-nav__item.pf-m-current > .pf-c-nav__link,
+.pf-c-nav.pf-m-dark .pf-c-nav__link.pf-m-current {
+  color: var(--pf-c-nav--m-dark__link--m-current--Color, #fff) !important;
+  background-color: var(--pf-c-nav--m-dark__link--m-current--BackgroundColor, rgba(255,255,255,.08)) !important;
+  font-weight: 600 !important;
+}
+
+/* ----- Modal ----- */
 .pf-c-modal-box,
 .pf-v6-c-modal-box {
   background-color: #1f1f1f !important;
@@ -125,31 +187,45 @@
   color: #ffffff !important;
 }
 
-/* Ensure dark sidebar navigation links are properly styled and clickable */
-.pf-c-nav.pf-m-dark .pf-c-nav__link {
-  color: var(--pf-c-nav--m-dark__link--Color, #c7c7c7) !important;
-  text-decoration: none !important;
-  cursor: pointer !important;
-  display: block !important;
-  padding: var(--pf-global--spacer--sm, 0.5rem) var(--pf-global--spacer--md, 1rem) !important;
-  border-radius: 3px !important;
-  transition: all 0.15s ease-in-out !important;
-}
-
-.pf-c-nav.pf-m-dark .pf-c-nav__link:hover {
-  color: var(--pf-c-nav--m-dark__link--hover--Color, #ffffff) !important;
-  background-color: var(--pf-c-nav--m-dark__link--hover--BackgroundColor, rgba(255,255,255,0.04)) !important;
-}
-
-.pf-c-nav.pf-m-dark .pf-c-nav__item.pf-m-current > .pf-c-nav__link,
-.pf-c-nav.pf-m-dark .pf-c-nav__link.pf-m-current {
-  color: var(--pf-c-nav--m-dark__link--m-current--Color, #fff) !important;
-  background-color: var(--pf-c-nav--m-dark__link--m-current--BackgroundColor, rgba(255,255,255,.08)) !important;
-  font-weight: 600 !important;
-}
-
-/* Fix backdrop */
+/* Backdrop */
 .pf-c-backdrop,
 .pf-v6-c-backdrop {
   background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ----- Page Section Headers ----- */
+.pf-c-page__main-section .pf-c-title {
+  color: #ffffff !important;
+}
+
+.pf-u-color-200 {
+  color: #c7c7c7 !important;
+}
+
+/* ----- Dropdown Menu ----- */
+.pf-c-dropdown__menu,
+.pf-v6-c-dropdown__menu {
+  background-color: #2a2a2a !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.pf-c-dropdown__menu-item,
+.pf-v6-c-dropdown__menu-item {
+  color: #ffffff !important;
+}
+
+.pf-c-dropdown__menu-item:hover,
+.pf-v6-c-dropdown__menu-item:hover {
+  background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ----- Alert ----- */
+.pf-c-alert.pf-m-info {
+  border-left-color: var(--pf-global--primary-color--100) !important;
+}
+
+/* ----- Brand/Logo ----- */
+.pf-c-brand {
+  filter: brightness(1.1) !important;
 }

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  PageSection,
   Card,
   CardBody,
   Title,
@@ -12,8 +11,13 @@ import {
   HelperTextItem,
   Alert,
   Spinner,
+  Brand,
+  List,
+  ListItem,
 } from "@patternfly/react-core";
+import { ExclamationCircleIcon, KeyIcon, UserIcon } from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
+import logoUrl from "../assets/codespace-operator.svg?url";
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   const { user, login, logout, isLoading } = useAuth();
@@ -24,38 +28,52 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
 
   if (isLoading) {
     return (
-      <PageSection isWidthLimited>
-        <Card>
-          <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="login-container">
+        <Card className="login-card">
+          <CardBody className="pf-u-text-align-center">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
               <Spinner size="md" />
               <span>Checking authentication...</span>
             </div>
           </CardBody>
         </Card>
-      </PageSection>
+      </div>
     );
   }
 
   if (user) {
     return (
-      <PageSection isWidthLimited>
-        <Card>
+      <div className="login-container">
+        <Card className="login-card">
           <CardBody>
-            <Title headingLevel="h2" style={{ marginBottom: 16 }}>
-              Signed in as <strong>{user}</strong>
-            </Title>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Button variant="primary" onClick={() => onLoggedIn?.()}>
-                Go to Sessions
-              </Button>
-              <Button variant="secondary" onClick={logout}>
-                Sign out
-              </Button>
+            <div className="pf-u-text-align-center pf-u-mb-lg">
+              <Brand src={logoUrl} alt="Codespace Operator" style={{ width: 64, height: 64 }} />
+              <Title headingLevel="h1" className="pf-u-mt-md pf-u-mb-sm">
+                Welcome back
+              </Title>
+            </div>
+            
+            <div className="pf-u-text-align-center">
+              <div className="pf-u-mb-md">
+                <UserIcon className="pf-u-mr-sm" />
+                <strong>{user}</strong>
+              </div>
+              <p className="pf-u-color-200 pf-u-mb-lg">
+                You are already signed in to Codespace Operator
+              </p>
+              
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <Button variant="primary" onClick={() => onLoggedIn?.()}>
+                  Continue to Dashboard
+                </Button>
+                <Button variant="secondary" onClick={logout}>
+                  Sign out
+                </Button>
+              </div>
             </div>
           </CardBody>
         </Card>
-      </PageSection>
+      </div>
     );
   }
 
@@ -75,19 +93,27 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   };
 
   return (
-    <PageSection isWidthLimited>
-      <Card>
+    <div className="login-container">
+      <Card className="login-card">
         <CardBody>
-          <Title headingLevel="h2" style={{ marginBottom: 24 }}>
-            Sign in to Codespace Operator
-          </Title>
+          {/* Header */}
+          <div className="pf-u-text-align-center pf-u-mb-lg">
+            <Brand src={logoUrl} alt="Codespace Operator" style={{ width: 64, height: 64 }} />
+            <Title headingLevel="h1" className="pf-u-mt-md pf-u-mb-sm">
+              Sign in to Codespace Operator
+            </Title>
+            <p className="pf-u-color-200">
+              Manage your development environments and IDE sessions
+            </p>
+          </div>
           
           {error && (
             <Alert 
               variant="danger" 
-              title="Login Error" 
-              style={{ marginBottom: 16 }}
+              title="Authentication failed" 
+              className="pf-u-mb-md"
               isInline
+              icon={<ExclamationCircleIcon />}
             >
               {error}
             </Alert>
@@ -115,24 +141,21 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
                 isDisabled={isSubmitting}
                 placeholder="Enter your password"
               />
-              <HelperText>
-                <HelperTextItem variant="indeterminate">
-                  Demo environment: accepts any username/password combination
-                </HelperTextItem>
-              </HelperText>
             </FormGroup>
             
             <Button 
               type="submit" 
               variant="primary" 
+              isBlock
               isDisabled={!username.trim() || !password.trim() || isSubmitting}
               isLoading={isSubmitting}
+              className="pf-u-mt-md"
             >
               {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </Form>
         </CardBody>
       </Card>
-    </PageSection>
+    </div>
   );
 }

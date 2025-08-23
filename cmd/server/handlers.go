@@ -44,7 +44,15 @@ func handleLogin(cfg *config.ServerConfig) http.HandlerFunc {
 			errJSON(w, err)
 			return
 		}
-
+		http.SetCookie(w, &http.Cookie{
+			Name:     "codespace_jwt",
+			Value:    tok,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   r.TLS != nil,         // set true when behind TLS/ingress
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   24 * 60 * 60,
+		})
 		writeJSON(w, map[string]string{"token": tok, "user": body.Username})
 	}
 }

@@ -70,8 +70,9 @@ server:
   enabled: true
   # for openshift
   route:
-    enabled: false
-    annotations: {}
+    enabled: true
+    annotations:
+      haproxy.router.openshift.io/timeout: 3600s
     tls:
       termination: edge
   debug: false
@@ -94,9 +95,13 @@ server:
     readinessPath: /readyz
     livenessPath: /healthz
   ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
     enabled: false
     className: ""
-    annotations: {}
     hosts:
       - host: console.codespace.test
         path: /

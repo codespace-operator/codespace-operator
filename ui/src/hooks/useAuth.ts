@@ -77,29 +77,21 @@ export function useAuth() {
       throw new Error("Username and password are required");
     }
 
-    // If you have a real backend login, do it here. Example:
-    // const res = await fetch(`${import.meta.env.VITE_API_BASE || ""}/api/v1/auth/login`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ username, password }),
-    //   credentials: "include",
-    // });
-    // if (!res.ok) throw new Error(await res.text());
-    // const { token } = await res.json();
+    const base = import.meta.env.VITE_API_BASE || "";
+    const res = await fetch(`${base}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+      credentials: "include", // <- keep this so Set-Cookie works
+    });
+    if (!res.ok) throw new Error(await res.text().catch(()=>"Login failed"));
+    const { token, user } = await res.json();
 
-    // Demo fallback: accept any credentials, 24h exp
-    await new Promise(r => setTimeout(r, 300));
-    const tokenPayload = {
-      sub: username,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
-    };
-    const token = `demo.${btoa(JSON.stringify(tokenPayload))}.signature`;
-
-    localStorage.setItem(USER_KEY, username);
-    localStorage.setItem(TOKEN_KEY, token);
-    setUser(username);
+    localStorage.setItem(USER_KEY, user);
+    localStorage.setItem(TOKEN_KEY, token); // keep header auth too
+    setUser(user);
     setToken(token);
+
   };
 
   const logout = () => {
