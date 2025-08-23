@@ -4,8 +4,8 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -37,7 +37,6 @@ type serverDeps struct {
 	scheme *runtime.Scheme
 	config *config.ServerConfig
 }
-
 func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "codespace-server",
@@ -143,16 +142,19 @@ func runServer(cmd *cobra.Command, args []string) {
 
 	// Setup HTTP handlers
 	mux := setupHandlers(deps)
+
 	handler := withCORS(
-		requireAuth([]byte(cfg.JWTSecret), mux),
+		requireAPIToken([]byte(cfg.JWTSecret), mux),
 		cfg.AllowOrigin,
 	)
+
 	srv := &http.Server{
 		Addr:              cfg.GetAddr(),
 		Handler:           handler,
 		ReadHeaderTimeout: time.Duration(cfg.ReadTimeout) * time.Second,
 		WriteTimeout:      time.Duration(cfg.WriteTimeout) * time.Second,
 	}
+
 
 	log.Printf("Codespace server starting on %s", cfg.GetAddr())
 	if cfg.Debug {
@@ -166,25 +168,55 @@ func runServer(cmd *cobra.Command, args []string) {
 func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// auth
+	// Auth endpoints
 	mux.HandleFunc("/api/v1/auth/login", handleLogin(deps.config))
 
-	// health + API + static (existing)
+	// Health endpoints - these MUST be registered before the catch-all static handler
 	mux.HandleFunc("/healthz", handleHealthz)
 	mux.HandleFunc("/readyz", handleReadyz(deps))
+
+	// API endpoints
 	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
 	mux.HandleFunc("/api/v1/sessions", handleSessions(deps))
 	mux.HandleFunc("/api/v1/sessions/", handleSessionsWithPath(deps))
+
+	// Static UI (this should be last)
 	setupStaticUI(mux)
+
 	return mux
 }
-
 func setupStaticUI(mux *http.ServeMux) {
-	uiFS, _ := fsSub(staticFS, "static")
+	uiFS, err := fsSub(staticFS, "static")
+	if err != nil {
+		log.Fatalf("Failed to create static file system: %v", err)
+	}
+
+	// Handle the root path and SPA routing
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/") || path.Ext(r.URL.Path) == "" {
-			r.URL.Path = "/index.html"
+		// Add debug logging
+		if os.Getenv("DEBUG") == "true" {
+			log.Printf("Static request: %s", r.URL.Path)
 		}
-		http.FileServer(uiFS).ServeHTTP(w, r)
+
+		// Serve files with extensions directly
+		if path.Ext(r.URL.Path) != "" && r.URL.Path != "/" {
+			// Try to serve the actual file
+			http.FileServer(uiFS).ServeHTTP(w, r)
+			return
+		}
+
+		// For root path or paths without extensions (SPA routes), serve index.html
+		// Don't modify r.URL.Path - create a new request or serve directly
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		
+		// Read index.html from embed and serve it
+		indexFile, err := staticFS.Open("static/index.html")
+		if err != nil {
+			http.Error(w, "index.html not found", http.StatusNotFound)
+			return
+		}
+		defer indexFile.Close()
+		
+		http.ServeContent(w, r, "index.html", time.Time{}, indexFile)
 	})
 }

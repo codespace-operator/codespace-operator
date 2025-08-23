@@ -3,8 +3,6 @@ FROM golang:1.25 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apk add --no-cache git ca-certificates tzdata
-
 WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download
@@ -33,6 +31,6 @@ ENV CODESPACE_CONTROLLER_DEBUG="false"
 
 # exec form only; let the program's exit code drive health
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD ["/codespace-controller", "--health-check"]
+  CMD ["/session-controller", "--health-check"]
 
-ENTRYPOINT ["/codespace-controller"]
+ENTRYPOINT ["/session-controller"]

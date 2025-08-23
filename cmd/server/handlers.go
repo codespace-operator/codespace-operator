@@ -20,50 +20,60 @@ import (
 )
 
 func handleLogin(cfg *config.ServerConfig) http.HandlerFunc {
-  secret := []byte(cfg.JWTSecret)
-  return func(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-      w.WriteHeader(http.StatusMethodNotAllowed); return
-    }
-    if cfg.BootstrapUser == "" || cfg.BootstrapPassword == "" || len(secret) == 0 {
-      http.Error(w, "login disabled", http.StatusForbidden)
-      return
-    }
-    var body struct{ Username, Password string }
-    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-      errJSON(w, err); return
-    }
-    if body.Username != cfg.BootstrapUser || body.Password != cfg.BootstrapPassword {
-      http.Error(w, "invalid credentials", http.StatusUnauthorized)
-      return
-    }
-    tok, err := makeJWT(body.Username, secret, 24*time.Hour)
-    if err != nil { errJSON(w, err); return }
+	secret := []byte(cfg.JWTSecret)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if cfg.BootstrapUser == "" || cfg.BootstrapPassword == "" || len(secret) == 0 {
+			http.Error(w, "login disabled", http.StatusForbidden)
+			return
+		}
+		var body struct{ Username, Password string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			errJSON(w, err)
+			return
+		}
+		if body.Username != cfg.BootstrapUser || body.Password != cfg.BootstrapPassword {
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		tok, err := makeJWT(body.Username, secret, 24*time.Hour)
+		if err != nil {
+			errJSON(w, err)
+			return
+		}
 
-    // return JSON; cookie optional
-    // http.SetCookie(w, &http.Cookie{Name:"codespace_jwt", Value: tok, HttpOnly:true, Secure:true, Path:"/"})
-    writeJSON(w, map[string]string{"token": tok, "user": body.Username})
-  }
+		writeJSON(w, map[string]string{"token": tok, "user": body.Username})
+	}
 }
 
-
+// FIXED: Improved health check with proper headers and error handling
 func handleHealthz(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
 }
 
+// FIXED: Better readiness check with timeout and error handling
 func handleReadyz(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		readyCtx, cancel := context.WithTimeout(r.Context(), time.Second)
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+		readyCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
-		
+
 		ns := q(r, "namespace", "default")
 		var sl codespacev1.SessionList
 		if err := deps.typed.List(readyCtx, &sl, client.InNamespace(ns), client.Limit(1)); err != nil {
-			errJSON(w, err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("not ready: " + err.Error()))
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ready"))
 	}

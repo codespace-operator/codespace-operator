@@ -67,14 +67,18 @@ ingressClass:
   controller: "k8s.io/ingress-controller/codespace-operator"
 
 server:
+  enabled: true
   # for openshift
   route:
     enabled: false
     annotations: {}
     tls:
       termination: edge
-
-  enabled: true
+  debug: false
+  auth:
+    jwtSecret: ""  # Will generate random if empty
+    bootstrapUser: "admin"
+    bootstrapPassword: ""  # Will generate random if empty
   image:
     repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-
 import {
   Page,
   PageSection,
@@ -28,14 +27,24 @@ import type { Session } from "./types";
 import { InfoPage } from "./pages/Info";
 import { LoginPage } from "./pages/Login";
 import { useAuth } from "./hooks/useAuth";
+import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 
 type RouteKey = "sessions" | "info" | "login";
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   const { isAuthenticated, user } = useAuth();
-  const [route, setRoute] = useState<RouteKey>(
-    (localStorage.getItem("co_route") as RouteKey) || "sessions"
-  );
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [namespace, setNamespace] = useState<string>(
     localStorage.getItem("co_ns") || "default"
   );
@@ -50,12 +59,7 @@ export default function App() {
   );
   const filtered = useFilteredSessions(rows, query);
 
-  useEffect(() => {
-    if (!isAuthenticated && route !== "login") setRoute("login");
-    if (isAuthenticated && route === "login") setRoute("sessions");
-  }, [isAuthenticated, route]);
   useEffect(() => localStorage.setItem("co_ns", namespace), [namespace]);
-  useEffect(() => localStorage.setItem("co_route", route), [route]);
 
   const openURL = (s: Session) => {
     const url =
@@ -75,34 +79,33 @@ export default function App() {
     }
   };
 
-  const handleNavSelect = (result: any) => {
-    setRoute(result.itemId as RouteKey);
-  };
-
   const Sidebar = (
     <PageSidebar
       isSidebarOpen={isNavOpen}
       sidebarContent={
-        <Nav aria-label="Primary nav" theme="dark" onSelect={handleNavSelect}>
+        <Nav aria-label="Primary nav" theme="dark">
           <NavList>
             {isAuthenticated && (
               <>
-                <NavItem to="#sessions" itemId="sessions" isActive={route === "sessions"}>
-                  Sessions
+                <NavItem isActive={location.pathname.startsWith("/sessions")}>
+                  <Link className="pf-c-nav__link" to="/sessions">Sessions</Link>
                 </NavItem>
-                <NavItem to="#info" itemId="info" isActive={route === "info"}>
-                  Info
+                <NavItem isActive={location.pathname.startsWith("/info")}>
+                  <Link className="pf-c-nav__link" to="/info">Info</Link>
                 </NavItem>
               </>
             )}
-            <NavItem to="#login" itemId="login" isActive={route === "login"}>
-              {isAuthenticated ? `Account (${user})` : "Login"}
+            <NavItem isActive={location.pathname.startsWith("/login")}>
+              <Link className="pf-c-nav__link" to="/login">
+                {isAuthenticated ? `Account (${user})` : "Login"}
+              </Link>
             </NavItem>
           </NavList>
         </Nav>
       }
     />
   );
+
   return (
     <Page
       masthead={
@@ -128,76 +131,103 @@ export default function App() {
         ))}
       </AlertGroup>
 
-      {route === "sessions" && (
-        <>
-          <PageSection variant={PageSectionVariants.light} isWidthLimited>
-            <Toolbar>
-              <ToolbarContent>
-                <ToolbarItem>
-                  <TextInput
-                    aria-label="Search"
-                    value={query}
-                    onChange={(_, v) => setQuery(v)}
-                    placeholder="Search by name / image / host"
+      <Routes>
+        <Route
+          path="/sessions"
+          element={
+            <RequireAuth>
+              <>
+                <PageSection variant={PageSectionVariants.light} isWidthLimited>
+                  <Toolbar>
+                    <ToolbarContent>
+                      <ToolbarItem>
+                        <TextInput
+                          aria-label="Search"
+                          value={query}
+                          onChange={(_, v) => setQuery(v)}
+                          placeholder="Search by name / image / host"
+                        />
+                      </ToolbarItem>
+                      <ToolbarItem>
+                        <Button
+                          icon={<PlusCircleIcon />}
+                          variant="primary"
+                          onClick={() => setCreateOpen(true)}
+                        >
+                          New Session
+                        </Button>
+                      </ToolbarItem>
+                    </ToolbarContent>
+                  </Toolbar>
+                </PageSection>
+
+                <PageSection isFilled isWidthLimited>
+                  <Card>
+                    <CardBody>
+                      <SessionsTable
+                        loading={loading}
+                        rows={filtered}
+                        onScale={async (s, d) => {
+                          const current =
+                            typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
+                          const next = Math.max(0, current + d);
+                          try {
+                            await scale(s.metadata.namespace, s.metadata.name, next);
+                            alerts.push(`Scaled to ${next}`, "success");
+                          } catch (e: any) {
+                            alerts.push(e?.message || "Scale failed", "danger");
+                          }
+                        }}
+                        onDelete={doDelete}
+                        onOpen={openURL}
+                      />
+                    </CardBody>
+                  </Card>
+
+                  <CreateSessionModal
+                    isOpen={isCreateOpen}
+                    namespace={namespace}
+                    onClose={() => setCreateOpen(false)}
+                    onCreate={async (body) => {
+                      try {
+                        await create(body);
+                        alerts.push(`Session ${body?.metadata?.name} created`, "success");
+                        setCreateOpen(false);
+                      } catch (e: any) {
+                        alerts.push(e?.message || "Create failed", "danger");
+                      }
+                    }}
                   />
-                </ToolbarItem>
-                <ToolbarItem>
-                  <Button
-                    icon={<PlusCircleIcon />}
-                    variant="primary"
-                    onClick={() => setCreateOpen(true)}
-                  >
-                    New Session
-                  </Button>
-                </ToolbarItem>
-              </ToolbarContent>
-            </Toolbar>
-          </PageSection>
+                </PageSection>
+              </>
+            </RequireAuth>
+          }
+        />
 
-          <PageSection isFilled isWidthLimited>
-            <Card>
-              <CardBody>
-                <SessionsTable
-                  loading={loading}
-                  rows={filtered}
-                  onScale={async (s, d) => {
-                    const current =
-                      typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
-                    const next = Math.max(0, current + d);
-                    try {
-                      await scale(s.metadata.namespace, s.metadata.name, next);
-                      alerts.push(`Scaled to ${next}`, "success");
-                    } catch (e: any) {
-                      alerts.push(e?.message || "Scale failed", "danger");
-                    }
-                  }}
-                  onDelete={doDelete}
-                  onOpen={openURL}
-                />
-              </CardBody>
-            </Card>
+        <Route
+          path="/info"
+          element={
+            <RequireAuth>
+              <InfoPage />
+            </RequireAuth>
+          }
+        />
 
-            <CreateSessionModal
-              isOpen={isCreateOpen}
-              namespace={namespace}
-              onClose={() => setCreateOpen(false)}
-              onCreate={async (body) => {
-                try {
-                  await create(body);
-                  alerts.push(`Session ${body?.metadata?.name} created`, "success");
-                  setCreateOpen(false);
-                } catch (e: any) {
-                  alerts.push(e?.message || "Create failed", "danger");
-                }
+        <Route
+          path="/login"
+          element={
+            <LoginPage
+              onLoggedIn={() => {
+                const from = (location.state as any)?.from?.pathname || "/sessions";
+                navigate(from, { replace: true });
               }}
             />
-          </PageSection>
-        </>
-      )}
+          }
+        />
 
-      {route === "info" && <InfoPage />}
-
-      {route === "login" && <LoginPage onLoggedIn={() => setRoute("sessions")} />}
+        <Route path="/" element={<Navigate to="/sessions" replace />} />
+        <Route path="*" element={<Navigate to="/sessions" replace />} />
+      </Routes>
     </Page>
   );
 }

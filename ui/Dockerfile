@@ -15,7 +15,6 @@ WORKDIR /workspace
 # Go module cache
 COPY go.mod go.sum ./
 RUN go mod download
-RUN apk add --no-cache git ca-certificates tzdata
 
 # Bring in only the Go sources first (better cache); copy UI assets from the ui stage
 COPY cmd/ cmd/

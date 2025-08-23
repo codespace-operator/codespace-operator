@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  codespace:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    container_name: codespace-server
+    ports:
+      - "9090:9090"
+    environment:
+      # Server config (also present in config.yaml; env wins)
+      CODESPACE_SERVER_PORT: "9090"
+      CODESPACE_SERVER_DEBUG: "true"
+      CODESPACE_SERVER_ALLOW_ORIGIN: "*"
+      CODESPACE_SERVER_JWT_SECRET: "dev-change-me"
+      CODESPACE_SERVER_BOOTSTRAP_USER: "admin"
+      CODESPACE_SERVER_BOOTSTRAP_PASSWORD: "admin"
+      # Let the helper find kubeconfig
+      KUBECONFIG: /kube/config
+    volumes:
+      - ./local/kubeconfig:/kube/config:ro
+      - ./local/config.yaml:/etc/codespace-operator/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  session-controller:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: codespace-session-controller
+    environment:
+      # Controller config (can also be set via flags; env keeps it simple)
+      CODESPACE_CONTROLLER_DEBUG: "true"
+      CODESPACE_CONTROLLER_METRICS_ADDR: "0"
+      CODESPACE_CONTROLLER_PROBE_ADDR: ":9091"
+      CODESPACE_CONTROLLER_ENABLE_LEADER_ELECTION: "false"
+      CODESPACE_CONTROLLER_SESSION_NAME_PREFIX: "cs-"
+      CODESPACE_CONTROLLER_FIELD_OWNER: "codespace-operator"
+      KUBECONFIG: /kube/config
+    volumes:
+      - ~/.kube/config:/kube/config:ro
+      - ./config/config.yaml:/etc/codespace-operator/config.yaml:ro
+    ports:
+      - "9091:9091" # probe endpoints from manager
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+networks:
+  kind:
+    external: true
+    name: kind

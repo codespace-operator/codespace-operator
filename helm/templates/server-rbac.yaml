@@ -1,25 +1,26 @@
 {{- if and .Values.server.enabled .Values.rbac.create .Values.server.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: {{ include "codespace-operator.server.serviceAccountName" . }}
-  namespace: {{ .Release.Namespace }}
 rules:
   - apiGroups: ["codespace.codespace.dev"]
     resources: ["sessions"]
     verbs: ["get","list","watch","create","update","patch","delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: {{ include "codespace-operator.server.serviceAccountName" . }}
-  namespace: {{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "codespace-operator.server.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: {{ include "codespace-operator.server.serviceAccountName" . }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}

@@ -13,19 +13,25 @@ spec:
   {{- if .Values.server.networkPolicy.allowIngressFromSameNamespace }}
     - from:
         - podSelector: {}   # allow same-namespace traffic (ingress controller/clients)
+    - {}  # Allow all ingress for now to debug
   {{- else }}
     - {}
   {{- end }}
   egress:
-  {{- if .Values.server.networkPolicy.egressToKubeAPIServer }}
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow Kubernetes API access
+    - to: []
       ports:
         - protocol: TCP
           port: 443
-  {{- else }}
-    - {}
-  {{- end }}
+        - protocol: TCP
+          port: 6443
+    # Allow all egress for debugging
+    - to: []
 {{- end }}
