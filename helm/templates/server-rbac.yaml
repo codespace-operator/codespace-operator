@@ -9,7 +9,7 @@ rules:
     verbs: [get,list,watch,create,update,patch,delete]
   - apiGroups: [codespace.codespace.dev]
     resources: [sessions/status, sessions/finalizers]
-    verbs: [get,update,patch]
+    verbs: [get,update,patch,list,watch]
   - apiGroups: [""]
     resources: [events]
     verbs: [create,patch]

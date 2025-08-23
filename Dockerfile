@@ -7,7 +7,7 @@ WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY cmd/session-controller/session-controller.go cmd/session-controller/session-controller.go
+COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
 

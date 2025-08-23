@@ -31,3 +31,4 @@ ui/dist/*
 dist/*
 local/*
 .env
+cmd/server/static/*

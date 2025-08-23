@@ -125,7 +125,12 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		flusher, _ := w.(http.Flusher)
+		w.Header().Set("X-Accel-Buffering", "no") // helps behind nginx
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			return
+		}
 
 		ticker := time.NewTicker(25 * time.Second)
 		defer ticker.Stop()

@@ -63,19 +63,16 @@ export function CreateSessionModal({ isOpen, namespace, onClose, onCreate }: Pro
       title="Create Session"
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
-        <Button 
-          key="create" 
-          variant="primary" 
-          onClick={submit} 
-          isDisabled={!cName}
-        >
-          Create
-        </Button>,
-        <Button key="cancel" variant="link" onClick={onClose}>
-          Cancel
-        </Button>,
-      ]}
+      footer={
+        <>
+          <Button variant="primary" onClick={submit} isDisabled={!cName}>
+            Create
+          </Button>
+          <Button variant="link" onClick={onClose}>
+            Cancel
+          </Button>
+        </>
+      }
     >
       <Form>
         <FormGroup label="Name" isRequired fieldId="name">

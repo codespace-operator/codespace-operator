@@ -31,13 +31,19 @@ import { useAuth } from "./hooks/useAuth";
 import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    // tiny splash; or return null to avoid flicker
+    return <div style={{ padding: 24 }}>Loading...</div>;
+  }
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
 }
+
 
 // Full-screen login layout without sidebars
 function LoginLayout({ children }: { children: React.ReactNode }) {
@@ -55,7 +61,8 @@ function LoginLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const alerts = useAlerts();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -66,8 +73,7 @@ export default function App() {
   const [isNavOpen, setNavOpen] = useState(true);
   const [isCreateOpen, setCreateOpen] = useState(false);
 
-  const alerts = useAlerts();
-  const { rows, loading, refresh, create, remove, scale } = useSessions(
+  const { rows, loading, refresh, create, remove, scale, pendingTargets } = useSessions(
     namespace,
     (msg) => alerts.push(msg, "danger")
   );
@@ -88,6 +94,7 @@ export default function App() {
     try {
       await remove(s.metadata.namespace, s.metadata.name);
       alerts.push("Deleted", "success");
+      refresh();
     } catch (e: any) {
       alerts.push(e?.message || "Delete failed", "danger");
     }
@@ -250,6 +257,7 @@ export default function App() {
                       <SessionsTable
                         loading={loading}
                         rows={filtered}
+                        pendingTargets={pendingTargets}
                         onScale={async (s, d) => {
                           const current =
                             typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
@@ -257,6 +265,7 @@ export default function App() {
                           try {
                             await scale(s.metadata.namespace, s.metadata.name, next);
                             alerts.push(`Scaled to ${next}`, "success");
+                            refresh();
                           } catch (e: any) {
                             alerts.push(e?.message || "Scale failed", "danger");
                           }
@@ -276,6 +285,7 @@ export default function App() {
                         await create(body);
                         alerts.push(`Session ${body?.metadata?.name} created`, "success");
                         setCreateOpen(false);
+                        refresh();
                       } catch (e: any) {
                         alerts.push(e?.message || "Create failed", "danger");
                       }

@@ -175,6 +175,21 @@
   color: #ffffff !important;
 }
 
+
+/* Ensure FormSelect dropdowns are readable */
+select.pf-c-form-control,
+.pf-v6-c-form-control select {
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+}
+select.pf-c-form-control option,
+.pf-v6-c-form-control select option,
+select.pf-c-form-control optgroup,
+.pf-v6-c-form-control select optgroup {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
 .pf-c-modal-box .pf-c-form-control:focus,
 .pf-v6-c-modal-box .pf-v6-c-form-control:focus {
   border-color: var(--pf-global--primary-color--100) !important;

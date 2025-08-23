@@ -170,7 +170,7 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/session-controller/session-controller.go
+	go build -o bin/session-controller cmd/session-controller/session-controller.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -187,9 +187,13 @@ docker-build: ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
 
-.PHONY: ui-build
-ui-build:
-	cd ui && npm ci && npm run build
+.PHONY: build-ui
+build-ui:
+	cd ui && npm run build
+	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
+	cp -r ./ui/dist/* cmd/server/static/
+	touch ./cmd/server/static/.gitkeep
+	go build -o ./bin/codespace-server ./cmd/server
 
 .PHONY: docker-build-server
 docker-build-server:

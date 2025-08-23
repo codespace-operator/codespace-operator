@@ -74,18 +74,18 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 			).
 			WithPorts(corev1apply.ContainerPort().WithContainerPort(4180))
 		if sess.Spec.Auth.OIDC != nil {
-			    sidecar = sidecar.
-					WithEnv(
-						corev1apply.EnvVar().WithName("OIDC_ISSUER").WithValue(sess.Spec.Auth.OIDC.IssuerURL),
-						corev1apply.EnvVar().WithName("OIDC_CLIENT_ID").WithValueFrom(
+			sidecar = sidecar.
+				WithEnv(
+					corev1apply.EnvVar().WithName("OIDC_ISSUER").WithValue(sess.Spec.Auth.OIDC.IssuerURL),
+					corev1apply.EnvVar().WithName("OIDC_CLIENT_ID").WithValueFrom(
 						corev1apply.EnvVarSource().WithSecretKeyRef(
 							corev1apply.SecretKeySelector().WithName(sess.Spec.Auth.OIDC.ClientIDSecret).WithKey("clientID"),
 						)),
-						corev1apply.EnvVar().WithName("OIDC_CLIENT_SECRET").WithValueFrom(
+					corev1apply.EnvVar().WithName("OIDC_CLIENT_SECRET").WithValueFrom(
 						corev1apply.EnvVarSource().WithSecretKeyRef(
 							corev1apply.SecretKeySelector().WithName(sess.Spec.Auth.OIDC.ClientSecretRef).WithKey("clientSecret"),
 						)),
-					)
+				)
 		}
 		containers = append(containers, sidecar)
 	}

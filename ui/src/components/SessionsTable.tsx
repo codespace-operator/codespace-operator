@@ -18,12 +18,13 @@ function PhaseLabel({ phase }: { phase?: string }) {
 type Props = {
   loading: boolean;
   rows: Session[];
+  pendingTargets?: Record<string, number>;
   onScale: (s: Session, delta: number) => void;
   onDelete: (s: Session) => void;
   onOpen: (s: Session) => void;
 };
 
-export function SessionsTable({ loading, rows, onScale, onDelete, onOpen }: Props) {
+export function SessionsTable({ loading, rows, pendingTargets = {}, onScale, onDelete, onOpen }: Props) {
   return (
     <div style={{ borderRadius: 6, overflow: "hidden" }}>
       <Table aria-label="Sessions" variant="compact" borders>
@@ -44,7 +45,7 @@ export function SessionsTable({ loading, rows, onScale, onDelete, onOpen }: Prop
             <Tr>
               <Td colSpan={8}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Spinner size="md" /> Loading…
+                  <Spinner size="md" /> Loading...
                 </div>
               </Td>
             </Tr>
@@ -74,7 +75,19 @@ export function SessionsTable({ loading, rows, onScale, onDelete, onOpen }: Prop
                         <ArrowDownIcon />
                       </Button>
                     </Tooltip>
-                    <strong>{typeof s.spec.replicas === "number" ? s.spec.replicas : 1}</strong>
+                    {(() => {
+                      const key = `${s.metadata.namespace}/${s.metadata.name}`;
+                      const current = typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
+                      const target = pendingTargets[key];
+                      if (typeof target === "number" && target !== current) {
+                        return (
+                          <Tooltip content="Applying…">
+                            <strong>{current} <span className="pf-u-color-200">(→ {target})</span></strong>
+                          </Tooltip>
+                        );
+                      }
+                      return <strong>{current}</strong>;
+                    })()}
                     <Tooltip content="Scale up">
                       <Button variant="plain" onClick={() => onScale(s, +1)} aria-label="Scale up">
                         <ArrowUpIcon />

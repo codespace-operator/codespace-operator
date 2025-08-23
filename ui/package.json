@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "rm -rf ../cmd/server/static && mkdir -p ../cmd/server/static && cp -r dist/* ../cmd/server/static/",
     "preview": "vite preview --host --port 5173"
   },
   "dependencies": {

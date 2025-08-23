@@ -16,7 +16,7 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
   const [rows, setRows] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-
+  const [pendingTargets, setPendingTargets] = useState<Record<string, number>>({});
   // Initial list
   useEffect(() => {
     if (!enabled) return;
@@ -48,6 +48,13 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
           if (ix === -1) return [ev.object, ...list];
           const next = [...list]; next[ix] = ev.object; return next;
         });
+        // any event touching an object is a good moment to clear optimistic target
+        setPendingTargets((p) => {
+          const k = `${ev.object.metadata.namespace}/${ev.object.metadata.name}`;
+          if (!(k in p)) return p;
+          const { [k]: _, ...rest } = p;
+          return rest;
+        });
       } catch {}
     });
     es.onerror = () => {};
@@ -64,10 +71,15 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
     },
     create: (body: Partial<Session>) => api.create(body),
     remove: (ns: string, name: string) => api.remove(ns, name),
-    scale: (ns: string, name: string, replicas: number) => api.scale(ns, name, replicas),
+    scale: async (ns: string, name: string, replicas: number) => {
+      const key = `${ns}/${name}`;
+      setPendingTargets((p) => ({ ...p, [key]: replicas }));
+      const res = await api.scale(ns, name, replicas);
+      return res;
+    },
   };
 
-  return { rows, loading, ...actions };
+  return { rows, loading, pendingTargets, ...actions };
 }
 
 export function useFilteredSessions(rows: Session[], query: string) {
