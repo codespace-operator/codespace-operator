@@ -28,6 +28,7 @@ import { InfoPage } from "./pages/InfoPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UserInfoPage } from "./pages/UserInfo";
 import { useAuth } from "./hooks/useAuth";
+import { useNamespaces } from "./hooks/useNamespaces";
 import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -35,7 +36,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   if (isLoading) {
-    // tiny splash; or return null to avoid flicker
     return <div style={{ padding: 24 }}>Loading...</div>;
   }
   if (!isAuthenticated) {
@@ -44,12 +44,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-
 // Full-screen login layout without sidebars
 function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       backgroundColor: 'var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))',
       display: 'flex',
       alignItems: 'center',
@@ -67,7 +66,7 @@ export default function App() {
   const navigate = useNavigate();
 
   const [namespace, setNamespace] = useState<string>(
-    localStorage.getItem("co_ns") || "default"
+    localStorage.getItem("co_ns") || "All"
   );
   const [query, setQuery] = useState("");
   const [isNavOpen, setNavOpen] = useState(true);
@@ -78,7 +77,8 @@ export default function App() {
     (msg) => alerts.push(msg, "danger")
   );
   const filtered = useFilteredSessions(rows, query);
-
+  const { writableNamespaces, sessionNamespaces, loading: nsLoading, error: nsError } = useNamespaces();
+  useEffect(() => { if (nsError) alerts.push(nsError, "danger"); }, [nsError]);
   useEffect(() => localStorage.setItem("co_ns", namespace), [namespace]);
 
   const openURL = (s: Session) => {
@@ -103,7 +103,7 @@ export default function App() {
   // Navigation items - only show when authenticated
   const getNavItems = () => {
     if (!isAuthenticated) return [];
-    
+
     return [
       {
         id: "workloads",
@@ -113,7 +113,7 @@ export default function App() {
         ]
       },
       {
-        id: "administration", 
+        id: "administration",
         title: "Administration",
         children: [
           { id: "user-info", title: "User Management", to: "/user-info" },
@@ -123,10 +123,11 @@ export default function App() {
     ];
   };
 
+  // IMPORTANT: In PF v6, use the `nav` prop (not `sidebarContent`)
   const Sidebar = (
     <PageSidebar
       isSidebarOpen={isNavOpen}
-      sidebarContent={
+      nav={
         <Nav aria-label="Primary nav" theme="dark">
           <NavList>
             {getNavItems().map((section) => (
@@ -135,8 +136,8 @@ export default function App() {
                   {section.title}
                 </NavItem>
                 {section.children.map((item) => (
-                  <NavItem 
-                    key={item.id} 
+                  <NavItem
+                    key={item.id}
                     isActive={location.pathname.startsWith(item.to)}
                     className="pf-m-indent"
                   >
@@ -168,7 +169,7 @@ export default function App() {
             />
           ))}
         </AlertGroup>
-        
+
         <Routes>
           <Route
             path="/login"
@@ -279,8 +280,9 @@ export default function App() {
                   <CreateSessionModal
                     isOpen={isCreateOpen}
                     namespace={namespace}
+                    writableNamespaces={writableNamespaces}
                     onClose={() => setCreateOpen(false)}
-                    onCreate={async (body) => {
+                    onCreate={async (body) =>{
                       try {
                         await create(body);
                         alerts.push(`Session ${body?.metadata?.name} created`, "success");

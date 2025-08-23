@@ -1,6 +1,9 @@
 /* src/theme.css */
 /* ---- PatternFly token overrides (PF v5 + PF v6) ---- */
 :root {
+  /* Make native controls (selects, inputs) render in dark theme */
+  color-scheme: dark;
+
   /* Primary palette (OpenShift-ish blues) */
   --pf-global--primary-color--100: #0066cc;
   --pf-global--primary-color--200: #004b95;
@@ -135,6 +138,7 @@
   background-color: #1f1f1f !important;
   color: #ffffff !important;
   border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 8px !important;
 }
 
 /* Modal header */
@@ -142,6 +146,13 @@
 .pf-v6-c-modal-box__header {
   background-color: transparent !important;
   border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  color: #ffffff !important;
+  padding: var(--pf-global--spacer--md, 1rem) var(--pf-global--spacer--lg, 1.25rem) !important;
+}
+
+/* Modal title */
+.pf-c-modal-box__title,
+.pf-v6-c-modal-box__title {
   color: #ffffff !important;
 }
 
@@ -154,15 +165,45 @@
   background-color: transparent !important;
 }
 
-/* Modal footer - ensure visibility and proper layout */
+/* Modal footer - FIXED visibility and layout */
 .pf-c-modal-box__footer,
 .pf-v6-c-modal-box__footer {
   display: flex !important;
   justify-content: flex-end !important;
   gap: var(--pf-global--spacer--sm, .5rem) !important;
   padding: var(--pf-global--spacer--md, 1rem) var(--pf-global--spacer--lg, 1.25rem) !important;
-  background-color: transparent !important;
+  background-color: #1f1f1f !important;
   border-top: 1px solid rgba(255,255,255,0.1) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Ensure buttons in modal footer are visible */
+.pf-c-modal-box__footer .pf-c-button,
+.pf-v6-c-modal-box__footer .pf-v6-c-button {
+  color: #ffffff !important;
+  z-index: 2 !important;
+  position: relative !important;
+}
+
+/* Primary button in modal */
+.pf-c-modal-box__footer .pf-c-button.pf-m-primary,
+.pf-v6-c-modal-box__footer .pf-v6-c-button.pf-m-primary {
+  background-color: var(--pf-global--primary-color--100, #0066cc) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.pf-c-modal-box__footer .pf-c-button.pf-m-primary:hover,
+.pf-v6-c-modal-box__footer .pf-v6-c-button.pf-m-primary:hover {
+  background-color: var(--pf-global--primary-color--200, #004b95) !important;
+}
+
+/* Link button in modal */
+.pf-c-modal-box__footer .pf-c-button.pf-m-link,
+.pf-v6-c-modal-box__footer .pf-v6-c-button.pf-m-link {
+  color: #6aaeff !important;
+  background-color: transparent !important;
 }
 
 /* Form elements in modals */
@@ -175,6 +216,11 @@
   color: #ffffff !important;
 }
 
+.pf-c-modal-box .pf-c-form-control:focus,
+.pf-v6-c-modal-box .pf-v6-c-form-control:focus {
+  border-color: var(--pf-global--primary-color--100) !important;
+  box-shadow: 0 0 0 1px var(--pf-global--primary-color--100) !important;
+}
 
 /* Ensure FormSelect dropdowns are readable */
 select.pf-c-form-control,
@@ -182,6 +228,7 @@ select.pf-c-form-control,
   background-color: #2a2a2a !important;
   color: #ffffff !important;
 }
+
 select.pf-c-form-control option,
 .pf-v6-c-form-control select option,
 select.pf-c-form-control optgroup,
@@ -190,16 +237,16 @@ select.pf-c-form-control optgroup,
   color: #ffffff;
 }
 
-.pf-c-modal-box .pf-c-form-control:focus,
-.pf-v6-c-modal-box .pf-v6-c-form-control:focus {
-  border-color: var(--pf-global--primary-color--100) !important;
-  box-shadow: 0 0 0 1px var(--pf-global--primary-color--100) !important;
-}
-
 /* Form labels in dark mode */
 .pf-c-modal-box .pf-c-form__label,
 .pf-v6-c-modal-box .pf-v6-c-form__label {
   color: #ffffff !important;
+}
+
+/* Ensure proper spacing for form groups */
+.pf-c-modal-box .pf-c-form__group,
+.pf-v6-c-modal-box .pf-v6-c-form__group {
+  margin-bottom: var(--pf-global--spacer--md, 1rem) !important;
 }
 
 /* Backdrop */
@@ -207,7 +254,6 @@ select.pf-c-form-control optgroup,
 .pf-v6-c-backdrop {
   background-color: rgba(0, 0, 0, 0.6) !important;
 }
-
 /* ----- Page Section Headers ----- */
 .pf-c-page__main-section .pf-c-title {
   color: #ffffff !important;
@@ -243,4 +289,213 @@ select.pf-c-form-control optgroup,
 /* ----- Brand/Logo ----- */
 .pf-c-brand {
   filter: brightness(1.1) !important;
+}
+/* Add this to the END of your src/theme.css file */
+/* GLOBAL OVERRIDE - Force modal buttons to always be visible */
+
+/* Force all modal footers to be visible */
+[class*="modal-box__footer"],
+[class*="modal__footer"],
+.pf-c-modal-box > div:last-child,
+.pf-v6-c-modal-box > div:last-child {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  min-height: 60px !important;
+}
+
+/* Force all buttons in modals to be visible */
+[class*="modal"] button,
+[class*="modal"] .pf-c-button,
+[class*="modal"] .pf-v6-c-button,
+[class*="modal"] [class*="button"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: inline-flex !important;
+  position: relative !important;
+  z-index: 10000 !important;
+}
+
+/* Specific overrides for Create Session Modal */
+.pf-c-modal-box:has(#name) .pf-c-button.pf-m-primary,
+.pf-v6-c-modal-box:has(#name) .pf-v6-c-button.pf-m-primary {
+  background-color: #0066cc !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 8px 24px !important;
+  border-radius: 3px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 100px !important;
+  height: 36px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.pf-c-modal-box:has(#name) .pf-c-button.pf-m-link,
+.pf-v6-c-modal-box:has(#name) .pf-v6-c-button.pf-m-link {
+  color: #6aaeff !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 8px 24px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 80px !important;
+  height: 36px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure form spacing in modal */
+.pf-c-modal-box .pf-c-form__group:not(:last-child),
+.pf-v6-c-modal-box .pf-v6-c-form__group:not(:last-child) {
+  margin-bottom: 20px !important;
+}
+
+/* Override any hidden states */
+.pf-c-modal-box *[style*="display: none"],
+.pf-v6-c-modal-box *[style*="display: none"] {
+  /* Don't override inline display: none */
+}
+
+.pf-c-modal-box *[style*="visibility: hidden"]:has(button),
+.pf-v6-c-modal-box *[style*="visibility: hidden"]:has(button),
+.pf-c-modal-box *[style*="visibility: hidden"] button,
+.pf-v6-c-modal-box *[style*="visibility: hidden"] button {
+  visibility: visible !important;
+}
+
+/* ----- Sidebar Visibility Fixes ----- */
+.pf-c-page__sidebar,
+.pf-v6-c-page__sidebar {
+  background-color: #0f0f0f !important;
+  width: 300px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 100 !important;
+  transition: transform 0.3s ease-in-out !important;
+}
+
+/* Ensure sidebar is visible when open */
+.pf-c-page__sidebar.pf-m-sidebar-open,
+.pf-v6-c-page__sidebar.pf-m-sidebar-open,
+.pf-c-page__sidebar:not(.pf-m-collapsed),
+.pf-v6-c-page__sidebar:not(.pf-m-collapsed) {
+  transform: translateX(0) !important;
+  display: block !important;
+}
+
+/* Dark theme navigation */
+.pf-c-nav.pf-m-dark,
+.pf-v6-c-nav.pf-m-dark {
+  background-color: transparent !important;
+  padding: 0.5rem 0 !important;
+}
+
+/* Section titles */
+.pf-c-nav__section-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.025em !important;
+  padding: 0.75rem 1rem 0.25rem !important;
+  border-bottom: none !important;
+  margin-bottom: 0.25rem !important;
+  opacity: 0.8 !important;
+}
+
+/* Navigation items */
+.pf-c-nav__item {
+  margin: 0 !important;
+}
+
+.pf-c-nav__item.pf-m-indent {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+/* Navigation links */
+.pf-c-nav__link {
+  color: #c7c7c7 !important;
+  text-decoration: none !important;
+  display: block !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 3px !important;
+  transition: all 0.15s ease-in-out !important;
+  cursor: pointer !important;
+  font-size: 0.875rem !important;
+}
+
+.pf-c-nav__item.pf-m-indent .pf-c-nav__link {
+  padding-left: 1.5rem !important;
+  padding-left: 1.5rem !important;
+}
+
+/* Hover state */
+.pf-c-nav__link:hover {
+  color: #ffffff !important;
+  background-color: rgba(255,255,255,0.04) !important;
+  text-decoration: none !important;
+}
+
+/* Active state */
+.pf-c-nav__item.pf-m-current .pf-c-nav__link,
+.pf-c-nav__item[aria-current="page"] .pf-c-nav__link {
+  color: #ffffff !important;
+  background-color: rgba(255,255,255,0.08) !important;
+  font-weight: 600 !important;
+  position: relative !important;
+}
+
+/* Active indicator */
+.pf-c-nav__item.pf-m-current .pf-c-nav__link::before,
+.pf-c-nav__item[aria-current="page"] .pf-c-nav__link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background-color: var(--pf-global--primary-color--100, #0066cc);
+  border-radius: 0 3px 3px 0;
+}
+
+/* Page layout adjustments */
+.pf-c-page.pf-m-managed-sidebar,
+.pf-v6-c-page.pf-m-managed-sidebar {
+  --pf-c-page__sidebar--md--Width: 300px !important;
+}
+
+/* Ensure main content shifts when sidebar is open */
+.pf-c-page__main,
+.pf-v6-c-page__main {
+  margin-left: 0 !important;
+  transition: margin-left 0.3s ease-in-out !important;
+}
+
+.pf-c-page.pf-m-managed-sidebar .pf-c-page__main,
+.pf-v6-c-page.pf-m-managed-sidebar .pf-v6-c-page__main {
+  margin-left: 300px !important;
+}
+
+/* When sidebar is collapsed */
+.pf-c-page__sidebar.pf-m-collapsed,
+.pf-v6-c-page__sidebar.pf-m-collapsed {
+  transform: translateX(-100%) !important;
+}
+
+.pf-c-page__sidebar.pf-m-collapsed + .pf-c-page__main,
+.pf-v6-c-page__sidebar.pf-m-collapsed + .pf-v6-c-page__main {
+  margin-left: 0 !important;
 }

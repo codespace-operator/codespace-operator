@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -103,6 +104,10 @@ func runServer(cmd *cobra.Command, args []string) {
 	k8sCfg.Burst = cfg.KubeBurst
 
 	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		log.Fatalf("Add corev1 scheme: %v", err)
+	}
+
 	if err := codespacev1.AddToScheme(scheme); err != nil {
 		log.Fatalf("Add scheme: %v", err)
 	}
@@ -166,6 +171,8 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
 	mux.HandleFunc("/api/v1/sessions", handleSessions(deps))
 	mux.HandleFunc("/api/v1/sessions/", handleSessionsWithPath(deps))
+	mux.HandleFunc("/api/v1/namespaces/sessions", handleNamespacesWithSessions(deps))
+	mux.HandleFunc("/api/v1/namespaces/writable", handleWritableNamespaces(deps))
 
 	setupStaticUI(mux)
 	if deps.config.Debug {

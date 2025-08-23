@@ -56,7 +56,11 @@ function normalizeObject<T = any>(x: any): T {
 
 export const api = {
   async list(ns: string): Promise<Session[]> {
-    const r = await apiFetch(`/api/v1/sessions?namespace=${encodeURIComponent(ns)}`);
+    // If namespace is "All", omit the namespace parameter to get all namespaces
+    const url = ns === "All"
+      ? `/api/v1/sessions?all=true`
+      : `/api/v1/sessions?namespace=${encodeURIComponent(ns)}`;
+    const r = await apiFetch(url);
     return normalizeList<Session>(await r.json());
   },
 
@@ -91,13 +95,34 @@ export const api = {
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
     const token = getToken();
     const hasCookie = document.cookie.includes("codespace_jwt=");
-    const url =
-      `${base}/api/v1/stream/sessions` +
-      `?namespace=${encodeURIComponent(ns)}` +
-      (!hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "");
+
+    // Adjust URL for "All" namespace
+    const baseUrl = `${base}/api/v1/stream/sessions`;
+    const queryParams = ns === "All" 
+      ? `?all=true` 
+      : `?namespace=${encodeURIComponent(ns)}`;
+    const tokenParam = !hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "";
+    const url = baseUrl + queryParams + tokenParam;
 
     const es = new EventSource(url, { withCredentials: true as any });
     es.onmessage = onEvent;
     return es;
+  },
+};
+
+
+export const nsApi = {
+  async listSessionNamespaces(): Promise<string[]> {
+    const r = await apiFetch(`/api/v1/namespaces/sessions`);
+    const data = await r.json();
+    // Accept ["ns1","ns2"] or {items:["ns1","ns2"]}
+    if (Array.isArray(data)) return data;
+    return normalizeList<string>(data);
+  },
+  async listWritableNamespaces(): Promise<string[]> {
+    const r = await apiFetch(`/api/v1/namespaces/writable?sessions=true`);
+    const data = await r.json();
+    if (Array.isArray(data)) return data;
+    return normalizeList<string>(data);
   },
 };

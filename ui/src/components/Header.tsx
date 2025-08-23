@@ -8,7 +8,6 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
-  TextInput,
   Title,
   Button,
   Brand,
@@ -16,10 +15,13 @@ import {
   DropdownItem,
   DropdownList,
   MenuToggle,
+  FormSelect,
+  FormSelectOption
 } from "@patternfly/react-core";
 import { BarsIcon, SyncIcon, UserIcon, CogIcon } from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useNamespaces } from "../hooks/useNamespaces";
 import logoUrl from "../assets/codespace-operator.svg?url";
 
 type Props = {
@@ -30,10 +32,27 @@ type Props = {
   user?: string | null;
 };
 
+// Helper to load namespaces list from env or fallback
+function getNamespaceOptions(): string[] {
+  const raw = import.meta.env.VITE_NAMESPACES as string | undefined;
+  if (raw && raw.trim()) {
+    const namespaces = raw.split(",").map(s => s.trim()).filter(Boolean);
+    // Add "All" as the first option if not already present
+    if (!namespaces.includes("All")) {
+      return ["All", ...namespaces];
+    }
+    return namespaces;
+  }
+  // Default namespaces with "All" option
+  return ["All", "default", "dev", "staging", "prod"];
+}
+
 export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar, user }: Props) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [isUserMenuOpen, setUserMenuOpen] = React.useState(false);
+  const { sessionNamespaces, loading: nsLoading } = useNamespaces();
+  const listOptions = ["All", ...sessionNamespaces];
 
   const handleLogout = () => {
     logout();
@@ -56,7 +75,7 @@ export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar, use
     <Masthead
       backgroundColor={{ default: "dark" }}
       display={{ default: "inline" }}
-      style={{ 
+      style={{
         boxShadow: "var(--pf-c-masthead--BoxShadow)",
         borderBottom: "3px solid var(--pf-global--primary-color--100)"
       }}
@@ -72,16 +91,16 @@ export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar, use
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Brand src={logoUrl} alt="Codespace Operator" style={{ width: 32, height: 32 }} />
             <div>
-              <Title headingLevel="h1" style={{ 
-                color: "var(--pf-global--Color--light-100)", 
-                margin: 0, 
+              <Title headingLevel="h1" style={{
+                color: "var(--pf-global--Color--light-100)",
+                margin: 0,
                 fontWeight: 600,
-                fontSize: "1.25rem" 
+                fontSize: "1.25rem"
               }}>
                 Codespace Operator
               </Title>
-              <div style={{ 
-                color: "var(--pf-global--Color--light-200)", 
+              <div style={{
+                color: "var(--pf-global--Color--light-200)",
                 fontSize: "0.75rem",
                 marginTop: "-2px"
               }}>
@@ -95,31 +114,36 @@ export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar, use
       <MastheadContent>
         <Toolbar isFullHeight isStatic>
           <ToolbarContent>
+            {/* Namespace selector */}
             <ToolbarItem>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ 
-                  color: "var(--pf-global--Color--light-200)", 
+                <span style={{
+                  color: "var(--pf-global--Color--light-200)",
                   fontSize: "0.875rem",
                   whiteSpace: "nowrap"
                 }}>
-                  Project:
+                  Namespace:
                 </span>
-                <TextInput
-                  aria-label="Namespace"
-                  value={namespace}
-                  onChange={(_, v) => onNamespace(v)}
-                  placeholder="namespace"
-                  style={{ width: "140px" }}
-                />
+               <FormSelect
+                value={namespace}
+                onChange={(_, v) => onNamespace(v)}
+                aria-label="Select namespace"
+                style={{ minWidth: 200 }}
+                isDisabled={nsLoading}
+              />
+                {listOptions.map(ns => (
+                  <FormSelectOption key={ns} value={ns} label={ns === "All" ? "All Namespaces" : ns} />
+                ))}
+              </FormSelect>
               </div>
             </ToolbarItem>
 
             <ToolbarItem>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={onRefresh}
                 size="sm"
-                style={{ 
+                style={{
                   backgroundColor: "rgba(255,255,255,0.1)",
                   borderColor: "rgba(255,255,255,0.3)",
                   color: "var(--pf-global--Color--light-100)"

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -114,8 +115,19 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 			return
 		}
 
-		ns := q(r, "namespace", "default")
-		watcher, err := deps.dyn.Resource(gvr).Namespace(ns).Watch(r.Context(), metav1.ListOptions{Watch: true})
+		var watcher watch.Interface
+		var err error
+
+		// Check if we should watch all namespaces
+		if r.URL.Query().Get("all") == "true" {
+			// Watch sessions across all namespaces (empty string means all namespaces)
+			watcher, err = deps.dyn.Resource(gvr).Watch(r.Context(), metav1.ListOptions{Watch: true})
+		} else {
+			// Watch sessions in specific namespace
+			ns := q(r, "namespace", "default")
+			watcher, err = deps.dyn.Resource(gvr).Namespace(ns).Watch(r.Context(), metav1.ListOptions{Watch: true})
+		}
+
 		if err != nil {
 			errJSON(w, err)
 			return
@@ -168,6 +180,57 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
+// GET /api/v1/namespaces/sessions
+// Returns unique namespaces that currently have Session CRs.
+func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := mustHavePermission(w, r, PermSessionsList); !ok {
+			return
+		}
+		var sl codespacev1.SessionList
+		// list across all namespaces
+		if err := deps.typed.List(r.Context(), &sl); err != nil {
+			errJSON(w, err)
+			return
+		}
+		seen := map[string]struct{}{}
+		out := make([]string, 0, len(sl.Items))
+		for _, s := range sl.Items {
+			ns := s.GetNamespace()
+			if _, has := seen[ns]; !has {
+				seen[ns] = struct{}{}
+				out = append(out, ns)
+			}
+		}
+		writeJSON(w, out)
+	}
+}
+
+// GET /api/v1/namespaces/writable?sessions=true
+// Returns namespaces the current user can create Sessions in.
+// NOTE: current RBAC model is role-based only (no per-namespace scoping),
+// so this returns ALL cluster namespaces if the user has sessions.create; else [].
+func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Require sessions.create to receive any namespaces
+		if _, ok := mustHavePermission(w, r, PermSessionsCreate); !ok {
+			// mustHavePermission already wrote 403
+			return
+		}
+		// List all core namespaces
+		var nsl corev1.NamespaceList
+		if err := deps.typed.List(r.Context(), &nsl); err != nil {
+			errJSON(w, err)
+			return
+		}
+		out := make([]string, 0, len(nsl.Items))
+		for _, ns := range nsl.Items {
+			out = append(out, ns.Name)
+		}
+		writeJSON(w, out)
+	}
+}
+
 func handleSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -175,11 +238,23 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 			if _, ok := mustHavePermission(w, r, PermSessionsList); !ok {
 				return
 			}
-			ns := q(r, "namespace", "default")
+
 			var sl codespacev1.SessionList
-			if err := deps.typed.List(r.Context(), &sl, client.InNamespace(ns)); err != nil {
-				errJSON(w, err)
-				return
+
+			// Check if we should list all namespaces
+			if r.URL.Query().Get("all") == "true" {
+				// List sessions across all namespaces
+				if err := deps.typed.List(r.Context(), &sl); err != nil {
+					errJSON(w, err)
+					return
+				}
+			} else {
+				// List sessions in specific namespace
+				ns := q(r, "namespace", "default")
+				if err := deps.typed.List(r.Context(), &sl, client.InNamespace(ns)); err != nil {
+					errJSON(w, err)
+					return
+				}
 			}
 			writeJSON(w, sl.Items)
 
