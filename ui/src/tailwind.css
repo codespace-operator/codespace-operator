@@ -1,0 +1,3 @@
+/* Tailwind utilities only (no preflight) */
+@tailwind components;
+@tailwind utilities;

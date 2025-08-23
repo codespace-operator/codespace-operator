@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "codespace-operator.sessionController.name" . }}
+  labels:
+{{ include "codespace-operator.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "codespace-operator.selectorLabels" (dict "name" (include "codespace-operator.name" .) "root" .) | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "codespace-operator.selectorLabels" (dict "name" (include "codespace-operator.name" .) "root" .) | indent 8 }}
+      annotations:
+{{- with .Values.podAnnotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "codespace-operator.serviceAccountName" . }}
+      securityContext:
+{{ toYaml .Values.securityContext | indent 8 }}
+      containers:
+        - name: session-controller
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--metrics-bind-address={{ ternary .Values.metrics.bindAddress "0" (not .Values.metrics.enabled) }}"
+            - "--metrics-secure={{ ternary "true" "false" .Values.metrics.secure }}"
+            - "--health-probe-bind-address=:8081"
+            - "--enable-http2={{ ternary "true" "false" .Values.enableHTTP2 }}"
+{{- if .Values.webhook.enabled }}
+            - "--webhook-cert-path={{ .Values.webhook.certPath }}"
+            - "--webhook-cert-name={{ .Values.webhook.certName }}"
+            - "--webhook-cert-key={{ .Values.webhook.certKey }}"
+{{- end }}
+{{- range $arg := .Values.extraArgs }}
+            - "{{ $arg }}"
+{{- end }}
+          ports:
+{{- if and .Values.metrics.enabled .Values.metrics.secure }}
+            - name: https-metrics
+              containerPort: 8443
+{{- else if and .Values.metrics.enabled (not .Values.metrics.secure) }}
+            - name: http-metrics
+              containerPort: 8080
+{{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          securityContext:
+{{ toYaml .Values.containerSecurityContext | indent 12 }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}

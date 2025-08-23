@@ -1,0 +1,18 @@
+Thanks for installing the Codespace Operator!
+
+NAMESPACE: {{ .Release.Namespace }}
+NAME: {{ include "codespace-operator.fullname" . }}
+
+To create a Session CR, apply your YAML like:
+  kubectl apply -n {{ .Release.Namespace }} -f - <<'EOF'
+  apiVersion: codespace.codespace.dev/v1
+  kind: Session
+  metadata:
+    name: sample
+  spec:
+    profile:
+      ide: jupyterlab
+      image: jupyter/base-notebook:latest
+    auth:
+      mode: none
+  EOF

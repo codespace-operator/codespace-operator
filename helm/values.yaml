@@ -1,0 +1,136 @@
+image:
+  repository: ghcr.io/codespace-operator/codespace-operator
+  tag: "{{chart.AppVersion}}"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+
+metrics:
+  name: ""
+  enabled: true
+  secure: true
+  bindAddress: :8443
+  service:
+    type: ClusterIP
+    annotations: {}
+    port: 8443
+    targetPort: 8443
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+webhook:
+  enabled: false
+  certPath: ""
+  certName: tls.crt
+  certKey: tls.key
+
+enableHTTP2: false
+
+resources:
+  limits: {}
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+extraArgs: []
+
+podAnnotations: {}
+podLabels: {}
+
+securityContext: {}
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+ingressClass:
+  enabled: false
+  name: "codespace-operator"
+  controller: "k8s.io/ingress-controller/codespace-operator"
+
+server:
+  enabled: true
+  route:
+    enabled: false
+    annotations: {}
+    tls:
+      termination: edge
+  debug: false
+  auth:
+    # IMPORTANT: set a stable secret in prod; chart generates one if empty
+    jwtSecret: "" # set for stable upgrades
+    bootstrapUser: admin # single local admin
+    bootstrapPassword: admin # chart generates random if empty
+  image:
+    repository: ghcr.io/codespace-operator/codespace-server
+    tag: "{{chart.AppVersion}}"
+    pullPolicy: IfNotPresent
+  env:
+    # Same-origin by default; set to http://localhost:5173 only for local dev
+    allowOrigin: ""
+  service:
+    type: ClusterIP
+    annotations: {}
+    name: ""
+    port: 8080
+  probes:
+    readinessPath: /readyz
+    livenessPath: /healthz
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: console.codespace.test
+        path: /
+    tls: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  securityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop: ["ALL"]
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  useManagerServiceAccount: false
+  serviceAccount:
+    create: true
+    name: ""
+  rbac:
+    create: true
+  networkPolicy:
+    enabled: true
+    allowIngressFromSameNamespace: true
+    egressToKubeAPIServer: true

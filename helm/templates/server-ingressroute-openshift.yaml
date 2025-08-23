@@ -1,0 +1,20 @@
+{{- if and .Values.server.enabled (hasKey .Values.server "route") .Values.server.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "codespace-operator.server.name" . }}
+  labels:
+{{ include "codespace-operator.labels" . | indent 4 }}
+  {{- with .Values.server.route.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+  {{- end }}
+spec:
+  to:
+    kind: Service
+    name: {{ include "codespace-operator.server.serviceName" . }}
+  {{- if .Values.server.route.tls }}
+  tls:
+{{ toYaml .Values.server.route.tls | indent 4 }}
+  {{- end }}
+{{- end }}

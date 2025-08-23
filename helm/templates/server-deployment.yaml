@@ -1,0 +1,92 @@
+{{- if .Values.server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "codespace-operator.server.name" . }}
+  labels:
+{{ include "codespace-operator.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "codespace-operator.selectorLabels" (dict "name" (printf "%s-server" (include "codespace-operator.name" .)) "root" .) | indent 8 }}
+    spec:
+      serviceAccountName: {{ if .Values.server.useManagerServiceAccount }}{{ include "codespace-operator.serviceAccountName" . }}{{ else }}{{ include "codespace-operator.server.serviceAccountName" . }}{{ end }}
+      {{- with .Values.server.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: CODESPACE_SERVER_PORT
+              value: "8080"
+            - name: CODESPACE_SERVER_ALLOW_ORIGIN
+              value: "{{ .Values.server.env.allowOrigin }}"
+            - name: CODESPACE_SERVER_DEBUG
+              value: "{{ .Values.server.debug | default false }}"
+            - name: CODESPACE_SERVER_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codespace-operator.server.name" . }}-auth
+                  key: jwt-secret
+            - name: CODESPACE_SERVER_BOOTSTRAP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codespace-operator.server.name" . }}-auth
+                  key: bootstrap-user
+            - name: CODESPACE_SERVER_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codespace-operator.server.name" . }}-auth
+                  key: bootstrap-password
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.server.probes.readinessPath | default "/readyz" }}
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.server.probes.livenessPath | default "/healthz" }}
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          {{- with .Values.server.resources }}
+          resources:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          {{- with .Values.server.containerSecurityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+{{- end }}
