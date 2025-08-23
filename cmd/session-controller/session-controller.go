@@ -1,27 +1,11 @@
-/*
-Copyright 2025 Dennis Marcus Goh.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
 	"crypto/tls"
-	"flag"
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,8 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
+	"github.com/codespace-operator/codespace-operator/internal/config"
 	controller "github.com/codespace-operator/codespace-operator/internal/controller"
-	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -47,75 +31,156 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(codespacev1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
 }
 
-// nolint:gocyclo
 func main() {
-	var metricsAddr string
-	var metricsCertPath, metricsCertName, metricsCertKey string
-	var webhookCertPath, webhookCertName, webhookCertKey string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
-	var tlsOpts []func(*tls.Config)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
-		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller session-controller. "+
-			"Enabling this will ensure there is only one active controller session-controller.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", true,
-		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
-	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
-	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "The name of the webhook certificate file.")
-	flag.StringVar(&webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
-	flag.StringVar(&metricsCertPath, "metrics-cert-path", "",
-		"The directory that contains the metrics server certificate.")
-	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
-	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
-	flag.BoolVar(&enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	opts := zap.Options{
-		Development: true,
+	var rootCmd = &cobra.Command{
+		Use:   "session-controller",
+		Short: "Codespace Operator Session Controller",
+		Long:  `The controller component that manages Codespace Session resources in Kubernetes.`,
+		Run:   runController,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
 
+	// Add flags
+	rootCmd.Flags().String("metrics-bind-address", "0", 
+		"The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable.")
+	rootCmd.Flags().String("health-probe-bind-address", ":8081", 
+		"The address the probe endpoint binds to.")
+	rootCmd.Flags().Bool("leader-elect", false,
+		"Enable leader election for controller session-controller.")
+	rootCmd.Flags().Bool("metrics-secure", true,
+		"If set, the metrics endpoint is served securely via HTTPS.")
+	rootCmd.Flags().String("webhook-cert-path", "", 
+		"The directory that contains the webhook certificate.")
+	rootCmd.Flags().String("webhook-cert-name", "tls.crt", 
+		"The name of the webhook certificate file.")
+	rootCmd.Flags().String("webhook-cert-key", "tls.key", 
+		"The name of the webhook key file.")
+	rootCmd.Flags().String("metrics-cert-path", "",
+		"The directory that contains the metrics server certificate.")
+	rootCmd.Flags().String("metrics-cert-name", "tls.crt", 
+		"The name of the metrics server certificate file.")
+	rootCmd.Flags().String("metrics-cert-key", "tls.key", 
+		"The name of the metrics server key file.")
+	rootCmd.Flags().Bool("enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	rootCmd.Flags().String("session-name-prefix", "cs-", 
+		"Prefix for generated session resource names")
+	rootCmd.Flags().String("field-owner", "codespace-operator", 
+		"Field manager name for server-side apply operations")
+	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
+
+	// Add zap flags
+	opts := zap.Options{Development: true}
+	opts.BindFlags(rootCmd.Flags())
+
+	if err := rootCmd.Execute(); err != nil {
+		setupLog.Error(err, "Command execution failed")
+		os.Exit(1)
+	}
+}
+
+func runController(cmd *cobra.Command, args []string) {
+	// Load configuration
+	cfg, err := config.LoadControllerConfig()
+	if err != nil {
+		setupLog.Error(err, "Failed to load configuration")
+		os.Exit(1)
+	}
+
+	// Override config with command line flags
+	if cmd.Flags().Changed("metrics-bind-address") {
+		addr, _ := cmd.Flags().GetString("metrics-bind-address")
+		cfg.MetricsAddr = addr
+	}
+	if cmd.Flags().Changed("health-probe-bind-address") {
+		addr, _ := cmd.Flags().GetString("health-probe-bind-address")
+		cfg.ProbeAddr = addr
+	}
+	if cmd.Flags().Changed("leader-elect") {
+		enable, _ := cmd.Flags().GetBool("leader-elect")
+		cfg.EnableLeaderElection = enable
+	}
+	if cmd.Flags().Changed("metrics-secure") {
+		secure, _ := cmd.Flags().GetBool("metrics-secure")
+		cfg.SecureMetrics = secure
+	}
+	if cmd.Flags().Changed("webhook-cert-path") {
+		path, _ := cmd.Flags().GetString("webhook-cert-path")
+		cfg.WebhookCertPath = path
+	}
+	if cmd.Flags().Changed("webhook-cert-name") {
+		name, _ := cmd.Flags().GetString("webhook-cert-name")
+		cfg.WebhookCertName = name
+	}
+	if cmd.Flags().Changed("webhook-cert-key") {
+		key, _ := cmd.Flags().GetString("webhook-cert-key")
+		cfg.WebhookCertKey = key
+	}
+	if cmd.Flags().Changed("metrics-cert-path") {
+		path, _ := cmd.Flags().GetString("metrics-cert-path")
+		cfg.MetricsCertPath = path
+	}
+	if cmd.Flags().Changed("metrics-cert-name") {
+		name, _ := cmd.Flags().GetString("metrics-cert-name")
+		cfg.MetricsCertName = name
+	}
+	if cmd.Flags().Changed("metrics-cert-key") {
+		key, _ := cmd.Flags().GetString("metrics-cert-key")
+		cfg.MetricsCertKey = key
+	}
+	if cmd.Flags().Changed("enable-http2") {
+		enable, _ := cmd.Flags().GetBool("enable-http2")
+		cfg.EnableHTTP2 = enable
+	}
+	if cmd.Flags().Changed("session-name-prefix") {
+		prefix, _ := cmd.Flags().GetString("session-name-prefix")
+		cfg.SessionNamePrefix = prefix
+	}
+	if cmd.Flags().Changed("field-owner") {
+		owner, _ := cmd.Flags().GetString("field-owner")
+		cfg.FieldOwner = owner
+	}
+	if cmd.Flags().Changed("debug") {
+		debug, _ := cmd.Flags().GetBool("debug")
+		cfg.Debug = debug
+	}
+
+	// Setup logging
+	opts := zap.Options{Development: cfg.Debug}
+	opts.BindFlags(cmd.Flags())
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// if the enable-http2 flag is false (the default), http/2 should be disabled
-	// due to its vulnerabilities. More specifically, disabling http/2 will
-	// prevent from being vulnerable to the HTTP/2 Stream Cancellation and
-	// Rapid Reset CVEs. For more information see:
-	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
-	// - https://github.com/advisories/GHSA-4374-p667-p6c8
+	if cfg.Debug {
+		setupLog.Info("Configuration loaded", "config", cfg)
+	}
+
+	// Configure TLS options
+	var tlsOpts []func(*tls.Config)
 	disableHTTP2 := func(c *tls.Config) {
 		setupLog.Info("disabling http/2")
 		c.NextProtos = []string{"http/1.1"}
 	}
 
-	if !enableHTTP2 {
+	if !cfg.EnableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	// Create watchers for metrics and webhooks certificates
+	// Create certificate watchers
 	var metricsCertWatcher, webhookCertWatcher *certwatcher.CertWatcher
-
-	// Initial webhook TLS options
 	webhookTLSOpts := tlsOpts
 
-	if len(webhookCertPath) > 0 {
-		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", webhookCertPath, "webhook-cert-name", webhookCertName, "webhook-cert-key", webhookCertKey)
+	if len(cfg.WebhookCertPath) > 0 {
+		setupLog.Info("Initializing webhook certificate watcher",
+			"path", cfg.WebhookCertPath, 
+			"cert", cfg.WebhookCertName, 
+			"key", cfg.WebhookCertKey)
 
 		var err error
 		webhookCertWatcher, err = certwatcher.New(
-			filepath.Join(webhookCertPath, webhookCertName),
-			filepath.Join(webhookCertPath, webhookCertKey),
+			filepath.Join(cfg.WebhookCertPath, cfg.WebhookCertName),
+			filepath.Join(cfg.WebhookCertPath, cfg.WebhookCertKey),
 		)
 		if err != nil {
 			setupLog.Error(err, "Failed to initialize webhook certificate watcher")
@@ -127,47 +192,35 @@ func main() {
 		})
 	}
 
+	// Setup webhook server
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: webhookTLSOpts,
 	})
 
-	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
-	// More info:
-	// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/metrics/server
-	// - https://book.kubebuilder.io/reference/metrics.html
+	// Setup metrics server
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   metricsAddr,
-		SecureServing: secureMetrics,
+		BindAddress:   cfg.MetricsAddr,
+		SecureServing: cfg.SecureMetrics,
 		TLSOpts:       tlsOpts,
 	}
 
-	if secureMetrics {
-		// FilterProvider is used to protect the metrics endpoint with authn/authz.
-		// These configurations ensure that only authorized users and service accounts
-		// can access the metrics endpoint. The RBAC are configured in 'config/rbac/kustomization.yaml'. More info:
-		// https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/metrics/filters#WithAuthenticationAndAuthorization
+	if cfg.SecureMetrics {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	// If the certificate is not specified, controller-runtime will automatically
-	// generate self-signed certificates for the metrics server. While convenient for development and testing,
-	// this setup is not recommended for production.
-	//
-	// TODO(user): If you enable certManager, uncomment the following lines:
-	// - [METRICS-WITH-CERTS] at config/default/kustomization.yaml to generate and use certificates
-	// managed by cert-session-controller for the metrics server.
-	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
-	if len(metricsCertPath) > 0 {
-		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", metricsCertPath, "metrics-cert-name", metricsCertName, "metrics-cert-key", metricsCertKey)
+	if len(cfg.MetricsCertPath) > 0 {
+		setupLog.Info("Initializing metrics certificate watcher",
+			"path", cfg.MetricsCertPath,
+			"cert", cfg.MetricsCertName,
+			"key", cfg.MetricsCertKey)
 
 		var err error
 		metricsCertWatcher, err = certwatcher.New(
-			filepath.Join(metricsCertPath, metricsCertName),
-			filepath.Join(metricsCertPath, metricsCertKey),
+			filepath.Join(cfg.MetricsCertPath, cfg.MetricsCertName),
+			filepath.Join(cfg.MetricsCertPath, cfg.MetricsCertKey),
 		)
 		if err != nil {
-			setupLog.Error(err, "to initialize metrics certificate watcher", "error", err)
+			setupLog.Error(err, "Failed to initialize metrics certificate watcher")
 			os.Exit(1)
 		}
 
@@ -176,43 +229,34 @@ func main() {
 		})
 	}
 
+	// Create manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "a51c5837.codespace.dev",
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
-		//
-		// In the default scaffold provided, the program ends immediately after
-		// the session-controller stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the session-controller stops then its usage might be unsafe.
-		// LeaderElectionReleaseOnCancel: true,
+		HealthProbeBindAddress: cfg.ProbeAddr,
+		LeaderElection:         cfg.EnableLeaderElection,
+		LeaderElectionID:       cfg.LeaderElectionID,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start session-controller")
+		setupLog.Error(err, "Unable to start session-controller")
 		os.Exit(1)
 	}
 
+	// Setup controller with configuration
 	if err := (&controller.SessionReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Session")
+		setupLog.Error(err, "Unable to create controller", "controller", "Session")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
 
+	// Add certificate watchers to manager
 	if metricsCertWatcher != nil {
 		setupLog.Info("Adding metrics certificate watcher to session-controller")
 		if err := mgr.Add(metricsCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add metrics certificate watcher to session-controller")
+			setupLog.Error(err, "Unable to add metrics certificate watcher")
 			os.Exit(1)
 		}
 	}
@@ -220,23 +264,28 @@ func main() {
 	if webhookCertWatcher != nil {
 		setupLog.Info("Adding webhook certificate watcher to session-controller")
 		if err := mgr.Add(webhookCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add webhook certificate watcher to session-controller")
+			setupLog.Error(err, "Unable to add webhook certificate watcher")
 			os.Exit(1)
 		}
 	}
 
+	// Setup health checks
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+		setupLog.Error(err, "Unable to set up health check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+		setupLog.Error(err, "Unable to set up ready check")
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting session-controller")
+	// Update global configuration for controller
+	os.Setenv("SESSION_NAME_PREFIX", cfg.SessionNamePrefix)
+	os.Setenv("FIELD_OWNER", cfg.FieldOwner)
+
+	setupLog.Info("Starting session-controller")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running session-controller")
+		setupLog.Error(err, "Problem running session-controller")
 		os.Exit(1)
 	}
 }

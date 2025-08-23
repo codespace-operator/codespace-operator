@@ -15,13 +15,12 @@ WORKDIR /workspace
 # Go module cache
 COPY go.mod go.sum ./
 RUN go mod download
+RUN apk add --no-cache git ca-certificates tzdata
 
 # Bring in only the Go sources first (better cache); copy UI assets from the ui stage
 COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
-COPY pkg/ pkg/
-COPY proto/ proto/
 # Drop the built SPA into a static folder your server serves from
 RUN mkdir -p cmd/server/static
 COPY --from=ui /src/ui/dist/ cmd/server/static/
@@ -32,7 +31,17 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /workspace/c
 # 3) Minimal runtime image
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
+
+COPY --from=go /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=go /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=go /workspace/codespace-server /codespace-server
+
 USER 65532:65532
 EXPOSE 8080
+
+ENV CODESPACE_SERVER_PORT=8080
+ENV CODESPACE_SERVER_HOST=""
+ENV CODESPACE_SERVER_DEBUG=false
+ENV CODESPACE_SERVER_ALLOW_ORIGIN=""
+
 ENTRYPOINT ["/codespace-server"]
