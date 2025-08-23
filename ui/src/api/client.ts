@@ -1,6 +1,55 @@
 import type { Session } from "../types";
 
-// Small helpers to tolerate different gateway shapes
+const base = import.meta.env.VITE_API_BASE || "";
+
+const TOKEN_KEY = "co_token";
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function handleResponse(response: Response) {
+  if (!response.ok) {
+    let message = "";
+    try {
+      message = (await response.text()) || "";
+    } catch {
+      /* ignore */
+    }
+    const friendly = message || `HTTP ${response.status}: ${response.statusText}`;
+
+    if (response.status === 401 || response.status === 403) {
+      // Clear auth and signal the UI to go to login
+      localStorage.removeItem("co_user");
+      localStorage.removeItem("co_token");
+      // Use a custom event so the app can react (no import cycles)
+      window.dispatchEvent(new CustomEvent("co:auth:required"));
+    }
+    throw new Error(friendly);
+  }
+  return response;
+}
+
+async function apiFetch(path: string, init?: RequestInit) {
+  const res = await fetch(`${base}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.headers || {}),
+      ...authHeaders(),
+    },
+    credentials: "include", // harmless if you move to cookie-based auth later
+  });
+  await handleResponse(res);
+  return res;
+}
+
+// --- Helpers to normalize API shapes (unchanged) ---
 function normalizeList<T = any>(x: any): T[] {
   if (!x) return [];
   if (Array.isArray(x)) return x as T[];
@@ -14,48 +63,49 @@ function normalizeObject<T = any>(x: any): T {
   return x as T;
 }
 
-const base = "";
-
 export const api = {
   async list(ns: string): Promise<Session[]> {
-    const r = await fetch(`${base}/api/v1/sessions?namespace=${encodeURIComponent(ns)}`);
-    if (!r.ok) throw new Error(await r.text());
+    const r = await apiFetch(`/api/v1/sessions?namespace=${encodeURIComponent(ns)}`);
     return normalizeList<Session>(await r.json());
   },
 
   async create(body: Partial<Session>): Promise<Session> {
-    const r = await fetch(`${base}/api/v1/sessions`, {
+    const r = await apiFetch(`/api/v1/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error(await r.text());
     return normalizeObject<Session>(await r.json());
   },
 
   async remove(ns: string, name: string): Promise<void> {
-    const r = await fetch(
-      `${base}/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
-      { method: "DELETE" }
-    );
-    if (!r.ok) throw new Error(await r.text());
+    await apiFetch(`/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    });
   },
 
   async scale(ns: string, name: string, replicas: number): Promise<Session> {
-    const r = await fetch(
-      `${base}/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`,
+    const r = await apiFetch(
+      `/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replicas }),
       }
     );
-    if (!r.ok) throw new Error(await r.text());
     return normalizeObject<Session>(await r.json());
   },
 
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
-    const es = new EventSource(`${base}/api/v1/stream/sessions?namespace=${encodeURIComponent(ns)}`);
+    // SSE cannot send Authorization headers. Send the token as a query param,
+    // or switch to a cookie on the server. (Prefer short-lived tokens if using query.)
+    const token = getToken();
+    const url =
+      `${base}/api/v1/stream/sessions` +
+      `?namespace=${encodeURIComponent(ns)}` +
+      (token ? `&access_token=${encodeURIComponent(token)}` : "");
+
+    const es = new EventSource(url);
     es.onmessage = onEvent;
     return es;
   },

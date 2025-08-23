@@ -8,6 +8,7 @@ kube_qps: 50.0
 kube_burst: 100
 debug: false
 
+
 ---
 # config/controller-config.yaml - Controller configuration example
 metrics_addr: ":8080"

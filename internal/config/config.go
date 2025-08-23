@@ -24,6 +24,10 @@ type ServerConfig struct {
 	
 	// Development/Debug settings
 	Debug bool `mapstructure:"debug"`
+
+	JWTSecret         string `mapstructure:"jwt_secret"`
+	BootstrapUser     string `mapstructure:"bootstrap_user"`
+	BootstrapPassword string `mapstructure:"bootstrap_password"`
 }
 
 // ControllerConfig holds configuration for the session controller
@@ -67,7 +71,9 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("kube_qps", 50.0)
 	v.SetDefault("kube_burst", 100)
 	v.SetDefault("debug", false)
-	
+	v.SetDefault("jwt_secret", "")
+	v.SetDefault("bootstrap_user", "")
+	v.SetDefault("bootstrap_password", "")
 	// Configure viper
 	setupViper(v, "CODESPACE_SERVER")
 	

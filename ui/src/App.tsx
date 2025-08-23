@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   Page,
@@ -25,22 +25,42 @@ import { SessionsTable } from "./components/SessionsTable";
 import { CreateSessionModal } from "./components/CreateSessionModal";
 import { useAlerts, useFilteredSessions, useSessions } from "./hooks/useSessions";
 import type { Session } from "./types";
+import { InfoPage } from "./pages/Info";
+import { LoginPage } from "./pages/Login";
+import { useAuth } from "./hooks/useAuth";
+
+type RouteKey = "sessions" | "info" | "login";
 
 export default function App() {
-  const [namespace, setNamespace] = useState<string>(localStorage.getItem("co_ns") || "default");
+  const { isAuthenticated, user } = useAuth();
+  const [route, setRoute] = useState<RouteKey>(
+    (localStorage.getItem("co_route") as RouteKey) || "sessions"
+  );
+  const [namespace, setNamespace] = useState<string>(
+    localStorage.getItem("co_ns") || "default"
+  );
   const [query, setQuery] = useState("");
   const [isNavOpen, setNavOpen] = useState(true);
   const [isCreateOpen, setCreateOpen] = useState(false);
 
   const alerts = useAlerts();
-  const { rows, loading, refresh, create, remove, scale } = useSessions(namespace, (msg) => alerts.push(msg, "danger"));
+  const { rows, loading, refresh, create, remove, scale } = useSessions(
+    namespace,
+    (msg) => alerts.push(msg, "danger")
+  );
   const filtered = useFilteredSessions(rows, query);
 
   useEffect(() => {
-    localStorage.setItem("co_ns", namespace);
-  }, [namespace]);
+    if (!isAuthenticated && route !== "login") setRoute("login");
+    if (isAuthenticated && route === "login") setRoute("sessions");
+  }, [isAuthenticated, route]);
+  useEffect(() => localStorage.setItem("co_ns", namespace), [namespace]);
+  useEffect(() => localStorage.setItem("co_route", route), [route]);
+
   const openURL = (s: Session) => {
-    const url = s.status?.url || (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
+    const url =
+      s.status?.url ||
+      (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
     if (!url) return alerts.push("No URL yet", "info");
     window.open(url, "_blank");
   };
@@ -55,22 +75,44 @@ export default function App() {
     }
   };
 
+  const handleNavSelect = (result: any) => {
+    setRoute(result.itemId as RouteKey);
+  };
+
   const Sidebar = (
     <PageSidebar
       isSidebarOpen={isNavOpen}
       sidebarContent={
-        <Nav aria-label="Primary nav" className="pf-m-dark">
+        <Nav aria-label="Primary nav" theme="dark" onSelect={handleNavSelect}>
           <NavList>
-            <NavItem itemId={0} isActive>Sessions</NavItem>
+            {isAuthenticated && (
+              <>
+                <NavItem to="#sessions" itemId="sessions" isActive={route === "sessions"}>
+                  Sessions
+                </NavItem>
+                <NavItem to="#info" itemId="info" isActive={route === "info"}>
+                  Info
+                </NavItem>
+              </>
+            )}
+            <NavItem to="#login" itemId="login" isActive={route === "login"}>
+              {isAuthenticated ? `Account (${user})` : "Login"}
+            </NavItem>
           </NavList>
         </Nav>
       }
     />
   );
-
   return (
     <Page
-      header={<Header namespace={namespace} onNamespace={setNamespace} onRefresh={refresh} onToggleSidebar={() => setNavOpen(v => !v)} />}
+      masthead={
+        <Header
+          namespace={namespace}
+          onNamespace={setNamespace}
+          onRefresh={refresh}
+          onToggleSidebar={() => setNavOpen((v) => !v)}
+        />
+      }
       sidebar={Sidebar}
       isManagedSidebar
     >
@@ -86,65 +128,76 @@ export default function App() {
         ))}
       </AlertGroup>
 
-      {/* Filter bar on a light section for contrast */}
-      <PageSection variant={PageSectionVariants.light} isWidthLimited>
-        <Toolbar>
-          <ToolbarContent>
-            <ToolbarItem>
-              <TextInput
-                aria-label="Search"
-                value={query}
-                onChange={(_, v) => setQuery(v)}
-                placeholder="Search by name / image / host"
-              />
-            </ToolbarItem>
-            <ToolbarItem>
-              <Button icon={<PlusCircleIcon />} variant="primary" onClick={() => setCreateOpen(true)}>
-                New Session
-              </Button>
-            </ToolbarItem>
-          </ToolbarContent>
-        </Toolbar>
-      </PageSection>
+      {route === "sessions" && (
+        <>
+          <PageSection variant={PageSectionVariants.light} isWidthLimited>
+            <Toolbar>
+              <ToolbarContent>
+                <ToolbarItem>
+                  <TextInput
+                    aria-label="Search"
+                    value={query}
+                    onChange={(_, v) => setQuery(v)}
+                    placeholder="Search by name / image / host"
+                  />
+                </ToolbarItem>
+                <ToolbarItem>
+                  <Button
+                    icon={<PlusCircleIcon />}
+                    variant="primary"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    New Session
+                  </Button>
+                </ToolbarItem>
+              </ToolbarContent>
+            </Toolbar>
+          </PageSection>
 
-      {/* Main content in a subtle card, OpenShift console style */}
-      <PageSection isFilled isWidthLimited>
-        <Card>
-          <CardBody>
-            <SessionsTable
-              loading={loading}
-              rows={filtered}
-              onScale={async (s, d) => {
-                const current = typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
-                const next = Math.max(0, current + d);
+          <PageSection isFilled isWidthLimited>
+            <Card>
+              <CardBody>
+                <SessionsTable
+                  loading={loading}
+                  rows={filtered}
+                  onScale={async (s, d) => {
+                    const current =
+                      typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
+                    const next = Math.max(0, current + d);
+                    try {
+                      await scale(s.metadata.namespace, s.metadata.name, next);
+                      alerts.push(`Scaled to ${next}`, "success");
+                    } catch (e: any) {
+                      alerts.push(e?.message || "Scale failed", "danger");
+                    }
+                  }}
+                  onDelete={doDelete}
+                  onOpen={openURL}
+                />
+              </CardBody>
+            </Card>
+
+            <CreateSessionModal
+              isOpen={isCreateOpen}
+              namespace={namespace}
+              onClose={() => setCreateOpen(false)}
+              onCreate={async (body) => {
                 try {
-                  await scale(s.metadata.namespace, s.metadata.name, next);
-                  alerts.push(`Scaled to ${next}`, "success");
+                  await create(body);
+                  alerts.push(`Session ${body?.metadata?.name} created`, "success");
+                  setCreateOpen(false);
                 } catch (e: any) {
-                  alerts.push(e?.message || "Scale failed", "danger");
+                  alerts.push(e?.message || "Create failed", "danger");
                 }
               }}
-              onDelete={doDelete}
-              onOpen={openURL}
             />
-          </CardBody>
-        </Card>
+          </PageSection>
+        </>
+      )}
 
-        <CreateSessionModal
-          isOpen={isCreateOpen}
-          namespace={namespace}
-          onClose={() => setCreateOpen(false)}
-          onCreate={async (body) => {
-            try {
-              await create(body);
-              alerts.push(`Session ${body?.metadata?.name} created`, "success");
-              setCreateOpen(false);
-            } catch (e: any) {
-              alerts.push(e?.message || "Create failed", "danger");
-            }
-          }}
-        />
-      </PageSection>
+      {route === "info" && <InfoPage />}
+
+      {route === "login" && <LoginPage onLoggedIn={() => setRoute("sessions")} />}
     </Page>
   );
 }

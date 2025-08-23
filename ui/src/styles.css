@@ -1,4 +1,11 @@
-/* src/styles.css */
+/* Base PatternFly styles first */
 @import "@patternfly/react-core/dist/styles/base.css";
+
+/* Overrides */
 @import "./theme.css";
-@import "../index.css"; /* was ./index.css */
+
+/* Simple global height rule from the project root */
+@import "../index.css";
+
+/* Tailwind utilities (no preflight, namespaced) */
+@import "./tailwind.css";

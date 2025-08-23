@@ -16,18 +16,20 @@ import {
 import { BarsIcon, SyncIcon } from "@patternfly/react-icons";
 import logoUrl from "../assets/codespace-operator.svg?url";
 
-// vite-friendly import of static asset
-
 type Props = {
   namespace: string;
   onNamespace: (ns: string) => void;
   onRefresh: () => void;
-  onToggleSidebar: () => void; // NEW
+  onToggleSidebar: () => void;
 };
 
 export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar }: Props) {
   return (
-    <Masthead backgroundColor="dark" display="inline">
+    <Masthead
+      backgroundColor={{ default: "dark" }}
+      display={{ default: "inline" }}
+      style={{ boxShadow: "var(--pf-c-masthead--BoxShadow)" }}
+    >
       <MastheadToggle>
         <Button variant="plain" aria-label="Global navigation" onClick={onToggleSidebar}>
           <BarsIcon />
@@ -38,7 +40,7 @@ export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar }: P
         <MastheadBrand>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Brand src={logoUrl} alt="Codespace Operator" style={{ width: 28, height: 28 }} />
-            <Title headingLevel="h2" style={{ color: "white", margin: 0 }}>
+            <Title headingLevel="h2" style={{ color: "var(--pf-global--Color--light-100)", margin: 0, fontWeight: 600 }}>
               Codespace Operator
             </Title>
           </div>
@@ -57,8 +59,8 @@ export function Header({ namespace, onNamespace, onRefresh, onToggleSidebar }: P
               />
             </ToolbarItem>
             <ToolbarItem>
-              <Button variant="secondary" icon={<SyncIcon />} onClick={onRefresh}>
-                Refresh
+              <Button variant="secondary" onClick={onRefresh}>
+                <SyncIcon /> Refresh
               </Button>
             </ToolbarItem>
           </ToolbarContent>

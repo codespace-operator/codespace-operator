@@ -2,5 +2,7 @@
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: { extend: {} },
-  plugins: [], // MUST be an array
+  corePlugins: { preflight: false },
+  prefix: "tw-",
+  plugins: [],
 };

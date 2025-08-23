@@ -1,40 +1,155 @@
 /* src/theme.css */
 /* ---- PatternFly token overrides (PF v5 + PF v6) ---- */
 :root {
-  /* Primary palette */
-  --pf-global--primary-color--100: #0066cc;     /* PF v5 */
-  --pf-global--primary-color--200: #004b95;     /* PF v5 */
-  --pf-v6-global--primary-color--100: #0066cc;  /* PF v6 */
-  --pf-v6-global--primary-color--200: #004b95;  /* PF v6 */
+  /* Primary palette (OpenShift-ish blues) */
+  --pf-global--primary-color--100: #0066cc;
+  --pf-global--primary-color--200: #004b95;
+  --pf-v6-global--primary-color--100: #0066cc;
+  --pf-v6-global--primary-color--200: #004b95;
 
   /* Links */
-  --pf-global--link--Color: #0066cc;              /* PF v5 */
-  --pf-global--link--Color--hover: #004b95;       /* PF v5 */
-  --pf-v6-global--link--Color: #0066cc;           /* PF v6 */
-  --pf-v6-global--link--Color--hover: #004b95;    /* PF v6 */
+  --pf-global--link--Color: #6aaeff;
+  --pf-global--link--Color--hover: #9ec2ff;
+  --pf-v6-global--link--Color: #6aaeff;
+  --pf-v6-global--link--Color--hover: #9ec2ff;
 
-  /* Page background (correct tokens) */
-  --pf-c-page--BackgroundColor: #f5f7fa;          /* PF v5 */
-  --pf-v6-c-page--BackgroundColor: #f5f7fa;       /* PF v6 */
-  --pf-v6-c-page__main--BackgroundColor: #f5f7fa; /* PF v6 main */
+  /* DARK DEFAULTS */
+  --pf-c-page--BackgroundColor: #151515;              /* PF v5 */
+  --pf-v6-c-page--BackgroundColor: #151515;           /* PF v6 */
+  --pf-v6-c-page__main--BackgroundColor: #151515;     /* PF v6 main */
 
-  /* Card tweaks */
-  --pf-c-card--BackgroundColor: #ffffff;                    /* PF v5 */
-  --pf-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.03);
-  --pf-v6-c-card--BackgroundColor: #ffffff;                 /* PF v6 */
-  --pf-v6-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.03);
+  /* Cards in dark */
+  --pf-c-card--BackgroundColor: #1f1f1f;              /* PF v5 */
+  --pf-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.35);
+  --pf-v6-c-card--BackgroundColor: #1f1f1f;           /* PF v6 */
+  --pf-v6-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.35);
 
   /* Primary buttons */
-  --pf-c-button--m-primary--BackgroundColor: var(--pf-global--primary-color--100);          /* PF v5 */
-  --pf-c-button--m-primary--hover--BackgroundColor: var(--pf-global--primary-color--200);   /* PF v5 */
-  --pf-v6-c-button--m-primary--BackgroundColor: var(--pf-v6-global--primary-color--100);    /* PF v6 */
-  --pf-v6-c-button--m-primary--hover--BackgroundColor: var(--pf-v6-global--primary-color--200); /* PF v6 */
+  --pf-c-button--m-primary--BackgroundColor: var(--pf-global--primary-color--100);
+  --pf-c-button--m-primary--hover--BackgroundColor: var(--pf-global--primary-color--200);
+  --pf-v6-c-button--m-primary--BackgroundColor: var(--pf-v6-global--primary-color--100);
+  --pf-v6-c-button--m-primary--hover--BackgroundColor: var(--pf-v6-global--primary-color--200);
+
+  /* Masthead + Sidebar */
+  --pf-c-masthead--BackgroundColor: #151515;
+  --pf-c-masthead--BoxShadow: 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.6);
+  --pf-c-nav--BackgroundColor: #0f0f0f;
+  --pf-c-page__sidebar--md--Width: 300px;
+
+  /* Make masthead text readable */
+  --pf-c-masthead__main--Color: #ffffff;
+  --pf-c-masthead__content--Color: #ffffff;
+
+  /* Dark nav link colors */
+  --pf-c-nav--m-dark__link--Color: #c7c7c7;
+  --pf-c-nav--m-dark__link--m-current--Color: #ffffff;
+  --pf-c-nav--m-dark__link--m-current--BackgroundColor: rgba(255,255,255,0.08);
+  --pf-c-nav--m-dark__link--hover--Color: #ffffff;
+  --pf-c-nav--m-dark__link--hover--BackgroundColor: rgba(255,255,255,0.04);
 }
 
-/* Ensure page bg shows even if PF structure changes slightly */
+/* Ensure page bg */
 .pf-c-page,
 .pf-c-page__main,
 .pf-v6-c-page,
 .pf-v6-c-page__main {
   background-color: var(--pf-v6-c-page__main--BackgroundColor, var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))) !important;
+}
+
+/* Dark sidebar */
+.pf-c-page__sidebar,
+.pf-v6-c-page__sidebar {
+  background-color: var(--pf-c-nav--BackgroundColor) !important;
+}
+
+/* Table hover in dark */
+.pf-c-table tr:hover > td {
+  background-color: rgba(255,255,255,0.02);
+}
+
+/* ----- Modal fixes ----- */
+.pf-c-modal-box,
+.pf-v6-c-modal-box {
+  background-color: #1f1f1f !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+/* Modal header */
+.pf-c-modal-box__header,
+.pf-v6-c-modal-box__header {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Modal body - ensure proper spacing and scrolling */
+.pf-c-modal-box__body,
+.pf-v6-c-modal-box__body {
+  padding: var(--pf-global--spacer--lg, 1.25rem) !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  background-color: transparent !important;
+}
+
+/* Modal footer - ensure visibility and proper layout */
+.pf-c-modal-box__footer,
+.pf-v6-c-modal-box__footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: var(--pf-global--spacer--sm, .5rem) !important;
+  padding: var(--pf-global--spacer--md, 1rem) var(--pf-global--spacer--lg, 1.25rem) !important;
+  background-color: transparent !important;
+  border-top: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+/* Form elements in modals */
+.pf-c-modal-box .pf-c-form-control,
+.pf-v6-c-modal-box .pf-v6-c-form-control,
+.pf-c-modal-box .pf-c-text-input-group__text-input,
+.pf-v6-c-modal-box .pf-v6-c-text-input-group__text-input {
+  background-color: #2a2a2a !important;
+  border-color: rgba(255,255,255,0.2) !important;
+  color: #ffffff !important;
+}
+
+.pf-c-modal-box .pf-c-form-control:focus,
+.pf-v6-c-modal-box .pf-v6-c-form-control:focus {
+  border-color: var(--pf-global--primary-color--100) !important;
+  box-shadow: 0 0 0 1px var(--pf-global--primary-color--100) !important;
+}
+
+/* Form labels in dark mode */
+.pf-c-modal-box .pf-c-form__label,
+.pf-v6-c-modal-box .pf-v6-c-form__label {
+  color: #ffffff !important;
+}
+
+/* Ensure dark sidebar navigation links are properly styled and clickable */
+.pf-c-nav.pf-m-dark .pf-c-nav__link {
+  color: var(--pf-c-nav--m-dark__link--Color, #c7c7c7) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  display: block !important;
+  padding: var(--pf-global--spacer--sm, 0.5rem) var(--pf-global--spacer--md, 1rem) !important;
+  border-radius: 3px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.pf-c-nav.pf-m-dark .pf-c-nav__link:hover {
+  color: var(--pf-c-nav--m-dark__link--hover--Color, #ffffff) !important;
+  background-color: var(--pf-c-nav--m-dark__link--hover--BackgroundColor, rgba(255,255,255,0.04)) !important;
+}
+
+.pf-c-nav.pf-m-dark .pf-c-nav__item.pf-m-current > .pf-c-nav__link,
+.pf-c-nav.pf-m-dark .pf-c-nav__link.pf-m-current {
+  color: var(--pf-c-nav--m-dark__link--m-current--Color, #fff) !important;
+  background-color: var(--pf-c-nav--m-dark__link--m-current--BackgroundColor, rgba(255,255,255,.08)) !important;
+  font-weight: 600 !important;
+}
+
+/* Fix backdrop */
+.pf-c-backdrop,
+.pf-v6-c-backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
 }

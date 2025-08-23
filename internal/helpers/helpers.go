@@ -9,6 +9,7 @@ import (
 	"time"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
+	"github.com/golang-jwt/jwt/v5"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -68,3 +69,8 @@ func TestKubernetesConnection(c client.Client) error {
 	return nil
 }
 func Itoa(i int32) string { return fmt.Sprintf("%d", i) }
+
+type claims struct {
+  Sub string `json:"sub"`
+  jwt.RegisteredClaims
+}
