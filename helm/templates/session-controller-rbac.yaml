@@ -2,9 +2,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "codespace-operator.fullname" . }}-session-controller-role
+  name: {{ include "codespace-operator.fullname" . }}-sessioncontroller
 rules:
-  # Core resources used by the operator
+  # Core resources
   - apiGroups: [""]
     resources: [secrets,configmaps,services,persistentvolumeclaims,serviceaccounts]
     verbs: [create,update,patch,get,list,watch,delete]
@@ -15,20 +15,25 @@ rules:
     resources: [ingresses]
     verbs: [create,update,patch,get,list,watch,delete]
 
-  # Our API group
+  # Our CRDs
   - apiGroups: [codespace.codespace.dev]
     resources: [sessions]
     verbs: [get,list,watch,create,update,patch,delete]
   - apiGroups: [codespace.codespace.dev]
-    resources: [sessions/status]
+    resources: [sessions/status, sessions/finalizers]
     verbs: [get,update,patch]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: ClusterRoleBinding
 metadata:
-  name: {{ include "codespace-operator.fullname" . }}-metrics-reader
-rules:
-  - nonResourceURLs: [/metrics]
-    verbs: [get]
+  name: {{ include "codespace-operator.fullname" . }}-sessioncontroller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "codespace-operator.fullname" . }}-sessioncontroller
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "codespace-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
 {{- end }}

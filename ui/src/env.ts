@@ -1,0 +1,1 @@
+export const IS_DEV_BANNER = import.meta.env.VITE_SHOW_DEV_BANNERS === '1';

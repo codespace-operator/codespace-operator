@@ -71,6 +71,6 @@ func TestKubernetesConnection(c client.Client) error {
 func Itoa(i int32) string { return fmt.Sprintf("%d", i) }
 
 type claims struct {
-  Sub string `json:"sub"`
-  jwt.RegisteredClaims
+	Sub string `json:"sub"`
+	jwt.RegisteredClaims
 }

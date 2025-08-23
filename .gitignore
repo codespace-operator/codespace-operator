@@ -30,3 +30,4 @@ ui/node_modules/*
 ui/dist/*
 dist/*
 local/*
+.env

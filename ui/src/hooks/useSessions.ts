@@ -12,13 +12,14 @@ export function useAlerts(max = 5) {
   };
 }
 
-export function useSessions(namespace: string, onError?: (msg: string) => void) {
+export function useSessions(namespace: string, onError?: (msg: string) => void, enabled = true) {
   const [rows, setRows] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
   // Initial list
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -31,13 +32,12 @@ export function useSessions(namespace: string, onError?: (msg: string) => void) 
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [namespace]);
+    return () => { cancelled = true; };
+  }, [namespace, enabled]);
 
   // Live updates via SSE
   useEffect(() => {
+    if (!enabled) return;
     if (esRef.current) esRef.current.close();
     const es = api.watch(namespace, (m) => {
       try {
@@ -46,27 +46,21 @@ export function useSessions(namespace: string, onError?: (msg: string) => void) 
           if (ev.type === "DELETED") return list.filter((x) => x.metadata.name !== ev.object.metadata.name);
           const ix = list.findIndex((x) => x.metadata.name === ev.object.metadata.name);
           if (ix === -1) return [ev.object, ...list];
-          const next = [...list];
-          next[ix] = ev.object;
-          return next;
+          const next = [...list]; next[ix] = ev.object; return next;
         });
-      } catch {
-        /* ignore bad frames */
-      }
+      } catch {}
     });
-    es.onerror = () => { /* optional logging */ };
+    es.onerror = () => {};
     esRef.current = es;
     return () => es.close();
-  }, [namespace]);
+  }, [namespace, enabled]);
 
   const actions = {
     refresh: async () => {
+      if (!enabled) return;
       setLoading(true);
-      try {
-        setRows(await api.list(namespace));
-      } finally {
-        setLoading(false);
-      }
+      try { setRows(await api.list(namespace)); }
+      finally { setLoading(false); }
     },
     create: (body: Partial<Session>) => api.create(body),
     remove: (ns: string, name: string) => api.remove(ns, name),

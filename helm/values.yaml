@@ -77,8 +77,8 @@ server:
   auth:
     # IMPORTANT: set a stable secret in prod; chart generates one if empty
     jwtSecret: ""           # set for stable upgrades
-    bootstrapUser: "admin"  # single local admin
-    bootstrapPassword: ""   # chart generates random if empty
+    bootstrapUser: admin  # single local admin
+    bootstrapPassword: admin   # chart generates random if empty
   image:
     repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"

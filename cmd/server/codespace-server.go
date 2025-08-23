@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/config"
+	"github.com/codespace-operator/codespace-operator/cmd/config"
 	"github.com/codespace-operator/codespace-operator/internal/helpers"
 )
 

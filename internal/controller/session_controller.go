@@ -17,12 +17,11 @@ package controllers
 
 import (
 	"context"
-	"time"
-
+	"fmt"
 	"os"
 	"sync"
+	"time"
 
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -31,6 +30,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 var (
@@ -74,7 +75,7 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Runtime defaults (dev/test convenience; validation still recommended on CRD)
+	// Apply defaults
 	r.applyDefaults(&sess)
 
 	// Finalizer / deletion flow
@@ -87,37 +88,37 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	name, labels := r.desiredNamesLabels(&sess)
 
-	// Child resources
+	// --- Child resources ---
 	if err := r.reconcileServiceAccount(ctx, &sess, name); err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("serviceaccount: %w", err))
 	}
 	if err := r.reconcilePVC(ctx, &sess, name, "home", sess.Spec.Home); err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("pvc-home: %w", err))
 	}
 	if err := r.reconcilePVC(ctx, &sess, name, "scratch", sess.Spec.Scratch); err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("pvc-scratch: %w", err))
 	}
 
 	dep, err := r.reconcileDeployment(ctx, &sess, name, labels)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("deployment: %w", err))
 	}
 
 	svc, err := r.reconcileService(ctx, &sess, name, labels)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("service: %w", err))
 	}
 
 	if err := r.reconcileIngress(ctx, &sess, name, svc.Name); err != nil {
-		return ctrl.Result{}, err
+		return r.failStatus(ctx, &sess, fmt.Errorf("ingress: %w", err))
 	}
 
-	// Status
+	// --- Status ---
 	if err := r.updateStatus(ctx, &sess, dep); err != nil && !errors.IsConflict(err) {
 		logger.Error(err, "status update failed")
 	}
 
-	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	return ctrl.Result{RequeueAfter: 2 * time.Minute}, nil
 }
 
 func (r *SessionReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -127,4 +128,13 @@ func (r *SessionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&netv1.Ingress{}).
 		Complete(r)
+}
+
+func (r *SessionReconciler) failStatus(ctx context.Context, sess *codespacev1.Session, err error) (ctrl.Result, error) {
+	sess.Status.Phase = "Error"
+	sess.Status.Reason = err.Error()
+	if uErr := r.Status().Update(ctx, sess); uErr != nil {
+		return ctrl.Result{}, uErr
+	}
+	return ctrl.Result{}, err
 }

@@ -17,10 +17,10 @@ async function handleResponse(response: Response) {
     let message = "";
     try { message = (await response.text()) || ""; } catch { /* ignore */ }
     const friendly = message || `HTTP ${response.status}: ${response.statusText}`;
-    if (response.status === 401 || response.status === 403) {
-      localStorage.removeItem("co_user");
-      localStorage.removeItem("co_token");
-      window.dispatchEvent(new CustomEvent("co:auth:required"));
+    if (response.status === 401) {
+       localStorage.removeItem("co_user");
+       localStorage.removeItem("co_token");
+       window.dispatchEvent(new CustomEvent("co:auth:required"));
     }
     throw new Error(friendly);
   }

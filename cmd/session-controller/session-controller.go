@@ -8,11 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -22,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/config"
+	"github.com/codespace-operator/codespace-operator/cmd/config"
 	controller "github.com/codespace-operator/codespace-operator/internal/controller"
 )
 
@@ -45,31 +44,31 @@ func main() {
 	}
 
 	// Add flags
-	rootCmd.Flags().String("metrics-bind-address", "0", 
+	rootCmd.Flags().String("metrics-bind-address", "0",
 		"The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable.")
-	rootCmd.Flags().String("health-probe-bind-address", ":8081", 
+	rootCmd.Flags().String("health-probe-bind-address", ":8081",
 		"The address the probe endpoint binds to.")
 	rootCmd.Flags().Bool("leader-elect", false,
 		"Enable leader election for controller session-controller.")
 	rootCmd.Flags().Bool("metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS.")
-	rootCmd.Flags().String("webhook-cert-path", "", 
+	rootCmd.Flags().String("webhook-cert-path", "",
 		"The directory that contains the webhook certificate.")
-	rootCmd.Flags().String("webhook-cert-name", "tls.crt", 
+	rootCmd.Flags().String("webhook-cert-name", "tls.crt",
 		"The name of the webhook certificate file.")
-	rootCmd.Flags().String("webhook-cert-key", "tls.key", 
+	rootCmd.Flags().String("webhook-cert-key", "tls.key",
 		"The name of the webhook key file.")
 	rootCmd.Flags().String("metrics-cert-path", "",
 		"The directory that contains the metrics server certificate.")
-	rootCmd.Flags().String("metrics-cert-name", "tls.crt", 
+	rootCmd.Flags().String("metrics-cert-name", "tls.crt",
 		"The name of the metrics server certificate file.")
-	rootCmd.Flags().String("metrics-cert-key", "tls.key", 
+	rootCmd.Flags().String("metrics-cert-key", "tls.key",
 		"The name of the metrics server key file.")
 	rootCmd.Flags().Bool("enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	rootCmd.Flags().String("session-name-prefix", "cs-", 
+	rootCmd.Flags().String("session-name-prefix", "cs-",
 		"Prefix for generated session resource names")
-	rootCmd.Flags().String("field-owner", "codespace-operator", 
+	rootCmd.Flags().String("field-owner", "codespace-operator",
 		"Field manager name for server-side apply operations")
 	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
 
@@ -157,7 +156,7 @@ func runController(cmd *cobra.Command, args []string) {
 
 	// Setup logging - create new zap options and configure from flags
 	opts := zap.Options{Development: cfg.Debug}
-	
+
 	// We need to bind the zap flags again to get their values
 	// First, add pflag values to the Go flag package
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
@@ -190,8 +189,8 @@ func runController(cmd *cobra.Command, args []string) {
 
 	if len(cfg.WebhookCertPath) > 0 {
 		setupLog.Info("Initializing webhook certificate watcher",
-			"path", cfg.WebhookCertPath, 
-			"cert", cfg.WebhookCertName, 
+			"path", cfg.WebhookCertPath,
+			"cert", cfg.WebhookCertName,
 			"key", cfg.WebhookCertKey)
 
 		var err error

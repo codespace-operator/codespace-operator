@@ -24,7 +24,7 @@ import {
 import { UserIcon, KeyIcon, ShieldAltIcon, ExclamationTriangleIcon } from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
 
-// Mock RBAC data - in a real implementation, this would come from your API
+// Mock RBAC data - in a real implementation, this would come from API
 const mockRBACData = {
   roles: [
     {

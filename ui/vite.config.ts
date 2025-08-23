@@ -13,5 +13,9 @@ export default defineConfig({
     }
   },
   // Important: Set base to relative paths
-  base: "./"
+  base: "./",
+  server: { port: 5173 },
+  proxy: {
+    '/api': { target: 'http://localhost:9090', changeOrigin: true }
+  }
 });
