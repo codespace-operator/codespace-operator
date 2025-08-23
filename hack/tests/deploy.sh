@@ -17,10 +17,6 @@ helm upgrade --install codespace-operator ./helm \
 kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator --timeout=180s
 kubectl -n "${NAMESPACE_SYS}" rollout status deploy/codespace-operator-server --timeout=180s
 
-echo ">>> Quick gateway smoke test (ClusterIP)..."
-kubectl -n "${NAMESPACE_SYS}" run curl-gw --image=curlimages/curl:8.10.1 -i --rm -q --restart=Never -- \
-  sh -lc 'curl -sf http://codespace-operator-server:8080/ | head -c 80 && echo' || true
-
 if [[ "${APPLY_DEMO}" == "true" ]]; then
   echo ">>> Applying demo Session '${DEMO_NAME}'..."
   HOST="${DEMO_NAME}.${HOST_DOMAIN}"

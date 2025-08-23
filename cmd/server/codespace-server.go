@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -143,11 +145,10 @@ func runServer(cmd *cobra.Command, args []string) {
 	// Setup HTTP handlers
 	mux := setupHandlers(deps)
 
-	handler := withCORS(
+	handler := logRequests(withCORS(
 		requireAPIToken([]byte(cfg.JWTSecret), mux),
 		cfg.AllowOrigin,
-	)
-
+	))
 	srv := &http.Server{
 		Addr:              cfg.GetAddr(),
 		Handler:           handler,
@@ -182,6 +183,23 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 
 	// Static UI (this should be last)
 	setupStaticUI(mux)
+
+
+	if deps.config.Debug {
+		mux.HandleFunc("/debug/static-files", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			err := fs.WalkDir(staticFS, "static", func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(w, "%s (dir: %v)\n", path, d.IsDir())
+				return nil
+			})
+			if err != nil {
+				fmt.Fprintf(w, "Error walking static files: %v\n", err)
+			}
+		})
+	}
 
 	return mux
 }

@@ -5,10 +5,16 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
+	"time"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
+type responseWriter struct {
+    http.ResponseWriter
+    statusCode int
+}
 
 func decodeSession(r io.Reader) (codespacev1.Session, error) {
 	var s codespacev1.Session
@@ -68,3 +74,24 @@ func fsSub(fsys embed.FS, dir string) (http.FileSystem, error) {
 	sub, err := fs.Sub(fsys, dir)
 	return http.FS(sub), err
 }
+
+// In cmd/server/codespace-server.go, wrap your handler:
+func logRequests(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        start := time.Now()
+        log.Printf("REQUEST: %s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
+        
+        // Wrap ResponseWriter to capture status code
+        wrapped := &responseWriter{ResponseWriter: w, statusCode: 200}
+        next.ServeHTTP(wrapped, r)
+        
+        log.Printf("RESPONSE: %s %s -> %d (%v)", r.Method, r.URL.Path, wrapped.statusCode, time.Since(start))
+    })
+}
+
+
+func (rw *responseWriter) WriteHeader(code int) {
+    rw.statusCode = code
+    rw.ResponseWriter.WriteHeader(code)
+}
+
