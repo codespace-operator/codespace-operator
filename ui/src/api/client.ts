@@ -1,7 +1,6 @@
-import type { Session } from "../types";
+import type { Session } from "./types";
 
 const base = import.meta.env.VITE_API_BASE || "";
-
 const TOKEN_KEY = "co_token";
 
 function getToken() {
@@ -16,18 +15,11 @@ function authHeaders() {
 async function handleResponse(response: Response) {
   if (!response.ok) {
     let message = "";
-    try {
-      message = (await response.text()) || "";
-    } catch {
-      /* ignore */
-    }
+    try { message = (await response.text()) || ""; } catch { /* ignore */ }
     const friendly = message || `HTTP ${response.status}: ${response.statusText}`;
-
     if (response.status === 401 || response.status === 403) {
-      // Clear auth and signal the UI to go to login
       localStorage.removeItem("co_user");
       localStorage.removeItem("co_token");
-      // Use a custom event so the app can react (no import cycles)
       window.dispatchEvent(new CustomEvent("co:auth:required"));
     }
     throw new Error(friendly);
@@ -43,13 +35,12 @@ async function apiFetch(path: string, init?: RequestInit) {
       ...(init?.headers || {}),
       ...authHeaders(),
     },
-    credentials: "include", // harmless if you move to cookie-based auth later
+    credentials: "include", // prefer secure cookie for same-origin
   });
   await handleResponse(res);
   return res;
 }
 
-// --- Helpers to normalize API shapes (unchanged) ---
 function normalizeList<T = any>(x: any): T[] {
   if (!x) return [];
   if (Array.isArray(x)) return x as T[];
@@ -96,6 +87,7 @@ export const api = {
     return normalizeObject<Session>(await r.json());
   },
 
+  // SSE: prefer cookie; attach token as query only if no cookie is present
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
     const token = getToken();
     const hasCookie = document.cookie.includes("codespace_jwt=");

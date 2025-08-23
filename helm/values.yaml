@@ -68,24 +68,24 @@ ingressClass:
 
 server:
   enabled: true
-  # for openshift
   route:
-    enabled: true
-    annotations:
-      haproxy.router.openshift.io/timeout: 3600s
+    enabled: false
+    annotations: {}
     tls:
       termination: edge
   debug: false
   auth:
-    jwtSecret: ""  # Will generate random if empty
-    bootstrapUser: "admin"
-    bootstrapPassword: ""  # Will generate random if empty
+    # IMPORTANT: set a stable secret in prod; chart generates one if empty
+    jwtSecret: ""           # set for stable upgrades
+    bootstrapUser: "admin"  # single local admin
+    bootstrapPassword: ""   # chart generates random if empty
   image:
     repository: ghcr.io/codespace-operator/codespace-server
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   env:
-    allowOrigin: ""        # set to http://localhost:5173 for local dev; empty = same-origin
+    # Same-origin by default; set to http://localhost:5173 only for local dev
+    allowOrigin: ""
   service:
     type: ClusterIP
     annotations: {}
@@ -95,13 +95,9 @@ server:
     readinessPath: /readyz
     livenessPath: /healthz
   ingress:
-    enabled: true
-    annotations:
-      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-      nginx.ingress.kubernetes.io/proxy-buffering: "off"
     enabled: false
     className: ""
+    annotations: {}
     hosts:
       - host: console.codespace.test
         path: /
@@ -128,12 +124,12 @@ server:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  useManagerServiceAccount: false  # prefer separate SA (least privilege)
+  useManagerServiceAccount: false
   serviceAccount:
     create: true
-    name: ""               # default: <release>-codespace-operator-server
+    name: ""
   rbac:
-    create: true           # create namespaced Role/RoleBinding for sessions
+    create: true
   networkPolicy:
     enabled: true
     allowIngressFromSameNamespace: true

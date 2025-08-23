@@ -26,38 +26,60 @@ func handleLogin(cfg *config.ServerConfig) http.HandlerFunc {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+		// Only allow a single bootstrap admin when local auth is enabled.
 		if cfg.BootstrapUser == "" || cfg.BootstrapPassword == "" || len(secret) == 0 {
 			http.Error(w, "login disabled", http.StatusForbidden)
 			return
 		}
+
 		var body struct{ Username, Password string }
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			errJSON(w, err)
 			return
 		}
-		if body.Username != cfg.BootstrapUser || body.Password != cfg.BootstrapPassword {
+		// Constant-time compare to avoid tiny leaks.
+		if !constantTimeEqual(body.Username, cfg.BootstrapUser) || !constantTimeEqual(body.Password, cfg.BootstrapPassword) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
-		tok, err := makeJWT(body.Username, secret, 24*time.Hour)
+
+		// Issue admin role for the single bootstrap user.
+		roles := []string{"codespace-operator:admin"}
+		tok, err := makeJWT(body.Username, roles, "local", secret, 24*time.Hour)
 		if err != nil {
 			errJSON(w, err)
 			return
 		}
-		http.SetCookie(w, &http.Cookie{
-			Name:     "codespace_jwt",
-			Value:    tok,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   r.TLS != nil,         // set true when behind TLS/ingress
-			SameSite: http.SameSiteLaxMode,
-			MaxAge:   24 * 60 * 60,
+
+		// HttpOnly cookie for SPA; also return token to support Authorization header/SSE fallback.
+		setAuthCookie(w, r, tok)
+		writeJSON(w, map[string]any{
+			"token": tok,
+			"user":  body.Username,
+			"roles": roles,
 		})
-		writeJSON(w, map[string]string{"token": tok, "user": body.Username})
 	}
 }
 
-// FIXED: Improved health check with proper headers and error handling
+// Returns the current subject + roles from the JWT.
+func handleMe() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		writeJSON(w, map[string]any{
+			"user":     cl.Sub,
+			"roles":    cl.Roles,
+			"provider": cl.Provider,
+			"exp":      cl.ExpiresAt,
+			"iat":      cl.IssuedAt,
+		})
+	}
+}
+
+// Healthz OK
 func handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -65,7 +87,6 @@ func handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ok"))
 }
 
-// FIXED: Better readiness check with timeout and error handling
 func handleReadyz(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -89,6 +110,10 @@ func handleReadyz(deps *serverDeps) http.HandlerFunc {
 
 func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := mustHavePermission(w, r, PermSessionsWatch); !ok {
+			return
+		}
+
 		ns := q(r, "namespace", "default")
 		watcher, err := deps.dyn.Resource(gvr).Namespace(ns).Watch(r.Context(), metav1.ListOptions{Watch: true})
 		if err != nil {
@@ -142,6 +167,9 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			if _, ok := mustHavePermission(w, r, PermSessionsList); !ok {
+				return
+			}
 			ns := q(r, "namespace", "default")
 			var sl codespacev1.SessionList
 			if err := deps.typed.List(r.Context(), &sl, client.InNamespace(ns)); err != nil {
@@ -151,6 +179,9 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 			writeJSON(w, sl.Items)
 
 		case http.MethodPost:
+			if _, ok := mustHavePermission(w, r, PermSessionsCreate); !ok {
+				return
+			}
 			s, err := decodeSession(r.Body)
 			if err != nil {
 				errJSON(w, err)
@@ -160,7 +191,7 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 				s.Namespace = "default"
 			}
 			applyDefaults(&s)
-			
+
 			if err := helpers.RetryOnConflict(func() error {
 				return deps.typed.Create(r.Context(), &s)
 			}); err != nil {
@@ -184,10 +215,13 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 		}
 		ns, name := parts[0], parts[1]
 
-		// Handle scale subpath
+		// scale subpath
 		if len(parts) == 3 && parts[2] == "scale" {
 			if r.Method != http.MethodPost {
 				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			if _, ok := mustHavePermission(w, r, PermSessionsScale); !ok {
 				return
 			}
 			handleScale(deps, w, r, ns, name)
@@ -196,6 +230,9 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 
 		switch r.Method {
 		case http.MethodGet:
+			if _, ok := mustHavePermission(w, r, PermSessionsGet); !ok {
+				return
+			}
 			var s codespacev1.Session
 			if err := deps.typed.Get(r.Context(), client.ObjectKey{Namespace: ns, Name: name}, &s); err != nil {
 				errJSON(w, err)
@@ -204,6 +241,9 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 			writeJSON(w, s)
 
 		case http.MethodDelete:
+			if _, ok := mustHavePermission(w, r, PermSessionsDelete); !ok {
+				return
+			}
 			s := codespacev1.Session{}
 			s.Name, s.Namespace = name, ns
 			if err := deps.typed.Delete(r.Context(), &s); err != nil {
@@ -219,7 +259,9 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 }
 
 func handleScale(deps *serverDeps, w http.ResponseWriter, r *http.Request, ns, name string) {
-	var body struct{ Replicas *int32 `json:"replicas"` }
+	var body struct {
+		Replicas *int32 `json:"replicas"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		errJSON(w, err)
 		return
@@ -234,7 +276,7 @@ func handleScale(deps *serverDeps, w http.ResponseWriter, r *http.Request, ns, n
 		errJSON(w, err)
 		return
 	}
-	
+
 	s.Spec.Replicas = body.Replicas
 	if err := helpers.RetryOnConflict(func() error {
 		return deps.typed.Update(r.Context(), &s)
