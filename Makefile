@@ -192,7 +192,7 @@ ui-build:
 	cd ui && npm ci && npm run build
 
 .PHONY: docker-build-server
-docker-build-server: ui-build
+docker-build-server:
 	docker build -t $(SERVER_IMG) -f ui/Dockerfile .
 
 

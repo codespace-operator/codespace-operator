@@ -185,6 +185,7 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 
 	return mux
 }
+// cmd/server/codespace-server.go - FIXED setupStaticUI function
 func setupStaticUI(mux *http.ServeMux) {
 	uiFS, err := fsSub(staticFS, "static")
 	if err != nil {
@@ -206,17 +207,16 @@ func setupStaticUI(mux *http.ServeMux) {
 		}
 
 		// For root path or paths without extensions (SPA routes), serve index.html
-		// Don't modify r.URL.Path - create a new request or serve directly
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		
-		// Read index.html from embed and serve it
-		indexFile, err := staticFS.Open("static/index.html")
+		// Read the file content and serve it directly
+		indexContent, err := staticFS.ReadFile("static/index.html")
 		if err != nil {
 			http.Error(w, "index.html not found", http.StatusNotFound)
 			return
 		}
-		defer indexFile.Close()
 		
-		http.ServeContent(w, r, "index.html", time.Time{}, indexFile)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.WriteHeader(http.StatusOK)
+		w.Write(indexContent)
 	})
 }
