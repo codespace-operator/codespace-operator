@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -109,25 +110,26 @@ func handleReadyz(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
+// cmd/server/handlers.go — replacement block
+// STREAM: GET /api/v1/stream/sessions
 func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := mustHavePermission(w, r, PermSessionsWatch); !ok {
+		// Determine domain (namespace) for RBAC
+		dom := q(r, "namespace", "default")
+		if r.URL.Query().Get("all") == "true" {
+			dom = "*"
+		}
+		if _, ok := mustCan(deps, w, r, "session", "watch", dom); !ok {
 			return
 		}
 
 		var watcher watch.Interface
 		var err error
-
-		// Check if we should watch all namespaces
-		if r.URL.Query().Get("all") == "true" {
-			// Watch sessions across all namespaces (empty string means all namespaces)
+		if dom == "*" {
 			watcher, err = deps.dyn.Resource(gvr).Watch(r.Context(), metav1.ListOptions{Watch: true})
 		} else {
-			// Watch sessions in specific namespace
-			ns := q(r, "namespace", "default")
-			watcher, err = deps.dyn.Resource(gvr).Namespace(ns).Watch(r.Context(), metav1.ListOptions{Watch: true})
+			watcher, err = deps.dyn.Resource(gvr).Namespace(dom).Watch(r.Context(), metav1.ListOptions{Watch: true})
 		}
-
 		if err != nil {
 			errJSON(w, err)
 			return
@@ -137,7 +139,7 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("X-Accel-Buffering", "no") // helps behind nginx
+		w.Header().Set("X-Accel-Buffering", "no")
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -155,11 +157,8 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 				_, _ = w.Write([]byte(": ping\n\n"))
 				flusher.Flush()
 			case ev, ok := <-watcher.ResultChan():
-				if !ok {
+				if !ok || ev.Type == watch.Error {
 					return
-				}
-				if ev.Type == watch.Error {
-					continue
 				}
 				u, ok := ev.Object.(*unstructured.Unstructured)
 				if !ok {
@@ -169,10 +168,7 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 				if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &s); err != nil {
 					continue
 				}
-				payload := map[string]any{
-					"type":   string(ev.Type),
-					"object": s,
-				}
+				payload := map[string]any{"type": string(ev.Type), "object": s}
 				writeSSE(w, "message", payload)
 				flusher.Flush()
 			}
@@ -184,133 +180,156 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 // Returns unique namespaces that currently have Session CRs.
 func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := mustHavePermission(w, r, PermSessionsList); !ok {
+		// Explicit cluster-level perm
+		if _, ok := mustCan(deps, w, r, "namespaces", "list", "*"); !ok {
 			return
 		}
-		var sl codespacev1.SessionList
-		// list across all namespaces
-		if err := deps.typed.List(r.Context(), &sl); err != nil {
+
+		ul, err := deps.dyn.Resource(gvr).List(r.Context(), metav1.ListOptions{})
+		if err != nil {
 			errJSON(w, err)
 			return
 		}
-		seen := map[string]struct{}{}
-		out := make([]string, 0, len(sl.Items))
-		for _, s := range sl.Items {
-			ns := s.GetNamespace()
-			if _, has := seen[ns]; !has {
-				seen[ns] = struct{}{}
-				out = append(out, ns)
-			}
+		set := map[string]struct{}{}
+		for _, u := range ul.Items {
+			ns := u.GetNamespace()
+			set[ns] = struct{}{}
 		}
+		var out []string
+		for ns := range set {
+			out = append(out, ns)
+		}
+		sort.Strings(out)
 		writeJSON(w, out)
 	}
 }
 
+// cmd/server/handlers.go — replacement block
 // GET /api/v1/namespaces/writable?sessions=true
-// Returns namespaces the current user can create Sessions in.
-// NOTE: current RBAC model is role-based only (no per-namespace scoping),
-// so this returns ALL cluster namespaces if the user has sessions.create; else [].
+// (cluster namespace discovery now guarded by a cluster-level permission)
 func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Require sessions.create to receive any namespaces
-		if _, ok := mustHavePermission(w, r, PermSessionsCreate); !ok {
-			// mustHavePermission already wrote 403
+		if _, ok := mustCan(deps, w, r, "namespaces", "list", "*"); !ok {
 			return
 		}
-		// List all core namespaces
+
+		// minimal discovery; you can extend to check per-ns create later via Casbin if desired
 		var nsl corev1.NamespaceList
 		if err := deps.typed.List(r.Context(), &nsl); err != nil {
 			errJSON(w, err)
 			return
 		}
-		out := make([]string, 0, len(nsl.Items))
-		for _, ns := range nsl.Items {
-			out = append(out, ns.Name)
+		var out []string
+		for _, n := range nsl.Items {
+			out = append(out, n.Name)
 		}
+		sort.Strings(out)
 		writeJSON(w, out)
 	}
 }
 
+// cmd/server/handlers.go
+// LIST/CREATE: /api/v1/sessions
 func handleSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			if _, ok := mustHavePermission(w, r, PermSessionsList); !ok {
+			// Domain is namespace unless all=true
+			dom := q(r, "namespace", "default")
+			if r.URL.Query().Get("all") == "true" {
+				dom = "*"
+			}
+			if _, ok := mustCan(deps, w, r, "session", "list", dom); !ok {
 				return
 			}
 
-			var sl codespacev1.SessionList
-
-			// Check if we should list all namespaces
-			if r.URL.Query().Get("all") == "true" {
-				// List sessions across all namespaces
-				if err := deps.typed.List(r.Context(), &sl); err != nil {
+			if dom == "*" {
+				ul, err := deps.dyn.Resource(gvr).List(r.Context(), metav1.ListOptions{})
+				if err != nil {
 					errJSON(w, err)
 					return
 				}
-			} else {
-				// List sessions in specific namespace
-				ns := q(r, "namespace", "default")
-				if err := deps.typed.List(r.Context(), &sl, client.InNamespace(ns)); err != nil {
-					errJSON(w, err)
-					return
-				}
+				writeJSON(w, ul.Object)
+				return
 			}
-			writeJSON(w, sl.Items)
+
+			var out codespacev1.SessionList
+			if err := deps.typed.List(r.Context(), &out, client.InNamespace(dom)); err != nil {
+				errJSON(w, err)
+				return
+			}
+			writeJSON(w, out)
 
 		case http.MethodPost:
-			if _, ok := mustHavePermission(w, r, PermSessionsCreate); !ok {
-				return
-			}
-			s, err := decodeSession(r.Body)
-			if err != nil {
-				errJSON(w, err)
+			var s codespacev1.Session
+			if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+				http.Error(w, "invalid body", http.StatusBadRequest)
 				return
 			}
 			if s.Namespace == "" {
 				s.Namespace = "default"
 			}
-			applyDefaults(&s)
+			if _, ok := mustCan(deps, w, r, "session", "create", s.Namespace); !ok {
+				return
+			}
 
-			if err := helpers.RetryOnConflict(func() error {
-				return deps.typed.Create(r.Context(), &s)
-			}); err != nil {
+			u := &unstructured.Unstructured{}
+			u.Object, _ = runtime.DefaultUnstructuredConverter.ToUnstructured(&s)
+			created, err := deps.dyn.Resource(gvr).Namespace(s.Namespace).Create(r.Context(), u, metav1.CreateOptions{})
+			if err != nil {
 				errJSON(w, err)
 				return
 			}
-			writeJSON(w, s)
+			writeJSON(w, created.Object)
 
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
 }
 
+// cmd/server/handlers.go
+// GET/DELETE/SCALE: /api/v1/sessions/{ns}/{name}[ /scale ]
 func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/sessions/"), "/")
 		if len(parts) < 2 {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "invalid path", http.StatusBadRequest)
 			return
 		}
 		ns, name := parts[0], parts[1]
 
-		// scale subpath
-		if len(parts) == 3 && parts[2] == "scale" {
-			if r.Method != http.MethodPost {
-				w.WriteHeader(http.StatusMethodNotAllowed)
+		// /scale subresource
+		if len(parts) == 3 && parts[2] == "scale" && r.Method == http.MethodPost {
+			if _, ok := mustCan(deps, w, r, "session", "scale", ns); !ok {
 				return
 			}
-			if _, ok := mustHavePermission(w, r, PermSessionsScale); !ok {
+			type scaleBody struct {
+				Replicas int32 `json:"replicas"`
+			}
+			var b scaleBody
+			if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+				http.Error(w, "invalid body", http.StatusBadRequest)
 				return
 			}
-			handleScale(deps, w, r, ns, name)
+
+			var s codespacev1.Session
+			if err := deps.typed.Get(r.Context(), client.ObjectKey{Namespace: ns, Name: name}, &s); err != nil {
+				errJSON(w, err)
+				return
+			}
+			s.Spec.Replicas = &b.Replicas
+			if err := deps.typed.Update(r.Context(), &s); err != nil {
+				errJSON(w, err)
+				return
+			}
+			writeJSON(w, s)
 			return
 		}
 
 		switch r.Method {
 		case http.MethodGet:
-			if _, ok := mustHavePermission(w, r, PermSessionsGet); !ok {
+			if _, ok := mustCan(deps, w, r, "session", "get", ns); !ok {
 				return
 			}
 			var s codespacev1.Session
@@ -321,19 +340,20 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 			writeJSON(w, s)
 
 		case http.MethodDelete:
-			if _, ok := mustHavePermission(w, r, PermSessionsDelete); !ok {
+			if _, ok := mustCan(deps, w, r, "session", "delete", ns); !ok {
 				return
 			}
-			s := codespacev1.Session{}
-			s.Name, s.Namespace = name, ns
-			if err := deps.typed.Delete(r.Context(), &s); err != nil {
+			err := deps.typed.Delete(r.Context(), &codespacev1.Session{
+				ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name},
+			})
+			if err != nil {
 				errJSON(w, err)
 				return
 			}
-			w.WriteHeader(http.StatusNoContent)
+			writeJSON(w, map[string]string{"status": "ok"})
 
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
 }

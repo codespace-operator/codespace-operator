@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -13,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -22,15 +22,9 @@ import (
 	"github.com/codespace-operator/codespace-operator/internal/helpers"
 )
 
-//go:embed all:static
-var staticFS embed.FS
-
 var (
-	gvr = schema.GroupVersionResource{
-		Group:    codespacev1.GroupVersion.Group,
-		Version:  codespacev1.GroupVersion.Version,
-		Resource: "sessions",
-	}
+	//go:embed ui-dist/*
+	uiFS embed.FS
 )
 
 type serverDeps struct {
@@ -38,6 +32,7 @@ type serverDeps struct {
 	dyn    dynamic.Interface
 	scheme *runtime.Scheme
 	config *config.ServerConfig
+	rbac   *RBAC // Casbin-backed RBAC
 }
 
 func main() {
@@ -67,28 +62,28 @@ func runServer(cmd *cobra.Command, args []string) {
 	}
 
 	if cmd.Flags().Changed("port") {
-		port, _ := cmd.Flags().GetInt("port")
-		cfg.Port = port
+		if port, _ := cmd.Flags().GetInt("port"); port != 0 {
+			cfg.Port = port
+		}
 	}
 	if cmd.Flags().Changed("host") {
-		host, _ := cmd.Flags().GetString("host")
-		cfg.Host = host
+		if host, _ := cmd.Flags().GetString("host"); host != "" {
+			cfg.Host = host
+		}
 	}
 	if cmd.Flags().Changed("allow-origin") {
-		origin, _ := cmd.Flags().GetString("allow-origin")
-		cfg.AllowOrigin = origin
+		if origin, _ := cmd.Flags().GetString("allow-origin"); origin != "" {
+			cfg.AllowOrigin = origin
+		}
 	}
 	if cmd.Flags().Changed("debug") {
-		debug, _ := cmd.Flags().GetBool("debug")
-		cfg.Debug = debug
+		cfg.Debug, _ = cmd.Flags().GetBool("debug")
 	}
 	if cmd.Flags().Changed("kube-qps") {
-		qps, _ := cmd.Flags().GetFloat32("kube-qps")
-		cfg.KubeQPS = qps
+		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")
 	}
 	if cmd.Flags().Changed("kube-burst") {
-		burst, _ := cmd.Flags().GetInt("kube-burst")
-		cfg.KubeBurst = burst
+		cfg.KubeBurst, _ = cmd.Flags().GetInt("kube-burst")
 	}
 
 	if cfg.Debug {
@@ -107,7 +102,6 @@ func runServer(cmd *cobra.Command, args []string) {
 	if err := corev1.AddToScheme(scheme); err != nil {
 		log.Fatalf("Add corev1 scheme: %v", err)
 	}
-
 	if err := codespacev1.AddToScheme(scheme); err != nil {
 		log.Fatalf("Add scheme: %v", err)
 	}
@@ -121,39 +115,34 @@ func runServer(cmd *cobra.Command, args []string) {
 		log.Fatalf("Dynamic client: %v", err)
 	}
 
+	// Initialize RBAC (Casbin) and start hot-reload watcher
+	rbac, err := NewRBACFromEnv(context.Background(), log.Default())
+	if err != nil {
+		log.Fatalf("RBAC init failed: %v", err)
+	}
+
 	deps := &serverDeps{
 		typed:  typed,
 		dyn:    dyn,
 		scheme: scheme,
 		config: cfg,
+		rbac:   rbac,
 	}
 
-	if err := helpers.TestKubernetesConnection(deps.typed); err != nil {
-		log.Fatalf("Kubernetes connection test failed: %v", err)
-	}
-	if cfg.Debug {
-		log.Println("Kubernetes connection established successfully")
-	}
+	// Routes
+	mux := http.NewServeMux()
+	setupHandlers(mux, deps, uiFS)
+	addr := cfg.GetAddr()
 
-	mux := setupHandlers(deps)
+	// CORS + auth middleware
+	var handler http.Handler = mux
+	handler = withCORS(cfg.AllowOrigin, handler)
+	handler = requireAPIToken([]byte(cfg.JWTSecret), handler)
 
-	handler := logRequests(withCORS(
-		requireAPIToken([]byte(cfg.JWTSecret), mux),
-		cfg.AllowOrigin,
-	))
-	srv := &http.Server{
-		Addr:              cfg.GetAddr(),
-		Handler:           handler,
-		ReadHeaderTimeout: time.Duration(cfg.ReadTimeout) * time.Second,
-		WriteTimeout:      time.Duration(cfg.WriteTimeout) * time.Second,
+	log.Printf("Listening on %s", addr)
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		log.Fatalf("ListenAndServe: %v", err)
 	}
-
-	log.Printf("Codespace server starting on %s", cfg.GetAddr())
-	if cfg.Debug {
-		log.Printf("Debug mode enabled")
-		log.Printf("CORS allow origin: %s", cfg.AllowOrigin)
-	}
-	log.Fatal(srv.ListenAndServe())
 }
 
 func setupHandlers(deps *serverDeps) *http.ServeMux {
