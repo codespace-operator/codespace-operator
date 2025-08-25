@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: codespace-operator/charts
-          token: ${{ secrets.HELM_REPO_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
 
       - name: Create branch and update Chart.yaml
