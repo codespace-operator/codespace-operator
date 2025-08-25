@@ -2,17 +2,20 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
-
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 type responseWriter struct {
@@ -44,28 +47,6 @@ func (rw *responseWriter) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
-func decodeSession(r io.Reader) (codespacev1.Session, error) {
-	var s codespacev1.Session
-	return s, json.NewDecoder(r).Decode(&s)
-}
-
-func applyDefaults(s *codespacev1.Session) {
-	if s.Spec.Replicas == nil {
-		var one int32 = 1
-		s.Spec.Replicas = &one
-	}
-	if len(s.Spec.Profile.Cmd) == 0 {
-		s.Spec.Profile.Cmd = nil
-	}
-}
-
-func q(r *http.Request, key, dflt string) string {
-	if v := r.URL.Query().Get(key); v != "" {
-		return v
-	}
-	return dflt
-}
-
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
@@ -82,7 +63,7 @@ func errJSON(w http.ResponseWriter, err error) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 }
 
-func withCORS(next http.Handler, allowOrigin string) http.Handler {
+func withCORS(allowOrigin string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if allowOrigin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
@@ -103,16 +84,46 @@ func fsSub(fsys embed.FS, dir string) (http.FileSystem, error) {
 	return http.FS(sub), err
 }
 
-// In cmd/server/codespace-server.go, wrap your handler:
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		log.Printf("REQUEST: %s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
-
-		// Wrap ResponseWriter to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: 200}
 		next.ServeHTTP(wrapped, r)
-
 		log.Printf("RESPONSE: %s %s -> %d (%v)", r.Method, r.URL.Path, wrapped.statusCode, time.Since(start))
 	})
+}
+
+func constantTimeEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+func randB64(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func pkcePair() (verifier string, challenge string) {
+	verifier = randB64(32)
+	h := sha256.Sum256([]byte(verifier))
+	challenge = base64.RawURLEncoding.EncodeToString(h[:])
+	return
+}
+
+func isSafeRelative(p string) bool {
+	if p == "" || strings.HasPrefix(p, "//") {
+		return false
+	}
+	u, err := url.Parse(p)
+	if err != nil {
+		return false
+	}
+	return !u.IsAbs()
+}
+func q(r *http.Request, key, dflt string) string {
+	if v := r.URL.Query().Get(key); v != "" {
+		return v
+	}
+	return dflt
 }

@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -25,9 +27,24 @@ type ServerConfig struct {
 	// Development/Debug settings
 	Debug bool `mapstructure:"debug"`
 
-	JWTSecret         string `mapstructure:"jwt_secret"`
-	BootstrapUser     string `mapstructure:"bootstrap_user"`
-	BootstrapPassword string `mapstructure:"bootstrap_password"`
+	JWTSecret string `mapstructure:"jwt_secret"`
+
+	// Legacy bootstrap (dev only)
+	EnableBootstrapLogin bool   `mapstructure:"enable_bootstrap_login"`
+	BootstrapUser        string `mapstructure:"bootstrap_user"`
+	BootstrapPassword    string `mapstructure:"bootstrap_password"`
+
+	// Session cookie
+	SessionCookieName string `mapstructure:"session_cookie_name"`
+	SessionTTLMinutes int    `mapstructure:"session_ttl_minutes"`
+	AllowTokenParam   bool   `mapstructure:"allow_token_param"`
+
+	// OIDC
+	OIDCIssuerURL    string   `mapstructure:"oidc_issuer_url"`
+	OIDCClientID     string   `mapstructure:"oidc_client_id"`
+	OIDCClientSecret string   `mapstructure:"oidc_client_secret"`
+	OIDCRedirectURL  string   `mapstructure:"oidc_redirect_url"`
+	OIDCScopes       []string `mapstructure:"oidc_scopes"`
 }
 
 // ControllerConfig holds configuration for the session controller
@@ -60,29 +77,46 @@ type ControllerConfig struct {
 
 // LoadServerConfig loads configuration for the codespace server
 func LoadServerConfig() (*ServerConfig, error) {
-	v := viper.New()
+	cfg := &ServerConfig{
+		Host:        env("CODESPACE_SERVER_HOST", ""),
+		Port:        envInt("CODESPACE_SERVER_PORT", 8080),
+		AllowOrigin: env("CODESPACE_SERVER_ALLOW_ORIGIN", ""),
+		Debug:       envBool("CODESPACE_SERVER_DEBUG", false),
+		JWTSecret:   env("CODESPACE_SERVER_JWT_SECRET", "change-me"),
 
-	// Set defaults
-	v.SetDefault("port", 8080)
-	v.SetDefault("host", "")
-	v.SetDefault("read_timeout", 5)
-	v.SetDefault("write_timeout", 10)
-	v.SetDefault("allow_origin", "")
-	v.SetDefault("kube_qps", 50.0)
-	v.SetDefault("kube_burst", 100)
-	v.SetDefault("debug", false)
-	v.SetDefault("jwt_secret", "")
-	v.SetDefault("bootstrap_user", "")
-	v.SetDefault("bootstrap_password", "")
-	// Configure viper
-	setupViper(v, "CODESPACE_SERVER")
+		KubeQPS:   float32(envFloat("CODESPACE_SERVER_KUBE_QPS", 50.0)),
+		KubeBurst: envInt("CODESPACE_SERVER_KUBE_BURST", 100),
 
-	var config ServerConfig
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal server config: %w", err)
+		EnableBootstrapLogin: envBool("CODESPACE_SERVER_ENABLE_BOOTSTRAP_LOGIN", false),
+		BootstrapUser:        os.Getenv("CODESPACE_SERVER_BOOTSTRAP_USER"),
+		BootstrapPassword:    os.Getenv("CODESPACE_SERVER_BOOTSTRAP_PASSWORD"),
+
+		SessionCookieName: env("CODESPACE_SERVER_SESSION_COOKIE", ""),
+		SessionTTLMinutes: envInt("CODESPACE_SERVER_SESSION_TTL_MINUTES", 60),
+		AllowTokenParam:   envBool("CODESPACE_SERVER_ALLOW_TOKEN_PARAM", false),
+
+		OIDCIssuerURL:    os.Getenv("CODESPACE_SERVER_OIDC_ISSUER"),
+		OIDCClientID:     os.Getenv("CODESPACE_SERVER_OIDC_CLIENT_ID"),
+		OIDCClientSecret: os.Getenv("CODESPACE_SERVER_OIDC_CLIENT_SECRET"),
+		OIDCRedirectURL:  os.Getenv("CODESPACE_SERVER_OIDC_REDIRECT_URL"),
+		OIDCScopes:       splitCSV(os.Getenv("CODESPACE_SERVER_OIDC_SCOPES")),
 	}
+	return cfg, nil
+}
 
-	return &config, nil
+func (c *ServerConfig) GetAddr() string {
+	if strings.TrimSpace(c.Host) == "" {
+		return fmt.Sprintf(":%d", c.Port)
+	}
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+func (c *ServerConfig) SessionTTL() time.Duration {
+	min := c.SessionTTLMinutes
+	if min <= 0 {
+		min = 60
+	}
+	return time.Duration(min) * time.Minute
 }
 
 // LoadControllerConfig loads configuration for the session controller
@@ -133,12 +167,4 @@ func setupViper(v *viper.Viper, envPrefix string) {
 
 	// Try to read config file (ignore if not found)
 	_ = v.ReadInConfig()
-}
-
-// GetAddr returns the full address string for binding
-func (c *ServerConfig) GetAddr() string {
-	if c.Host == "" {
-		return fmt.Sprintf(":%d", c.Port)
-	}
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

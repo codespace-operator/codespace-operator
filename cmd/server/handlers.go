@@ -28,33 +28,41 @@ func handleLogin(cfg *config.ServerConfig) http.HandlerFunc {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		// Only allow a single bootstrap admin when local auth is enabled.
+		if !cfg.EnableBootstrapLogin {
+			http.Error(w, "login disabled", http.StatusForbidden)
+			return
+		}
 		if cfg.BootstrapUser == "" || cfg.BootstrapPassword == "" || len(secret) == 0 {
 			http.Error(w, "login disabled", http.StatusForbidden)
 			return
 		}
 
-		var body struct{ Username, Password string }
+		var body struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			errJSON(w, err)
 			return
 		}
-		// Constant-time compare to avoid tiny leaks.
 		if !constantTimeEqual(body.Username, cfg.BootstrapUser) || !constantTimeEqual(body.Password, cfg.BootstrapPassword) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
 
-		// Issue admin role for the single bootstrap user.
 		roles := []string{"codespace-operator:admin"}
-		tok, err := makeJWT(body.Username, roles, "local", secret, 24*time.Hour)
+		tok, err := makeJWT(body.Username, roles, "local", secret, 24*time.Hour, nil)
 		if err != nil {
 			errJSON(w, err)
 			return
 		}
 
-		// HttpOnly cookie for SPA; also return token to support Authorization header/SSE fallback.
-		setAuthCookie(w, r, tok)
+		setAuthCookie(w, r, &configLike{
+			JWTSecret:         cfg.JWTSecret,
+			SessionCookieName: cfg.SessionCookieName,
+			AllowTokenParam:   cfg.AllowTokenParam,
+		}, tok, 24*time.Hour)
+
 		writeJSON(w, map[string]any{
 			"token": tok,
 			"user":  body.Username,
@@ -110,7 +118,7 @@ func handleReadyz(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
-// cmd/server/handlers.go — replacement block
+// cmd/server/handlers.go
 // STREAM: GET /api/v1/stream/sessions
 func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +188,6 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 // Returns unique namespaces that currently have Session CRs.
 func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Explicit cluster-level perm
 		if _, ok := mustCan(deps, w, r, "namespaces", "list", "*"); !ok {
 			return
 		}
@@ -204,7 +211,7 @@ func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
-// cmd/server/handlers.go — replacement block
+// cmd/server/handlers.go
 // GET /api/v1/namespaces/writable?sessions=true
 // (cluster namespace discovery now guarded by a cluster-level permission)
 func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
@@ -213,7 +220,6 @@ func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
 			return
 		}
 
-		// minimal discovery; you can extend to check per-ns create later via Casbin if desired
 		var nsl corev1.NamespaceList
 		if err := deps.typed.List(r.Context(), &nsl); err != nil {
 			errJSON(w, err)
@@ -228,13 +234,10 @@ func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
-// cmd/server/handlers.go
-// LIST/CREATE: /api/v1/sessions
 func handleSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			// Domain is namespace unless all=true
 			dom := q(r, "namespace", "default")
 			if r.URL.Query().Get("all") == "true" {
 				dom = "*"
@@ -299,7 +302,6 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 		}
 		ns, name := parts[0], parts[1]
 
-		// /scale subresource
 		if len(parts) == 3 && parts[2] == "scale" && r.Method == http.MethodPost {
 			if _, ok := mustCan(deps, w, r, "session", "scale", ns); !ok {
 				return
