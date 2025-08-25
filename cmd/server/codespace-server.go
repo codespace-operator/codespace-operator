@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -55,6 +56,7 @@ func main() {
 	rootCmd.Flags().Int("kube-burst", 100, "Kubernetes client burst limit")
 
 	// OIDC + feature flags
+	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
 	rootCmd.Flags().String("oidc-issuer", "", "OIDC issuer URL (e.g., https://dev-xxxx.okta.com)")
 	rootCmd.Flags().String("oidc-client-id", "", "OIDC client ID")
 	rootCmd.Flags().String("oidc-client-secret", "", "OIDC client secret")
@@ -115,6 +117,7 @@ func runServer(cmd *cobra.Command, args []string) {
 	if cmd.Flags().Changed("oidc-scopes") {
 		cfg.OIDCScopes, _ = cmd.Flags().GetStringSlice("oidc-scopes")
 	}
+	setBool(&cfg.OIDCInsecureSkipVerify, "oidc-insecure-skip-verify")
 	setBool(&cfg.EnableBootstrapLogin, "enable-bootstrap-login")
 	setBool(&cfg.AllowTokenParam, "allow-token-param")
 	setInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
@@ -175,7 +178,7 @@ func runServer(cmd *cobra.Command, args []string) {
 
 	var handler http.Handler = mux
 	handler = withCORS(cfg.AllowOrigin, handler)
-	handler = requireAPIToken(&configLike{
+	handler = authGate(&configLike{
 		JWTSecret:         cfg.JWTSecret,
 		SessionCookieName: cfg.SessionCookieName,
 		AllowTokenParam:   cfg.AllowTokenParam,
@@ -185,4 +188,24 @@ func runServer(cmd *cobra.Command, args []string) {
 	if err := http.ListenAndServe(cfg.GetAddr(), handler); err != nil {
 		log.Fatalf("ListenAndServe: %v", err)
 	}
+
+}
+func authGate(cfg *configLike, next http.Handler) http.Handler {
+	// only guard /api/*; allow health, static, and /auth/*
+	authed := requireAPIToken(cfg, next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if p == "/healthz" || p == "/readyz" ||
+			strings.HasPrefix(p, "/auth/") ||
+			p == "/" || strings.HasPrefix(p, "/assets/") || strings.HasPrefix(p, "/static/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(p, "/api/") {
+			authed.ServeHTTP(w, r)
+			return
+		}
+		// default public
+		next.ServeHTTP(w, r)
+	})
 }

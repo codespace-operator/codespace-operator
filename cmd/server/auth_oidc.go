@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/log"
 	oidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
@@ -21,9 +23,10 @@ const (
 )
 
 type oidcDeps struct {
-	provider *oidc.Provider
-	verifier *oidc.IDTokenVerifier
-	oauth2   *oauth2.Config
+	provider   *oidc.Provider
+	verifier   *oidc.IDTokenVerifier
+	oauth2     *oauth2.Config
+	httpClient *http.Client
 }
 
 func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
@@ -38,9 +41,6 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 		mux.Handle("/auth/callback", handleOIDCCallback(cfg, od))
 		oidcEnabled = true
 	}
-	// Expose bootstrap (dev) login as well:
-	// - If OIDC is enabled, mount at /auth/local-login
-	// - If OIDC is disabled, mount it at /auth/login to be the primary path
 	if cfg.EnableBootstrapLogin {
 		if oidcEnabled {
 			mux.Handle("/auth/local-login", handleLogin(cfg))
@@ -50,13 +50,29 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 	}
 	mux.Handle("/auth/logout", handleLogout(deps.config))
 	mux.Handle("/api/v1/me", handleMe())
+
+	mux.Handle("/auth/features", handleAuthFeatures(cfg, oidcEnabled))
 }
 
 func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, error) {
+	var hc *http.Client
+	if cfg.OIDCInsecureSkipVerify {
+		// Dev-only: accept self-signed or name-mismatched certs for OIDC calls
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 (intentional; guarded by config)
+		}
+		hc = &http.Client{Transport: tr, Timeout: 15 * time.Second}
+		log.Warn("OIDCInsecureSkipVerify is enabled - do not use in production")
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
+	}
+
+	log.Info("Constructing provider...")
 	provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuerURL)
 	if err != nil {
+		log.Errorf("Fail constructing OIDC provider: %s", err.Error())
 		return nil, err
 	}
+	log.Info("Verifying realm...")
 	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID})
 	scopes := cfg.OIDCScopes
 	if len(scopes) == 0 {
@@ -69,7 +85,7 @@ func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, erro
 		RedirectURL:  cfg.OIDCRedirectURL,
 		Scopes:       scopes,
 	}
-	return &oidcDeps{provider: provider, verifier: verifier, oauth2: oauth2cfg}, nil
+	return &oidcDeps{provider: provider, verifier: verifier, oauth2: oauth2cfg, httpClient: hc}, nil
 }
 
 func handleOIDCStart(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc {
@@ -136,7 +152,12 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 			http.Error(w, "missing code", http.StatusBadRequest)
 			return
 		}
-		oauth2Token, err := od.oauth2.Exchange(r.Context(), code,
+		// ensure the same HTTP client (possibly insecure) is used for token exchange
+		ctx := r.Context()
+		if od.httpClient != nil {
+			ctx = context.WithValue(ctx, oauth2.HTTPClient, od.httpClient)
+		}
+		oauth2Token, err := od.oauth2.Exchange(ctx, code,
 			oauth2.SetAuthURLParam("code_verifier", cPKCE.Value))
 		if err != nil {
 			http.Error(w, "code exchange failed", http.StatusUnauthorized)
@@ -204,6 +225,20 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 			dest = after
 		}
 		http.Redirect(w, r, dest, http.StatusFound)
+	}
+}
+
+func handleAuthFeatures(cfg *config.ServerConfig, oidcEnabled bool) http.HandlerFunc {
+	local := "/auth/login"
+	if oidcEnabled {
+		local = "/auth/local-login"
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"oidcEnabled":      oidcEnabled,
+			"bootstrapEnabled": cfg.EnableBootstrapLogin,
+			"localLoginPath":   local,
+		})
 	}
 }
 

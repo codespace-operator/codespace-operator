@@ -15,12 +15,17 @@ function authHeaders() {
 async function handleResponse(response: Response) {
   if (!response.ok) {
     let message = "";
-    try { message = (await response.text()) || ""; } catch { /* ignore */ }
-    const friendly = message || `HTTP ${response.status}: ${response.statusText}`;
+    try {
+      message = (await response.text()) || "";
+    } catch {
+      /* ignore */
+    }
+    const friendly =
+      message || `HTTP ${response.status}: ${response.statusText}`;
     if (response.status === 401) {
-       localStorage.removeItem("co_user");
-       localStorage.removeItem("co_token");
-       window.dispatchEvent(new CustomEvent("co:auth:required"));
+      localStorage.removeItem("co_user");
+      localStorage.removeItem("co_token");
+      window.dispatchEvent(new CustomEvent("co:auth:required"));
     }
     throw new Error(friendly);
   }
@@ -57,9 +62,10 @@ function normalizeObject<T = any>(x: any): T {
 export const api = {
   async list(ns: string): Promise<Session[]> {
     // If namespace is "All", omit the namespace parameter to get all namespaces
-    const url = ns === "All"
-      ? `/api/v1/sessions?all=true`
-      : `/api/v1/sessions?namespace=${encodeURIComponent(ns)}`;
+    const url =
+      ns === "All"
+        ? `/api/v1/sessions?all=true`
+        : `/api/v1/sessions?namespace=${encodeURIComponent(ns)}`;
     const r = await apiFetch(url);
     return normalizeList<Session>(await r.json());
   },
@@ -74,9 +80,12 @@ export const api = {
   },
 
   async remove(ns: string, name: string): Promise<void> {
-    await apiFetch(`/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`, {
-      method: "DELETE",
-    });
+    await apiFetch(
+      `/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
+      {
+        method: "DELETE",
+      },
+    );
   },
 
   async scale(ns: string, name: string, replicas: number): Promise<Session> {
@@ -86,7 +95,7 @@ export const api = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replicas }),
-      }
+      },
     );
     return normalizeObject<Session>(await r.json());
   },
@@ -94,14 +103,17 @@ export const api = {
   // SSE: prefer cookie; attach token as query only if no cookie is present
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
     const token = getToken();
-    const hasCookie = document.cookie.includes("codespace_jwt=");
+    // old: const hasCookie = document.cookie.includes("codespace_jwt=");
+    const hasCookie =
+      document.cookie.includes("codespace_session=") ||
+      document.cookie.includes("codespace_jwt="); // back-compat
 
     // Adjust URL for "All" namespace
     const baseUrl = `${base}/api/v1/stream/sessions`;
-    const queryParams = ns === "All" 
-      ? `?all=true` 
-      : `?namespace=${encodeURIComponent(ns)}`;
-    const tokenParam = !hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "";
+    const queryParams =
+      ns === "All" ? `?all=true` : `?namespace=${encodeURIComponent(ns)}`;
+    const tokenParam =
+      !hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "";
     const url = baseUrl + queryParams + tokenParam;
 
     const es = new EventSource(url, { withCredentials: true as any });
@@ -109,7 +121,6 @@ export const api = {
     return es;
   },
 };
-
 
 export const nsApi = {
   async listSessionNamespaces(): Promise<string[]> {

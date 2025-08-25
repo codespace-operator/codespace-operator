@@ -1,0 +1,42 @@
+# Server configuration (ServerConfig)
+
+# Network
+host: "" # empty = bind all interfaces
+port: 8080
+read_timeout: 0 # (seconds) currently unused in code
+write_timeout: 0 # (seconds) currently unused in code
+
+# CORS
+allow_origin: "" # e.g. "https://example.com"
+
+# Kubernetes client throttling
+kube_qps: 50.0
+kube_burst: 100
+
+# Logging
+debug: true
+
+# Sessions / auth
+jwt_secret: "change-me" # HS256 key for server-issued session cookie
+
+# Dev-only bootstrap login (local username/password)
+enable_bootstrap_login: false
+bootstrap_user: ""
+bootstrap_password: ""
+
+# Session cookie
+session_cookie_name: "" # defaults to "codespace_session" when empty
+session_ttl_minutes: 60
+allow_token_param: false # allow ?access_token=... (NOT recommended)
+
+# OIDC (leave blank to disable)
+oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
+oidc_issuer_url: "https://keycloak.codespace.test/realms/codespace" # e.g. "https://dev-xxxx.okta.com"
+oidc_client_id: "codespace-server"
+oidc_client_secret: "dev-secret"
+oidc_redirect_url: "http://console.codespace.test/auth/callback" # e.g. "https://your-host/auth/callback"
+oidc_scopes: [] # default used when empty: ["openid","profile","email"]
+
+# RBAC (Casbin) files — if empty, server uses built-in defaults
+rbac_model_path: "./misc/tests/model.conf" # defaults to /etc/codespace-operator/rbac/model.conf
+rbac_policy_path: "./misc/tests/policy.csv" # defaults to /etc/codespace-operator/rbac/policy.csv

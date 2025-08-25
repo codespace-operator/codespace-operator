@@ -22,13 +22,14 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux.HandleFunc("/api/v1/namespaces/writable", handleWritableNamespaces(deps))
 
 	// UI
+	log.Println("Setting up static web UI...")
 	setupStaticUI(mux)
 	return mux
 }
 
 // Serve SPA/static from embedded ui-dist/*
 func setupStaticUI(mux *http.ServeMux) {
-	ui, err := fsSub(staticFS, "ui-dist")
+	ui, err := fsSub(staticFS, "static")
 	if err != nil {
 		log.Fatalf("Failed to create static file system: %v", err)
 	}
@@ -41,7 +42,7 @@ func setupStaticUI(mux *http.ServeMux) {
 			files.ServeHTTP(w, r)
 			return
 		}
-		index, err := staticFS.ReadFile("ui-dist/index.html")
+		index, err := staticFS.ReadFile("static/index.html")
 		if err != nil {
 			http.Error(w, "index.html not found", http.StatusNotFound)
 			return

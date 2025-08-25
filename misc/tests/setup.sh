@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # --- Config & helpers ---
 : "${SETUP_CONFIG:=misc/tests/config.sh}"
 : "${DEPLOY_SCRIPT:=misc/tests/deploy.sh}"

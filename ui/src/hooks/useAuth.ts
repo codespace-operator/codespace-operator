@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+const base = import.meta.env.VITE_API_BASE || "";
 const USER_KEY = "co_user";
 const TOKEN_KEY = "co_token"; // kept for SSE/headers fallback; cookie is primary.
 
@@ -7,7 +8,11 @@ function decodeJwtPayload(token: string): any | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
   const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  try { return JSON.parse(atob(b64)); } catch { return null; }
+  try {
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
 }
 
 function isExpired(token: string | null): boolean {
@@ -19,88 +24,84 @@ function isExpired(token: string | null): boolean {
   return now >= exp;
 }
 
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
 export function useAuth() {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<string | null>(
+    localStorage.getItem(USER_KEY),
+  );
   const [roles, setRoles] = useState<string[]>([]);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const expiryTimer = useRef<number | null>(null);
+  const [token, setToken] = useState<string | null>(getToken());
+  const [isLoading, setLoading] = useState(true);
 
-  // Initialize from storage (token is optional because cookie is primary)
+  // Try to restore from cookie session (OIDC/local)
   useEffect(() => {
-    const u = localStorage.getItem(USER_KEY);
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (u && t && !isExpired(t)) {
-      setUser(u);
-      setToken(t);
-    } else {
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-    }
-    setIsLoading(false);
-
-    const onAuthRequired = () => logout();
-    window.addEventListener("co:auth:required" as any, onAuthRequired);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === TOKEN_KEY && e.newValue === null) logout();
-    };
-    window.addEventListener("storage", onStorage);
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${base}/api/v1/me`, { credentials: "include" });
+        if (!r.ok) return; // unauthenticated -> ignore
+        const data = await r.json();
+        if (cancelled) return;
+        setUser(data.user || null);
+        setRoles(Array.isArray(data.roles) ? data.roles : []);
+      } catch {
+        /* noop */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("co:auth:required" as any, onAuthRequired);
+      cancelled = true;
     };
   }, []);
 
-  useEffect(() => {
-    if (expiryTimer.current) window.clearTimeout(expiryTimer.current);
-    if (!token) return;
-    const payload = decodeJwtPayload(token);
-    const exp = payload?.exp;
-    if (!exp) return;
-    const ms = Math.max(0, exp * 1000 - Date.now());
-    expiryTimer.current = window.setTimeout(() => logout(), ms) as unknown as number;
-  }, [token]);
-
-  const base = import.meta.env.VITE_API_BASE || "";
-
-  const login = async (username: string, password: string): Promise<void> => {
-    if (!username.trim() || !password.trim()) {
-      throw new Error("Username and password are required");
+  // Local (bootstrap) login: try /auth/local-login, then /auth/login
+  async function login(username: string, password: string) {
+    const body = JSON.stringify({ username, password });
+    const tryPaths = ["/auth/local-login", "/auth/login"];
+    let lastErr: any;
+    for (const p of tryPaths) {
+      try {
+        const r = await fetch(`${base}${p}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body,
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error((await r.text()) || "Login failed");
+        const data = await r.json();
+        if (data.user) localStorage.setItem(USER_KEY, data.user);
+        if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+        setUser(data.user || username);
+        setRoles(Array.isArray(data.roles) ? data.roles : []);
+        setToken(data.token || null);
+        return;
+      } catch (e) {
+        lastErr = e;
+      }
     }
-    const res = await fetch(`${base}/api/v1/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // receive HttpOnly cookie
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) throw new Error((await res.text()) || "Login failed");
-    const data = await res.json();
-    // Keep a copy to support Authorization header and SSE fallback; cookie remains source of truth.
-    localStorage.setItem(USER_KEY, data.user || username);
-    if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data.user || username);
-    setRoles(Array.isArray(data.roles) ? data.roles : []);
-    setToken(data.token || null);
-  };
+    throw lastErr;
+  }
 
-  const logout = () => {
-    // Just drop local state + cookies (cookie is session-lifetime JWT; let it expire)
+  async function logout() {
+    try {
+      await fetch(`${base}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {}
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setRoles([]);
     setToken(null);
-  };
+  }
 
-  const isAuthenticated = useMemo(() => !!(user && (token ? !isExpired(token) : true)), [user, token]);
-
-  return {
-    user,
-    roles,
-    token,
-    login,
-    logout,
-    isAuthenticated,
-    isLoading,
-  };
+  const isAuthenticated = useMemo(() => !!user, [user]);
+  return { user, roles, token, isAuthenticated, isLoading, login, logout };
 }

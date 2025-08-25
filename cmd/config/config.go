@@ -1,3 +1,4 @@
+// config/config.go
 package config
 
 import (
@@ -9,27 +10,32 @@ import (
 	"github.com/spf13/viper"
 )
 
+// -----------------------------
+// Structs (snake_case tags)
+// -----------------------------
+
 // ServerConfig holds all configuration for the codespace server
 type ServerConfig struct {
-	// Server settings
+	// Network
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
 	ReadTimeout  int    `mapstructure:"read_timeout"`
 	WriteTimeout int    `mapstructure:"write_timeout"`
 
-	// CORS settings
+	// CORS
 	AllowOrigin string `mapstructure:"allow_origin"`
 
-	// Kubernetes settings
+	// Kubernetes
 	KubeQPS   float32 `mapstructure:"kube_qps"`
 	KubeBurst int     `mapstructure:"kube_burst"`
 
-	// Development/Debug settings
+	// Logging
 	Debug bool `mapstructure:"debug"`
 
+	// Sessions / auth
 	JWTSecret string `mapstructure:"jwt_secret"`
 
-	// Legacy bootstrap (dev only)
+	// Dev bootstrap login (local user/pass)
 	EnableBootstrapLogin bool   `mapstructure:"enable_bootstrap_login"`
 	BootstrapUser        string `mapstructure:"bootstrap_user"`
 	BootstrapPassword    string `mapstructure:"bootstrap_password"`
@@ -40,11 +46,16 @@ type ServerConfig struct {
 	AllowTokenParam   bool   `mapstructure:"allow_token_param"`
 
 	// OIDC
-	OIDCIssuerURL    string   `mapstructure:"oidc_issuer_url"`
-	OIDCClientID     string   `mapstructure:"oidc_client_id"`
-	OIDCClientSecret string   `mapstructure:"oidc_client_secret"`
-	OIDCRedirectURL  string   `mapstructure:"oidc_redirect_url"`
-	OIDCScopes       []string `mapstructure:"oidc_scopes"`
+	OIDCInsecureSkipVerify bool     `mapstructure:"oidc_insecure_skip_verify"`
+	OIDCIssuerURL          string   `mapstructure:"oidc_issuer_url"`
+	OIDCClientID           string   `mapstructure:"oidc_client_id"`
+	OIDCClientSecret       string   `mapstructure:"oidc_client_secret"`
+	OIDCRedirectURL        string   `mapstructure:"oidc_redirect_url"`
+	OIDCScopes             []string `mapstructure:"oidc_scopes"`
+
+	// RBAC (Casbin) files
+	RBACModelPath  string `mapstructure:"rbac_model_path"`
+	RBACPolicyPath string `mapstructure:"rbac_policy_path"`
 }
 
 // ControllerConfig holds configuration for the session controller
@@ -71,38 +82,106 @@ type ControllerConfig struct {
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
 
-	// Development/Debug settings
+	// Logging
 	Debug bool `mapstructure:"debug"`
 }
 
-// LoadServerConfig loads configuration for the codespace server
+// -----------------------------
+// Loader entry points
+// -----------------------------
+
+// LoadServerConfig reads server-config.yaml + env (CODESPACE_SERVER_*) into ServerConfig.
 func LoadServerConfig() (*ServerConfig, error) {
-	cfg := &ServerConfig{
-		Host:        env("CODESPACE_SERVER_HOST", ""),
-		Port:        envInt("CODESPACE_SERVER_PORT", 8080),
-		AllowOrigin: env("CODESPACE_SERVER_ALLOW_ORIGIN", ""),
-		Debug:       envBool("CODESPACE_SERVER_DEBUG", false),
-		JWTSecret:   env("CODESPACE_SERVER_JWT_SECRET", "change-me"),
+	v := viper.New()
 
-		KubeQPS:   float32(envFloat("CODESPACE_SERVER_KUBE_QPS", 50.0)),
-		KubeBurst: envInt("CODESPACE_SERVER_KUBE_BURST", 100),
+	// Defaults (match prior behavior)
+	v.SetDefault("host", "")
+	v.SetDefault("port", 8080)
+	v.SetDefault("read_timeout", 0)
+	v.SetDefault("write_timeout", 0)
 
-		EnableBootstrapLogin: envBool("CODESPACE_SERVER_ENABLE_BOOTSTRAP_LOGIN", false),
-		BootstrapUser:        os.Getenv("CODESPACE_SERVER_BOOTSTRAP_USER"),
-		BootstrapPassword:    os.Getenv("CODESPACE_SERVER_BOOTSTRAP_PASSWORD"),
+	v.SetDefault("allow_origin", "")
 
-		SessionCookieName: env("CODESPACE_SERVER_SESSION_COOKIE", ""),
-		SessionTTLMinutes: envInt("CODESPACE_SERVER_SESSION_TTL_MINUTES", 60),
-		AllowTokenParam:   envBool("CODESPACE_SERVER_ALLOW_TOKEN_PARAM", false),
+	v.SetDefault("kube_qps", 50.0)
+	v.SetDefault("kube_burst", 100)
 
-		OIDCIssuerURL:    os.Getenv("CODESPACE_SERVER_OIDC_ISSUER"),
-		OIDCClientID:     os.Getenv("CODESPACE_SERVER_OIDC_CLIENT_ID"),
-		OIDCClientSecret: os.Getenv("CODESPACE_SERVER_OIDC_CLIENT_SECRET"),
-		OIDCRedirectURL:  os.Getenv("CODESPACE_SERVER_OIDC_REDIRECT_URL"),
-		OIDCScopes:       splitCSV(os.Getenv("CODESPACE_SERVER_OIDC_SCOPES")),
+	v.SetDefault("debug", false)
+	v.SetDefault("jwt_secret", "change-me")
+
+	v.SetDefault("enable_bootstrap_login", false)
+	v.SetDefault("bootstrap_user", "")
+	v.SetDefault("bootstrap_password", "")
+
+	v.SetDefault("session_cookie_name", "")
+	v.SetDefault("session_ttl_minutes", 60)
+	v.SetDefault("allow_token_param", false)
+
+	v.SetDefault("oidc_insecure_skip_verify", false)
+	v.SetDefault("oidc_issuer_url", "")
+	v.SetDefault("oidc_client_id", "")
+	v.SetDefault("oidc_client_secret", "")
+	v.SetDefault("oidc_redirect_url", "")
+	v.SetDefault("oidc_scopes", []string{}) // default scopes applied later in code if empty
+
+	v.SetDefault("rbac_model_path", "")
+	v.SetDefault("rbac_policy_path", "")
+
+	setupViper(v, "CODESPACE_SERVER", "server-config")
+
+	var cfg ServerConfig
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal server config: %w", err)
 	}
-	return cfg, nil
+
+	// Allow a comma-separated env override for OIDC scopes
+	// (e.g., CODESPACE_SERVER_OIDC_SCOPES="openid,profile,email")
+	if len(cfg.OIDCScopes) == 0 {
+		if raw := strings.TrimSpace(os.Getenv("CODESPACE_SERVER_OIDC_SCOPES")); raw != "" {
+			cfg.OIDCScopes = splitCSV(raw)
+		}
+	}
+
+	return &cfg, nil
 }
+
+// LoadControllerConfig reads controller-config.yaml + env (CODESPACE_CONTROLLER_*) into ControllerConfig.
+func LoadControllerConfig() (*ControllerConfig, error) {
+	v := viper.New()
+
+	// Defaults (unchanged from previous)
+	v.SetDefault("metrics_addr", "0")
+	v.SetDefault("probe_addr", ":8081")
+	v.SetDefault("enable_leader_election", false)
+	v.SetDefault("leader_election_id", "a51c5837.codespace.dev")
+
+	v.SetDefault("metrics_cert_path", "")
+	v.SetDefault("metrics_cert_name", "tls.crt")
+	v.SetDefault("metrics_cert_key", "tls.key")
+
+	v.SetDefault("webhook_cert_path", "")
+	v.SetDefault("webhook_cert_name", "tls.crt")
+	v.SetDefault("webhook_cert_key", "tls.key")
+
+	v.SetDefault("secure_metrics", true)
+	v.SetDefault("enable_http2", false)
+
+	v.SetDefault("session_name_prefix", "cs-")
+	v.SetDefault("field_owner", "codespace-operator")
+
+	v.SetDefault("debug", false)
+
+	setupViper(v, "CODESPACE_CONTROLLER", "controller-config")
+
+	var cfg ControllerConfig
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal controller config: %w", err)
+	}
+	return &cfg, nil
+}
+
+// -----------------------------
+// Helpers / methods
+// -----------------------------
 
 func (c *ServerConfig) GetAddr() string {
 	if strings.TrimSpace(c.Host) == "" {
@@ -119,52 +198,22 @@ func (c *ServerConfig) SessionTTL() time.Duration {
 	return time.Duration(min) * time.Minute
 }
 
-// LoadControllerConfig loads configuration for the session controller
-func LoadControllerConfig() (*ControllerConfig, error) {
-	v := viper.New()
-
-	// Set defaults
-	v.SetDefault("metrics_addr", "0")
-	v.SetDefault("probe_addr", ":8081")
-	v.SetDefault("enable_leader_election", false)
-	v.SetDefault("leader_election_id", "a51c5837.codespace.dev")
-	v.SetDefault("metrics_cert_path", "")
-	v.SetDefault("metrics_cert_name", "tls.crt")
-	v.SetDefault("metrics_cert_key", "tls.key")
-	v.SetDefault("webhook_cert_path", "")
-	v.SetDefault("webhook_cert_name", "tls.crt")
-	v.SetDefault("webhook_cert_key", "tls.key")
-	v.SetDefault("secure_metrics", true)
-	v.SetDefault("enable_http2", false)
-	v.SetDefault("session_name_prefix", "cs-")
-	v.SetDefault("field_owner", "codespace-operator")
-	v.SetDefault("debug", false)
-
-	// Configure viper
-	setupViper(v, "CODESPACE_CONTROLLER")
-
-	var config ControllerConfig
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal controller config: %w", err)
-	}
-
-	return &config, nil
-}
-
-// setupViper configures common viper settings
-func setupViper(v *viper.Viper, envPrefix string) {
-	// Environment variables
+// setupViper configures common Viper settings.
+// envPrefix: e.g. "CODESPACE_SERVER"
+// fileBase:  e.g. "server-config" (-> server-config.yaml)
+func setupViper(v *viper.Viper, envPrefix, fileBase string) {
+	// Environment (UPPER_SNAKE with prefix)
 	v.SetEnvPrefix(envPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
-	// Config file support
-	v.SetConfigName("config")
+	// Config file (YAML) — searched in common paths
+	v.SetConfigName(fileBase)
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")
 	v.AddConfigPath("/etc/codespace-operator/")
 	v.AddConfigPath("$HOME/.codespace-operator/")
 
-	// Try to read config file (ignore if not found)
+	// Optional file — ignore if missing
 	_ = v.ReadInConfig()
 }
