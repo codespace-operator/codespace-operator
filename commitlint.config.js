@@ -8,7 +8,13 @@ module.exports = {
       'server',
       'ui',
       'crd',
-      'api'
+      'crds',
+      'oidc',
+      'ldap',
+      'rbac',
+      'api',
+      'repo',  // release, repo workflow rules etc
+      'ci'     // ci workflow rules etc
     ]],
     'type-enum': [2, 'always', [
       'feat', 'fix', 'perf', 'refactor', 'docs', 'chore', 'ci', 'build', 'test'

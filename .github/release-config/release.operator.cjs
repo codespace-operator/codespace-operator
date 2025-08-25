@@ -6,12 +6,12 @@ module.exports = {
       preset: 'conventionalcommits',
       parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
       releaseRules: [
-        { breaking: true, scope: /(^|,|\s)(operator|controller|server|ui)(?=,|\s|$)/, release: 'major' },
-        { type: 'feat',   scope: /(^|,|\s)(operator|controller|server|ui)(?=,|\s|$)/, release: 'minor' },
-        { type: 'fix',    scope: /(^|,|\s)(operator|controller|server|ui)(?=,|\s|$)/, release: 'patch' },
-        { type: 'perf',   scope: /(^|,|\s)(operator|controller|server|ui)(?=,|\s|$)/, release: 'patch' },
-        { type: 'revert', scope: /(^|,|\s)(operator|controller|server|ui)(?=,|\s|$)/, release: 'patch' },
-        { scope: /(^|,|\s)(crds|crd|api)(?=,|\s|$)/, release: false },
+        { breaking: true, scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api)(?=,|\s|$)/, release: 'major' },
+        { type: 'feat',   scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api)(?=,|\s|$)/, release: 'minor' },
+        { type: 'fix',    scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api)(?=,|\s|$)/, release: 'patch' },
+        { type: 'perf',   scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api)(?=,|\s|$)/, release: 'patch' },
+        { type: 'revert', scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api)(?=,|\s|$)/, release: 'patch' },
+        { scope: /(^|,|\s)(crds|crd|repo|ci)(?=,|\s|$)/, release: false },
         { type: /^(docs|chore|build|ci|test|refactor)$/,     release: false }
       ]
     }],

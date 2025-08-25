@@ -3,9 +3,15 @@ on:
   push:
     branches: [main]
     paths:
-      - "**"
-      - "!helm/**"
+      - "internal/**"
+      - "cmd/**"
+      - "ui/**"
+      - "Dockerfile"
+      - "Dockerfiles/**"
+      - "go.mod"
+      - "go.sum"
       - "!CHANGELOG.*.md"
+
   workflow_dispatch: {}
 
 permissions:

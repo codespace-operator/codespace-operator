@@ -27,10 +27,13 @@ jobs:
           ref: main
 
       - name: Create branch and update Chart.yaml
+        id: bump
         run: |
           set -e
           BRANCH="bump/appVersion-${{ steps.ver.outputs.version }}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           git switch -c "$BRANCH"
+          sudo apt-get update && sudo apt-get install -y yq
           yq -i '.appVersion = "${{ steps.ver.outputs.version }}"' charts/codespace-operator/Chart.yaml
           git add charts/codespace-operator/Chart.yaml
           git commit -m "chore(helm): bump appVersion to ${{ steps.ver.outputs.version }}"
@@ -41,11 +44,10 @@ jobs:
         with:
           github-token: ${{ secrets.HELM_REPO_TOKEN }}
           script: |
-            const { data: pr } = await github.pulls.create({
-              owner: context.repo.owner,
-              repo: 'helm-charts',
-              title: `chore(helm): bump appVersion to ${{ steps.ver.outputs.version }}`,
-              head: `your-org:${'{'}{ env.BRANCH }{'}'}`,  // not available here, so we re-derive
-              base: 'main',
-              body: 'Sync appVersion with operator release.'
-            })
+            const owner = 'codespace-operator'        // <— set your org
+            const repo  = 'charts'                    // <— matches checkout
+            const head  = `${owner}:${{ steps.bump.outputs.branch }}`
+            const base  = 'main'
+            const title = `chore(helm): bump appVersion to ${{ steps.ver.outputs.version }}`
+            const body  = 'Sync appVersion with operator release.'
+            await github.pulls.create({ owner, repo, title, head, base, body })
