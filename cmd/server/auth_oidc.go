@@ -27,14 +27,26 @@ type oidcDeps struct {
 }
 
 func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
-	if deps.config.OIDCIssuerURL != "" && deps.config.OIDCClientID != "" && deps.config.OIDCRedirectURL != "" {
-		cfg := deps.config
-		oidcDeps, err := newOIDCDeps(context.Background(), cfg)
+	cfg := deps.config
+	oidcEnabled := false
+	if cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" && cfg.OIDCRedirectURL != "" {
+		od, err := newOIDCDeps(context.Background(), cfg)
 		if err != nil {
 			panic(fmt.Errorf("oidc init: %w", err))
 		}
-		mux.Handle("/auth/login", handleOIDCStart(cfg, oidcDeps))
-		mux.Handle("/auth/callback", handleOIDCCallback(cfg, oidcDeps))
+		mux.Handle("/auth/login", handleOIDCStart(cfg, od))
+		mux.Handle("/auth/callback", handleOIDCCallback(cfg, od))
+		oidcEnabled = true
+	}
+	// Expose bootstrap (dev) login as well:
+	// - If OIDC is enabled, mount at /auth/local-login
+	// - If OIDC is disabled, mount it at /auth/login to be the primary path
+	if cfg.EnableBootstrapLogin {
+		if oidcEnabled {
+			mux.Handle("/auth/local-login", handleLogin(cfg))
+		} else {
+			mux.Handle("/auth/login", handleLogin(cfg))
+		}
 	}
 	mux.Handle("/auth/logout", handleLogout(deps.config))
 	mux.Handle("/api/v1/me", handleMe())

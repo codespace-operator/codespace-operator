@@ -5,6 +5,7 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -63,6 +64,8 @@ func main() {
 	rootCmd.Flags().Bool("allow-token-param", false, "Allow ?access_token=... on URLs (NOT recommended)")
 	rootCmd.Flags().Int("session-ttl-minutes", 60, "Session cookie TTL in minutes")
 	rootCmd.Flags().String("session-cookie-name", "", "Override session cookie name")
+	rootCmd.Flags().String("rbac-model-path", "", "Path to Casbin model.conf (overrides default/env)")
+	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("Command execution failed: %v", err)
@@ -116,7 +119,8 @@ func runServer(cmd *cobra.Command, args []string) {
 	setBool(&cfg.AllowTokenParam, "allow-token-param")
 	setInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
 	setString(&cfg.SessionCookieName, "session-cookie-name")
-
+	setString(&cfg.RBACModelPath, "rbac-model-path")
+	setString(&cfg.RBACPolicyPath, "rbac-policy-path")
 	if cfg.Debug {
 		log.Printf("Configuration: %+v", cfg)
 	}
@@ -146,6 +150,13 @@ func runServer(cmd *cobra.Command, args []string) {
 		log.Fatalf("Dynamic client: %v", err)
 	}
 
+	// If explicit RBAC paths are provided, push them into env so NewRBACFromEnv picks them up.
+	if cfg.RBACModelPath != "" {
+		_ = os.Setenv(envModelPath, cfg.RBACModelPath)
+	}
+	if cfg.RBACPolicyPath != "" {
+		_ = os.Setenv(envPolicyPath, cfg.RBACPolicyPath)
+	}
 	rbac, err := NewRBACFromEnv(context.Background(), log.Default())
 	if err != nil {
 		log.Fatalf("RBAC init failed: %v", err)
