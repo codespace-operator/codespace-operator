@@ -5,8 +5,8 @@ source "${SETUP_CONFIG}"
 echo ">>> Install CRD..."
 make install
 
-echo ">>> Deploying via Helm..."
-helm upgrade --install codespace-operator ./helm \
+echo ">>> Deploying via Helm... (assuming '../charts/charts/codespace-operator' exists)"
+helm upgrade --install codespace-operator ../charts/charts/codespace-operator \
   --namespace "${NAMESPACE_SYS}" --create-namespace \
   --set image.repository="${IMG%:*}" \
   --set image.tag="${IMG##*:}" \

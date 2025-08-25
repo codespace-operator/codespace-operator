@@ -93,7 +93,6 @@ YAML
 - Node **20**
 - `kubectl` **1.24+**
 - `kind` **v0.22+**
-- `helm` **v3**
 
 We use `*.codespace.test` for DNS during dev (resolves to `127.0.0.1`).
 
@@ -131,7 +130,7 @@ make docker-build-server    # API server (embeds UI)
 Install chart (manager + server + UI):
 
 ```bash
-helm upgrade --install codespace-operator ./helm
+helm upgrade --install codespace-operator oci://ghcr.io/codespace-operator/charts/codespace-operator
 ```
 
 Cleanup:
@@ -146,7 +145,7 @@ Cleanup:
 
 ### Helm values
 
-See [`helm/values.yaml`](./helm/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
+See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-operator/charts/blob/main/charts/codespace-operator/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
 
 ### Controller environment
 
@@ -166,7 +165,6 @@ See [`helm/values.yaml`](./helm/values.yaml) for all options (service accounts, 
 - **Server** (`cmd/server/`) - small JSON API used by the UI; serves the built UI from `/static`.
 - **Web UI** (`ui/`) - PatternFly + React admin console.
 - **CRDs** (`api/`, generated into `config/crd/bases/`).
-- **Helm Chart** (`helm/`) - deploys the operator + server; **CRDs are not bundled**.
 
 ---
 
@@ -175,12 +173,8 @@ See [`helm/values.yaml`](./helm/values.yaml) for all options (service accounts, 
 This repo uses three **independent release lanes** with semantic‑release:
 
 - **Operator (images)** - **tags**: `app-vX.Y.Z`
-  Builds/pushes `ghcr.io/codespace-operator/codespace-operator:<app-version>` and `codespace-server:<app-version>`. Also updates `helm/Chart.yaml: appVersion` to match.
+  Builds/pushes `ghcr.io/codespace-operator/codespace-operator:<app-version>` and `codespace-server:<app-version>`.
   Config: `release.operator.cjs`
-
-- **Helm Chart** - **tags**: `chart-vX.Y.Z`
-  Bumps `helm/Chart.yaml: version` and publishes to GHCR as an OCI chart.
-  Config: `release.helm.cjs`
 
 - **CRDs** - **tags**: `crd-vX.Y.Z`
   Publishes `dist/codespace-operator-crds.yaml` and a tarball as release assets.
@@ -189,7 +183,6 @@ This repo uses three **independent release lanes** with semantic‑release:
 **Commit scopes decide which lane releases:**
 
 - Operator scopes: `operator`, `controller`, `server`, `ui`
-- Chart scopes: `chart`, `helm`
 - CRD scopes: `crd`, `api`
 
 See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for Conventional Commit rules and PR templates.
@@ -203,7 +196,6 @@ cmd/
   session-controller/     # operator manager (targets a binary)
   server/                 # tiny HTTP JSON API + serves the UI (targets a binary)
 ui/                       # React (Vite) admin UI
-helm/                     # Helm chart (no CRDs)
 internal/                 # controllers & helpers
 api/                      # CRD Go types
 config/                   # kustomize, generated CRDs under config/crd/bases

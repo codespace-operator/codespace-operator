@@ -10,11 +10,6 @@ release-lane:operator:
           - "go.mod"
           - "go.sum"
 
-release-lane:chart:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "helm/**"
-
 release-lane:crd:
   - changed-files:
       - any-glob-to-any-file:
@@ -37,11 +32,6 @@ area:ui:
   - changed-files:
       - any-glob-to-any-file:
           - "ui/**"
-
-area:chart:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "helm/**"
 
 area:crd:
   - changed-files:

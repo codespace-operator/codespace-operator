@@ -30,5 +30,4 @@
 
 - [ ] Conventional PR title (for squash merge)
 - [ ] CRDs regenerated if API changed (`make manifests`)
-- [ ] No manual edits to `helm/Chart.yaml:appVersion`
 - [ ] Docs/values updated if user-visible

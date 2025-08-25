@@ -23,12 +23,6 @@ Thanks for helping improve **codespace-operator**! This project is a mono‑repo
   - Config: `release.operator.cjs`
   - Scope(s): `operator`, `controller`, `server`, `ui`
 
-- **Helm Chart ("Chart" lane)**
-  - Tag prefix: `chart-vX.Y.Z`
-  - Config: `release.helm.cjs`
-  - Scope(s): `chart`, `helm`
-  - `Chart.yaml:appVersion` is auto‑synced by the App lane. Don’t edit manually.
-
 - **CRDs ("CRD" lane)**
   - Tag prefix: `crd-vX.Y.Z`
   - Config: `release.crd.cjs`
@@ -46,7 +40,6 @@ Each lane uses `releaseRules` so it **only** versions on matching scopes. A sing
 **Scopes (required)**:
 
 - App: `operator`, `controller`, `server`, `ui`
-- Chart: `chart`, `helm`
 - CRDs: `crd`, `api`
 - Misc (no release): `docs`, `build`, `ci`, `deps`, `release`, `test`
 
@@ -117,12 +110,6 @@ See `commitlint.config.cjs`, `.lintstagedrc.json`, and `.husky/*` for details.
 
 - Tests: `make test` (unit), `make test-e2e` (kind-based e2e)
 
-### Helm Chart
-
-- Use scopes: `chart`, `helm`.
-- **Do not** change `Chart.yaml:appVersion` manually; it is set by App releases.
-- If adding values, provide sane defaults, schema comments, and update README usage snippets.
-
 ### CRDs
 
 - Use scopes: `crd`, `api`.
@@ -136,7 +123,6 @@ See `commitlint.config.cjs`, `.lintstagedrc.json`, and `.husky/*` for details.
 - CI runs on every MR/PR: build + lint + tests + commit‑message checks.
 - After merge to `main`, semantic‑release runs per lane:
   - **Operator**: `release.operator.cjs` builds & pushes images; syncs `Chart.yaml:appVersion`; tag `app-v*`; writes `CHANGELOG.app.md`.
-  - **Chart**: `release.helm.cjs` bumps chart `version` and publishes to GHCR (OCI); tag `chart-v*`; writes `CHANGELOG.chart.md`.
   - **CRDs**: `release.crd.cjs` regenerates and publishes `dist/codespace-operator-crds.yaml` + tarball; tag `crd-v*`; writes `CHANGELOG.crd.md`.
 
 > Lanes only bump versions when at least one commit in the release range has a matching scope per `releaseRules`.
@@ -193,7 +179,6 @@ Use one or more:
 - [ ] controller
 - [ ] server
 - [ ] ui
-- [ ] chart / helm
 - [ ] crd / api
 
 ### Breaking changes
