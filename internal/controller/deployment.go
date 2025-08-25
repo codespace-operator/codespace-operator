@@ -47,7 +47,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 		acVols = append(acVols, corev1apply.Volume().
 			WithName(v.Name).
 			WithPersistentVolumeClaim(corev1apply.PersistentVolumeClaimVolumeSource().
-				WithClaimName(v.VolumeSource.PersistentVolumeClaim.ClaimName)))
+				WithClaimName(v.PersistentVolumeClaim.ClaimName)))
 	}
 
 	mainC := corev1apply.Container().

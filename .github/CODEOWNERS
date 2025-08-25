@@ -9,9 +9,6 @@
 /cmd/server/ @codespace-operator
 /ui/ @codespace-operator
 
-# Chart
-/helm/ @codespace-operator
-
 # CRDs
 /api/ @codespace-operator
 /config/crd/ @codespace-operator

@@ -13,7 +13,6 @@
 ### Scope (required)
 
 - [ ] operator / controller / server / ui
-- [ ] chart / helm
 - [ ] crd / api
 
 ### Breaking changes

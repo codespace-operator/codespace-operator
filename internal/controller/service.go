@@ -34,7 +34,7 @@ import (
 func (r *SessionReconciler) reconcileService(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*corev1.Service, error) {
 	ns := sess.Namespace
 	target := 4180
-	if !(sess.Spec.Auth.Mode == "oauth2proxy" && sess.Spec.Networking != nil && sess.Spec.Networking.Host != "") {
+	if sess.Spec.Auth.Mode != "oauth2proxy" || sess.Spec.Networking == nil || sess.Spec.Networking.Host == "" {
 		if sess.Spec.Profile.IDE == "vscode" {
 			target = 8080
 		} else {
