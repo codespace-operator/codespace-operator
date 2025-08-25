@@ -7,7 +7,7 @@ spec:
   profile:
     ide: jupyterlab
     image: jupyter/minimal-notebook:latest
-    cmd: ["start-notebook.sh","--NotebookApp.token="]
+    cmd: ["start-notebook.sh", "--NotebookApp.token="]
   networking:
     host: __HOST__
     # tlsSecretName: __TLS_SECRET__

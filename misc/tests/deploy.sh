@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-SETUP_CONFIG="${KIND_CONFIG:-hack/tests/config.sh}"
+SETUP_CONFIG="${KIND_CONFIG:-misc/tests/config.sh}"
 source "${SETUP_CONFIG}"
 
 echo ">>> Install CRD..."

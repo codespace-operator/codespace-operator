@@ -1,6 +1,6 @@
 # ---------- Config ----------
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
-KIND_CONFIG="${KIND_CONFIG:-hack/tests/kind.yaml}"
+KIND_CONFIG="${KIND_CONFIG:-misc/tests/kind.yaml}"
 NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator}"
 
 IMG="${IMG:-ghcr.io/codespace-operator/codespace-operator:dev}"
@@ -12,4 +12,4 @@ DEMO_NAME="${DEMO_NAME:-demo}"                # demo session name
 APPLY_DEMO="${APPLY_DEMO:-true}"              # set to "false" to skip creating a demo Session
 
 # demo manifest (templated below if not provided)
-DEMO_SESSION_FILE="${DEMO_SESSION_FILE:-hack/tests/demo-session.yaml}"
+DEMO_SESSION_FILE="${DEMO_SESSION_FILE:-misc/tests/demo-session.yaml}"

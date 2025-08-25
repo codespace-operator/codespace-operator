@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # --- Config & helpers ---
-: "${SETUP_CONFIG:=hack/tests/config.sh}"
-: "${DEPLOY_SCRIPT:=hack/tests/deploy.sh}"
+: "${SETUP_CONFIG:=misc/tests/config.sh}"
+: "${DEPLOY_SCRIPT:=misc/tests/deploy.sh}"
 source "${SETUP_CONFIG}"
 
 need() { command -v "$1" >/dev/null || { echo "Missing '$1' in PATH"; exit 1; }; }

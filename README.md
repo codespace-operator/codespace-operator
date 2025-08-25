@@ -101,7 +101,7 @@ We use `*.codespace.test` for DNS during dev (resolves to `127.0.0.1`).
 Runs kind, installs ingress, builds/loads images, installs CRDs, deploys chart, applies a demo session.
 
 ```bash
-./hack/tests/setup.sh
+./misc/tests/setup.sh
 ```
 
 When it finishes:
@@ -136,7 +136,7 @@ helm upgrade --install codespace-operator oci://ghcr.io/codespace-operator/chart
 Cleanup:
 
 ```bash
-./hack/tests/teardown.sh
+./misc/tests/teardown.sh
 ```
 
 ---
@@ -199,7 +199,7 @@ ui/                       # React (Vite) admin UI
 internal/                 # controllers & helpers
 api/                      # CRD Go types
 config/                   # kustomize, generated CRDs under config/crd/bases
-hack/tests/               # local setup scripts for kind
+misc/tests/               # local setup scripts for kind
 ```
 
 ---

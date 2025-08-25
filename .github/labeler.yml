@@ -51,7 +51,6 @@ area:tests:
       - any-glob-to-any-file:
           - "test/**"
           - "internal/**/**_test.go"
-          - "hack/tests/**"
 
 area:docs:
   - changed-files:

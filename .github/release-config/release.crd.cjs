@@ -23,9 +23,9 @@ module.exports = {
         'make manifests',
         'make kustomize',
         'mkdir -p dist',
-        './bin/kustomize build config/crd > dist/codespace-operator-crds.yaml',
+        './bin/kustomize build config/crd > dist/codespace-operator-${nextRelease.version}-crds.yaml',
         'tar -czf dist/codespace-operator-crds-${nextRelease.version}.tgz -C config/crd bases',
-        'cd dist && sha256sum codespace-operator-crds.yaml codespace-operator-crds-${nextRelease.version}.tgz > SHA256SUMS.txt'
+        'cd dist && sha256sum codespace-operator-${nextRelease.version}-crds.yaml codespace-operator-crds-${nextRelease.version}.tgz > SHA256SUMS.txt'
       ].join(' && ')
     }],
     ['@semantic-release/git', {
@@ -34,7 +34,7 @@ module.exports = {
     }],
     ['@semantic-release/github', {
       assets: [
-        { path: 'dist/codespace-operator-crds.yaml', label: 'codespace-operator-crds.yaml' },
+        { path: 'dist/codespace-operator-${nextRelease.version}-crds.yaml', label: 'codespace-operator-${nextRelease.version}-crds.yaml' },
         { path: 'dist/codespace-operator-crds-${nextRelease.version}.tgz', label: 'codespace-operator-crds-${nextRelease.version}.tgz' },
         { path: 'dist/SHA256SUMS.txt', label: 'SHA256SUMS.txt' }
       ]
