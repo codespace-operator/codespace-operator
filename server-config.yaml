@@ -20,9 +20,9 @@ debug: true
 jwt_secret: "change-me" # HS256 key for server-issued session cookie
 
 # Dev-only bootstrap login (local username/password)
-enable_bootstrap_login: false
-bootstrap_user: ""
-bootstrap_password: ""
+enable_bootstrap_login: true
+bootstrap_user: "admin"
+bootstrap_password: "admin"
 
 # Session cookie
 session_cookie_name: "" # defaults to "codespace_session" when empty
@@ -31,7 +31,7 @@ allow_token_param: false # allow ?access_token=... (NOT recommended)
 
 # OIDC (leave blank to disable)
 oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
-oidc_issuer_url: "https://keycloak.codespace.test/realms/codespace" # e.g. "https://dev-xxxx.okta.com"
+oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace%20DEV" # e.g. "https://dev-xxxx.okta.com"
 oidc_client_id: "codespace-server"
 oidc_client_secret: "dev-secret"
 oidc_redirect_url: "http://console.codespace.test/auth/callback" # e.g. "https://your-host/auth/callback"
