@@ -33,10 +33,10 @@ module.exports = {
       message: 'chore(release): crd ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
     }],
     ['@semantic-release/github', {
-      assets: [
-        { path: 'dist/codespace-operator-${nextRelease.version}-crds.yaml', label: 'codespace-operator-${nextRelease.version}-crds.yaml' },
-        { path: 'dist/codespace-operator-crds-${nextRelease.version}.tgz', label: 'codespace-operator-crds-${nextRelease.version}.tgz' },
-        { path: 'dist/SHA256SUMS.txt', label: 'SHA256SUMS.txt' }
+  assets: [
+        'dist/codespace-operator-*-crds.yaml',
+        'dist/codespace-operator-crds-*.tgz',
+        'dist/SHA256SUMS.txt'
       ]
     }]
   ]
