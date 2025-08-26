@@ -1,6 +1,10 @@
 # ---------- Config ----------
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
 KIND_CONFIG="${KIND_CONFIG:-misc/tests/manifests/kind.yaml}"
+BUILD_SCRIPT="${BUILD_SCRIPT:-misc/tests/build.sh}"
+DEPLOY_SCRIPT="${DEPLOY_SCRIPT:-misc/tests/deploy.sh}"
+SETUP_CONFIG="${SETUP_CONFIG:-misc/tests/config.sh}"
+
 NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator}"
 NAMESPACE_KEYCLOAK="${NAMESPACE_KEYCLOAK:-keycloak}"
 
@@ -25,8 +29,9 @@ SCHEME="http"
 [[ "${WITH_TLS}" == "true" ]] && SCHEME="https"
 CONSOLE_HOST="console.${HOST_DOMAIN}"
 KEYCLOAK_HOST="keycloak.${HOST_DOMAIN}"
+KEYCLOAK_INTERNAL_HOST="keycloak-keycloakx-http.keycloak.svc.cluster.local"
 REDIRECT_URI="${SCHEME}://${CONSOLE_HOST}/auth/callback"
-ISSUER="${SCHEME}://${KEYCLOAK_HOST}/realms/codespace"
+ISSUER="${SCHEME}://${KEYCLOAK_INTERNAL_HOST}/realms/codespace"
 HOSTNAME_URL="${SCHEME}://${KEYCLOAK_HOST}"
 
 # ----- Keycloak manifests/templates -----

@@ -104,6 +104,34 @@ YAML
     kubectl apply -n default -f - <<YAML
 apiVersion: cert-manager.io/v1
 kind: Certificate
-metadata: { name: ${DEMO_NAME}-cert }
+metadata:
+  name: ${DEMO_NAME}-cert
 spec:
-  secretName: ${DEMO_NAM_
+  secretName: ${DEMO_NAME}-tls
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+  dnsNames:
+  - ${HOST}
+YAML
+    TLS_SECRET="${DEMO_NAME}-tls"
+  else
+    TLS_SECRET=""
+  fi
+
+  # Render and apply
+  sed -e "s/__DEMO_NAME__/${DEMO_NAME}/g" \
+      -e "s/__HOST__/${HOST}/g" \
+      -e "s/__TLS_SECRET__/${TLS_SECRET}/g" \
+      "${DEMO_SESSION_FILE}" | kubectl apply -f -
+
+  echo "Waiting for Session to be Ready (2m timeout)..."
+  kubectl -n default wait --for=jsonpath='{.status.phase}'=Ready "session/${DEMO_NAME}" --timeout=120s || true
+
+  echo ">>> Demo endpoints:"
+  echo "  UI    : http://console.${HOST_DOMAIN}/"
+  echo "  App   : http://${HOST}   (Ingress)"
+  echo "  HTTPS : https://${HOST}  (if TLS enabled)"
+fi
+
+echo ">>> Done."
