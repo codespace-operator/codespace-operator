@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   CardBody,
+  Title,
 } from "@patternfly/react-core";
 import { PlusCircleIcon } from "@patternfly/react-icons";
 import { SessionsTable } from "../components/SessionsTable";
@@ -114,50 +115,41 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
 
     return (
       <>
-        <PageSection isWidthLimited style={{ padding: "1rem" }}>
-          <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center">
-            <div>
-              <h1 className="pf-c-title pf-m-2xl">Sessions</h1>
-              <p className="pf-u-color-200">
-                Manage your development environments and IDE sessions
-              </p>
+        <PageSection
+          variant={PageSectionVariants.light}
+          className="sessions-header"
+        >
+          <div className="sessions-header-content">
+            <Title headingLevel="h1" size="2xl">
+              Sessions
+            </Title>
+            <div className="sessions-actions">
+              <TextInput
+                aria-label="Search sessions"
+                value={query}
+                onChange={(_, v) => setQuery(v)}
+                placeholder="Filter sessions..."
+                className="sessions-search"
+              />
+              <Button
+                icon={<PlusCircleIcon />}
+                variant="primary"
+                onClick={() => setCreateOpen(true)}
+                isDisabled={creatableNamespaces.length === 0 || ixLoading}
+                title={
+                  creatableNamespaces.length === 0
+                    ? "You lack 'create' permission in any namespace"
+                    : undefined
+                }
+              >
+                Create Session
+              </Button>
             </div>
           </div>
-          <Toolbar>
-            <ToolbarContent>
-              <ToolbarItem>
-                <TextInput
-                  aria-label="Search sessions"
-                  value={query}
-                  onChange={(_, v) => setQuery(v)}
-                  placeholder="Filter by name, image, or host..."
-                />
-              </ToolbarItem>
-              <ToolbarItem>
-                <Button
-                  icon={<PlusCircleIcon />}
-                  variant="primary"
-                  onClick={() => setCreateOpen(true)}
-                  isDisabled={creatableNamespaces.length === 0 || ixLoading}
-                  title={
-                    creatableNamespaces.length === 0
-                      ? "You lack 'create' permission in any namespace"
-                      : undefined
-                  }
-                >
-                  Create Session
-                </Button>
-              </ToolbarItem>
-            </ToolbarContent>
-          </Toolbar>
         </PageSection>
 
-        <PageSection
-          isFilled
-          isWidthLimited
-          style={{ paddingLeft: "2rem", paddingRight: "2rem" }}
-        >
-          <Card>
+        <PageSection isFilled className="sessions-content">
+          <Card className="sessions-table-card">
             <CardBody>
               <SessionsTable
                 loading={loading}

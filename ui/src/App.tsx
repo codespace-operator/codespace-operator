@@ -202,10 +202,22 @@ function AppChrome({
 }
 
 export default function App() {
-  const { user } = useAuth();
-  const { data: ix, error: ixError } = useIntrospection({ discover: true });
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const ixEnabled = isAuthenticated && !isLoading;
+
+  const { data: ix, error: ixError } = useIntrospection({
+    discover: true,
+    enabled: ixEnabled,
+  });
 
   const alerts = useAlerts();
+
+  useEffect(() => {
+    // toast errors once we *expect* introspection to work
+    if (ixError && ixEnabled) alerts.push(ixError, "danger");
+  }, [ixError, ixEnabled]);
+
   const location = useLocation();
   const navigate = useNavigate();
   const sessionsPageRef = useRef<SessionsPageRef>(null);

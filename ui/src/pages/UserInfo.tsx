@@ -10,17 +10,13 @@ import {
   DescriptionListDescription,
   Label,
   Button,
-  Alert,
   Grid,
   GridItem,
   List,
   ListItem,
-  CodeBlock,
-  CodeBlockCode,
   Spinner,
   EmptyState,
   EmptyStateBody,
-  Divider,
   Tooltip,
 } from "@patternfly/react-core";
 import {
@@ -117,15 +113,9 @@ export function UserInfoPage() {
 
   const renderBool = (v: boolean) =>
     v ? (
-      <span className="pf-u-color-success-400">
-        <CheckCircleIcon className="pf-u-mr-xs" />
-        Allowed
-      </span>
+      <CheckCircleIcon className="pf-u-color-success-400" />
     ) : (
-      <span className="pf-u-color-danger-400">
-        <TimesCircleIcon className="pf-u-mr-xs" />
-        Denied
-      </span>
+      <TimesCircleIcon className="pf-u-color-danger-400" />
     );
 
   // Ordered list of actions for namespace permissions table
@@ -134,28 +124,28 @@ export function UserInfoPage() {
   > = ["get", "list", "watch", "create", "update", "delete", "scale"];
 
   return (
-    <PageSection isWidthLimited style={{ padding: "1rem" }}>
-      <div className="pf-u-mb-lg">
-        <Title headingLevel="h1" className="pf-u-mb-sm">
-          User Management
+    <PageSection className="user-info-page">
+      <div className="user-info-header">
+        <Title headingLevel="h1" size="2xl">
+          Account
         </Title>
-        <p className="pf-u-color-200">
-          View your account information, permissions, and authentication details
-        </p>
       </div>
 
-      <Grid hasGutter>
-        <GridItem lg={6}>
-          <Card>
+      <Grid hasGutter className="user-info-grid">
+        {/* Account Card */}
+        <GridItem lg={4}>
+          <Card className="user-info-card">
             <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <UserIcon className="pf-u-mr-sm" />
-                Account Information
-              </Title>
+              <div className="card-header">
+                <UserIcon />
+                <Title headingLevel="h3" size="lg">
+                  Profile
+                </Title>
+              </div>
 
-              <DescriptionList isHorizontal>
+              <DescriptionList isCompact className="user-profile-list">
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Username</DescriptionListTerm>
+                  <DescriptionListTerm>User</DescriptionListTerm>
                   <DescriptionListDescription>
                     <strong>{user || "Not authenticated"}</strong>
                   </DescriptionListDescription>
@@ -163,7 +153,7 @@ export function UserInfoPage() {
 
                 {me?.provider && (
                   <DescriptionListGroup>
-                    <DescriptionListTerm>Auth Provider</DescriptionListTerm>
+                    <DescriptionListTerm>Provider</DescriptionListTerm>
                     <DescriptionListDescription>
                       {me.provider}
                     </DescriptionListDescription>
@@ -179,227 +169,148 @@ export function UserInfoPage() {
                   </DescriptionListGroup>
                 )}
 
-                {tokenPayload && (
-                  <>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>Token Status</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        <Label color={isExpired ? "red" : "green"}>
-                          {isExpired ? "Expired" : "Active"}
-                        </Label>
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>Issued</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {tokenPayload.iat
-                          ? new Date(tokenPayload.iat * 1000).toLocaleString()
-                          : "Unknown"}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>Expires</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {tokenPayload.exp
-                          ? new Date(tokenPayload.exp * 1000).toLocaleString()
-                          : "Never"}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                  </>
-                )}
-
                 {me?.roles?.length ? (
                   <DescriptionListGroup>
-                    <DescriptionListTerm>Roles / Groups</DescriptionListTerm>
+                    <DescriptionListTerm>Roles</DescriptionListTerm>
                     <DescriptionListDescription>
-                      {me.roles.map((r) => (
-                        <Label
-                          key={r}
-                          color="blue"
-                          className="pf-u-mr-sm pf-u-mb-sm"
-                        >
-                          {r}
-                        </Label>
-                      ))}
+                      <div className="role-tags">
+                        {me.roles.map((r) => (
+                          <Label key={r} color="blue" isCompact>
+                            {r}
+                          </Label>
+                        ))}
+                      </div>
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 ) : null}
               </DescriptionList>
 
-              <div className="pf-u-mt-lg">
-                <Button variant="secondary" onClick={logout}>
-                  Sign out
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="pf-u-mt-md">
-            <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <KeyIcon className="pf-u-mr-sm" />
-                Authentication Token
-              </Title>
-
-              {isExpired && (
-                <Alert
-                  variant="warning"
-                  isInline
-                  title="Token Expired"
-                  className="pf-u-mb-md"
-                >
-                  Your authentication token has expired. Please sign in again.
-                </Alert>
-              )}
-
-              <CodeBlock>
-                <CodeBlockCode>
-                  {token
-                    ? `${token.substring(0, 50)}...`
-                    : "No token available"}
-                </CodeBlockCode>
-              </CodeBlock>
-
-              <p className="pf-u-mt-sm pf-u-color-200 pf-u-font-size-sm">
-                JWT tokens contain your identity information and are used to
-                authenticate API requests.
-              </p>
+              <Button variant="link" onClick={logout} className="logout-button">
+                Sign out
+              </Button>
             </CardBody>
           </Card>
         </GridItem>
 
-        <GridItem lg={6}>
-          <Card>
+        {/* Token Card */}
+        <GridItem lg={4}>
+          <Card className="user-info-card">
             <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <ShieldAltIcon className="pf-u-mr-sm" />
-                Permissions & RBAC
-              </Title>
+              <div className="card-header">
+                <KeyIcon />
+                <Title headingLevel="h3" size="lg">
+                  Token
+                </Title>
+              </div>
+
+              <DescriptionList isCompact>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Status</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Label color={isExpired ? "red" : "green"} isCompact>
+                      {isExpired ? "Expired" : "Active"}
+                    </Label>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+
+                {tokenPayload?.iat && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Issued</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {new Date(tokenPayload.iat * 1000).toLocaleString()}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+
+                {tokenPayload?.exp && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Expires</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {new Date(tokenPayload.exp * 1000).toLocaleString()}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+              </DescriptionList>
+
+              <div className="token-preview">
+                <code>
+                  {token ? `${token.substring(0, 40)}...` : "No token"}
+                </code>
+              </div>
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* Permissions Card */}
+        <GridItem lg={4}>
+          <Card className="user-info-card">
+            <CardBody>
+              <div className="card-header">
+                <ShieldAltIcon />
+                <Title headingLevel="h3" size="lg">
+                  Permissions
+                </Title>
+              </div>
 
               {loading ? (
-                <div className="pf-u-text-align-center pf-u-py-lg">
+                <div className="loading-state">
                   <Spinner size="lg" />
-                  <div className="pf-u-mt-md">Loading permissions...</div>
                 </div>
               ) : error ? (
-                <EmptyState>
+                <EmptyState isSmall>
                   <EmptyStateBody>
-                    <ExclamationTriangleIcon
-                      className="pf-u-mb-md"
-                      style={{
-                        fontSize: "2rem",
-                        color: "var(--pf-global--warning-color--100)",
-                      }}
-                    />
+                    <ExclamationTriangleIcon className="error-icon" />
                     <div>{error}</div>
                   </EmptyStateBody>
                 </EmptyState>
               ) : rbac ? (
-                <>
-                  <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                    Cluster Permissions
-                  </Title>
-                  <div
-                    className="pf-u-mb-lg pf-u-p-md"
-                    style={{
-                      backgroundColor: "rgba(0,0,0,0.05)",
-                      borderRadius: 4,
-                    }}
-                  >
-                    <div className="pf-u-display-flex pf-u-align-items-center pf-u-mb-sm">
-                      <strong>namespaces.list</strong>
+                <div className="permissions-content">
+                  {/* Cluster permissions */}
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>namespaces.list</span>
                       <Tooltip content="Required for 'All namespaces' discovery">
-                        <InfoCircleIcon className="pf-u-ml-sm pf-u-color-200" />
+                        <InfoCircleIcon />
                       </Tooltip>
                     </div>
                     {renderBool(!!rbac?.cluster?.casbin?.namespaces?.list)}
                   </div>
 
-                  <Divider className="pf-u-mb-md" />
-
-                  <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                    Effective Permissions by Namespace
-                  </Title>
-
-                  {Object.keys(rbac?.domains ?? {}).length === 0 ? (
-                    <p className="pf-u-color-200">No namespaces to display.</p>
-                  ) : (
-                    <div>
-                      {Object.entries(rbac.domains).map(([ns, obj]) => (
-                        <div
-                          key={ns}
-                          className="pf-u-mb-md pf-u-p-md"
-                          style={{
-                            backgroundColor: "rgba(0,0,0,0.05)",
-                            borderRadius: 4,
-                          }}
-                        >
-                          <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center pf-u-mb-sm">
-                            <strong>Namespace</strong>
-                            <Label color="blue" variant="filled">
-                              {ns === "*" ? "All namespaces" : ns}
-                            </Label>
+                  {/* Namespace permissions */}
+                  <div className="namespace-permissions">
+                    <Title headingLevel="h4" size="md" className="pf-u-mb-sm">
+                      Namespaces
+                    </Title>
+                    {Object.keys(rbac?.domains ?? {}).length === 0 ? (
+                      <span className="no-namespaces">None</span>
+                    ) : (
+                      <div className="namespace-list">
+                        {Object.entries(rbac.domains).map(([ns, obj]) => (
+                          <div key={ns} className="namespace-item">
+                            <div className="namespace-header">
+                              <Label color="blue" isCompact>
+                                {ns === "*" ? "All" : ns}
+                              </Label>
+                            </div>
+                            <div className="namespace-actions">
+                              {actionOrder.map((act) => (
+                                <div key={act} className="action-item">
+                                  <span>{act}</span>
+                                  {renderBool(!!obj.session?.[act])}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-
-                          <List isPlain>
-                            {actionOrder.map((act) => (
-                              <ListItem
-                                key={act}
-                                className="pf-u-font-size-sm pf-u-color-200"
-                              >
-                                <span className="pf-u-mr-sm">
-                                  session.{act}
-                                </span>
-                                {renderBool(!!obj.session?.[act])}
-                              </ListItem>
-                            ))}
-                          </List>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : null}
             </CardBody>
           </Card>
         </GridItem>
       </Grid>
-
-      <Card className="pf-u-mt-lg">
-        <CardBody>
-          <Title headingLevel="h2" className="pf-u-mb-md">
-            Integration Information
-          </Title>
-
-          <Alert
-            variant="info"
-            isInline
-            title="OIDC + Casbin"
-            className="pf-u-mb-md"
-          >
-            The server validates OIDC tokens and issues a short-lived session
-            cookie. Casbin evaluates permissions dynamically from a ConfigMap
-            and supports hot-reload.
-          </Alert>
-
-          <DescriptionList isHorizontal>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Authentication</DescriptionListTerm>
-              <DescriptionListDescription>
-                {me?.provider || "N/A"}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>RBAC Engine</DescriptionListTerm>
-              <DescriptionListDescription>
-                Casbin (model/policy from ConfigMap)
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </CardBody>
-      </Card>
     </PageSection>
   );
 }
