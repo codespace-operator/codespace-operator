@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,13 +27,16 @@ type oidcDeps struct {
 	verifier   *oidc.IDTokenVerifier
 	oauth2     *oauth2.Config
 	httpClient *http.Client
+	endSession string
 }
 
 func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 	cfg := deps.config
 	oidcEnabled := false
+	var od *oidcDeps
 	if cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" && cfg.OIDCRedirectURL != "" {
-		od, err := newOIDCDeps(context.Background(), cfg)
+		var err error
+		od, err = newOIDCDeps(context.Background(), cfg)
 		if err != nil {
 			panic(fmt.Errorf("oidc init: %w", err))
 		}
@@ -40,14 +44,14 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 		mux.Handle("/auth/callback", handleOIDCCallback(cfg, od))
 		oidcEnabled = true
 	}
-	if cfg.EnableBootstrapLogin {
+	if cfg.EnableLocalLogin {
 		if oidcEnabled {
 			mux.Handle("/auth/local-login", handleLogin(cfg))
 		} else {
 			mux.Handle("/auth/login", handleLogin(cfg))
 		}
 	}
-	mux.Handle("/auth/logout", handleLogout(deps.config))
+	mux.Handle("/auth/logout", handleLogout(deps.config, od))
 	mux.Handle("/api/v1/me", handleMe())
 
 	mux.Handle("/auth/features", handleAuthFeatures(cfg, oidcEnabled))
@@ -84,7 +88,11 @@ func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, erro
 		RedirectURL:  cfg.OIDCRedirectURL,
 		Scopes:       scopes,
 	}
-	return &oidcDeps{provider: provider, verifier: verifier, oauth2: oauth2cfg, httpClient: hc}, nil
+	var meta struct {
+		EndSessionEndpoint string `json:"end_session_endpoint"`
+	}
+	_ = provider.Claims(&meta)
+	return &oidcDeps{provider: provider, verifier: verifier, oauth2: oauth2cfg, httpClient: hc, endSession: meta.EndSessionEndpoint}, nil
 }
 
 func handleOIDCStart(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc {
@@ -218,7 +226,16 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 			SessionCookieName: cfg.SessionCookieName,
 			AllowTokenParam:   cfg.AllowTokenParam,
 		}, tok, sessionTTL)
-
+		// Keep id_token for RP-initiated logout (short-lived, httpOnly)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "oidc_id_token_hint",
+			Value:    rawIDToken,
+			Path:     "/auth",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   300, // 5 minutes is enough for a logout click
+		})
 		expireTempCookie(w, oidcStateCookie)
 		expireTempCookie(w, oidcNonceCookie)
 		expireTempCookie(w, oidcPKCECookie)
@@ -238,20 +255,38 @@ func handleAuthFeatures(cfg *config.ServerConfig, oidcEnabled bool) http.Handler
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{
-			"oidcEnabled":      oidcEnabled,
-			"bootstrapEnabled": cfg.EnableBootstrapLogin,
-			"localLoginPath":   local,
+			"oidcEnabled":       oidcEnabled,
+			"localLoginEnabled": cfg.EnableLocalLogin,
+			"localLoginPath":    local,
 		})
 	}
 }
 
-func handleLogout(cfg *config.ServerConfig) http.HandlerFunc {
+func handleLogout(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clearAuthCookie(w, &configLike{
 			JWTSecret:         cfg.JWTSecret,
 			SessionCookieName: cfg.SessionCookieName,
 			AllowTokenParam:   cfg.AllowTokenParam,
 		})
+		// Also sign out of IdP if we can
+		if od != nil && od.endSession != "" {
+			// read the short-lived id_token_hint
+			var hint string
+			if c, err := r.Cookie("oidc_id_token_hint"); err == nil {
+				hint = c.Value
+			}
+			post := cfg.OIDCRedirectURL // send user back to our app
+			// Build logout URL (Keycloak & OIDC RP-initiated logout)
+			u := od.endSession + "?post_logout_redirect_uri=" + url.QueryEscape(post)
+			if hint != "" {
+				u += "&id_token_hint=" + url.QueryEscape(hint)
+			}
+			// expire helper cookie
+			expireTempCookie(w, "oidc_id_token_hint")
+			http.Redirect(w, r, u, http.StatusFound)
+			return
+		}
 		writeJSON(w, map[string]string{"status": "logged_out"})
 	}
 }

@@ -18,7 +18,7 @@ Thanks for helping improve **codespace-operator**! This project is a mono‑repo
 
 ## Repo Areas & Release Lanes
 
-- **Operator Images ("App" lane)** — operator/controller/server/UI
+- **Operator Images ("App" lane)** - operator/controller/server/UI
   - Tag prefix: `app-vX.Y.Z`
   - Config: `release.operator.cjs`
   - Scope(s): `operator`, `controller`, `server`, `ui`

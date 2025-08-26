@@ -32,11 +32,12 @@ var (
 )
 
 type serverDeps struct {
-	typed  client.Client
-	dyn    dynamic.Interface
-	scheme *runtime.Scheme
-	config *config.ServerConfig
-	rbac   *RBAC
+	typed      client.Client
+	dyn        dynamic.Interface
+	scheme     *runtime.Scheme
+	config     *config.ServerConfig
+	rbac       *RBAC
+	localUsers *localUsers
 }
 
 func main() {
@@ -47,10 +48,11 @@ func main() {
 		Run:   runServer,
 	}
 
+	rootCmd.Flags().String("config", "", "Path to config file or directory (highest precedence)")
 	rootCmd.Flags().IntP("port", "p", 8080, "Server port")
 	rootCmd.Flags().String("host", "", "Server host (empty for all interfaces)")
 	rootCmd.Flags().String("allow-origin", "", "CORS allow origin")
-	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
+	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().Float32("kube-qps", 50.0, "Kubernetes client QPS limit")
 	rootCmd.Flags().Int("kube-burst", 100, "Kubernetes client burst limit")
 
@@ -74,12 +76,20 @@ func main() {
 }
 
 func runServer(cmd *cobra.Command, args []string) {
+	// Highest precedence: --config (file or dir)
+	if cmd.Flags().Changed("config") {
+		p, _ := cmd.Flags().GetString("config")
+		if strings.TrimSpace(p) != "" {
+			// make it visible to config.LoadServerConfig/setupViper
+			_ = os.Setenv("CODESPACE_SERVER_CONFIG_DEFAULT_PATH", p)
+		}
+	}
+
 	cfg, err := config.LoadServerConfig()
 	configureLogger(cfg.LogLevel)
 	if err != nil {
 		logger.Fatal("Failed to load configuration", "err", err)
 	}
-
 	// CLI overrides
 	setString := func(name *string, flag string) {
 		if cmd.Flags().Changed(flag) {
@@ -117,7 +127,7 @@ func runServer(cmd *cobra.Command, args []string) {
 		cfg.OIDCScopes, _ = cmd.Flags().GetStringSlice("oidc-scopes")
 	}
 	setBool(&cfg.OIDCInsecureSkipVerify, "oidc-insecure-skip-verify")
-	setBool(&cfg.EnableBootstrapLogin, "enable-bootstrap-login")
+	setBool(&cfg.EnableLocalLogin, "enable-local-login")
 	setBool(&cfg.AllowTokenParam, "allow-token-param")
 	setInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
 	setString(&cfg.SessionCookieName, "session-cookie-name")
@@ -164,12 +174,18 @@ func runServer(cmd *cobra.Command, args []string) {
 		logger.Fatal("RBAC init failed", "err", err)
 	}
 
+	users, err := loadLocalUsers(cfg.LocalUsersPath)
+	if err != nil {
+		logger.Fatal("local users load failed", "err", err)
+	}
+
 	deps := &serverDeps{
-		typed:  typed,
-		dyn:    dyn,
-		scheme: scheme,
-		config: cfg,
-		rbac:   rbac,
+		typed:      typed,
+		dyn:        dyn,
+		scheme:     scheme,
+		config:     cfg,
+		rbac:       rbac,
+		localUsers: users,
 	}
 
 	mux := setupHandlers(deps)

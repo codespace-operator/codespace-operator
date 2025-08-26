@@ -44,8 +44,8 @@ jobs:
         with:
           github-token: ${{ secrets.HELM_REPO_TOKEN }}
           script: |
-            const owner = 'codespace-operator'        // <— set your org
-            const repo  = 'charts'                    // <— matches checkout
+            const owner = 'codespace-operator'        // <- set your org
+            const repo  = 'charts'                    // <- matches checkout
             const head  = `${owner}:${{ steps.bump.outputs.branch }}`
             const base  = 'main'
             const title = `chore(helm): bump appVersion to ${{ steps.ver.outputs.version }}`

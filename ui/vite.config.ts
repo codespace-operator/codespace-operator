@@ -3,21 +3,22 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
-  build: { 
+  build: {
     outDir: "dist",
     assetsDir: "assets",
     rollupOptions: {
       output: {
-        manualChunks: undefined
-      }
-    }
+        manualChunks: undefined,
+      },
+    },
   },
   // Important: Set base to relative paths
   base: "./",
   server: {
-    port: 5173,
+    port: 8080,
     proxy: {
-      '/api': { target: 'http://localhost:9090', changeOrigin: true }
-    }
-  }
+      "/api": { target: "http://localhost:8080", changeOrigin: true },
+      "/auth": { target: "http://localhost:8080", changeOrigin: true }, // ← add this
+    },
+  },
 });

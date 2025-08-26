@@ -91,16 +91,17 @@ func parseJWT(token string, secret []byte) (*claims, error) {
 // === Cookie helpers ========================================================
 
 func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *configLike, token string, ttl time.Duration) {
-	c := &http.Cookie{
+	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+
+	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName(cfg),
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true, // expect TLS in prod
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(ttl.Seconds()),
-	}
-	http.SetCookie(w, c)
+	})
 }
 
 func clearAuthCookie(w http.ResponseWriter, cfg *configLike) {
@@ -165,7 +166,7 @@ func requireAPIToken(cfg *configLike, next http.Handler) http.Handler {
 			}
 		}
 
-		// 3) Optional query param (discouraged — behind a flag)
+		// 3) Optional query param (discouraged - behind a flag)
 		if tok == "" && cfg.AllowTokenParam {
 			tok = r.URL.Query().Get("access_token")
 		}

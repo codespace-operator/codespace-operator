@@ -16,8 +16,10 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 
 	// API (top-level middleware applies auth)
 	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
+
 	mux.HandleFunc("/api/v1/server/sessions", handleServerSessions(deps))
 	mux.HandleFunc("/api/v1/server/sessions/", handleServerSessionsWithPath(deps))
+
 	mux.HandleFunc("/api/v1/introspect", handleIntrospect(deps))
 	// UI
 	logger.Info("Setting up static web UI...")

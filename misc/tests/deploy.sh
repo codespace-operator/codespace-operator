@@ -64,7 +64,7 @@ helm upgrade --install codespace-operator ${HELM_CHART} \
   --set server.ingress.enabled=true \
   --set server.ingress.hosts[0].host="${CONSOLE_HOST}" \
   --set server.ingress.hosts[0].path="/" \
-  --set server.enableBootstrapLogin=false \
+  --set server.enableLocalLogin=true \
   --set server.oidc.issuer="${ISSUER}" \
   --set server.oidc.clientID="${OIDC_CLIENT_ID}" \
   --set server.oidc.clientSecret="${OIDC_CLIENT_SECRET}" \

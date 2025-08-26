@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -35,10 +36,10 @@ type ServerConfig struct {
 	// Sessions / auth
 	JWTSecret string `mapstructure:"jwt_secret"`
 
-	// Dev bootstrap login (local user/pass)
-	EnableBootstrapLogin bool   `mapstructure:"enable_bootstrap_login"`
-	BootstrapUser        string `mapstructure:"bootstrap_user"`
-	BootstrapPassword    string `mapstructure:"bootstrap_password"`
+	// Local login
+	EnableLocalLogin  bool   `mapstructure:"enable_local_login"`
+	BootstrapUser     string `mapstructure:"bootstrap_user"`
+	BootstrapPassword string `mapstructure:"bootstrap_password"`
 
 	// Session cookie
 	SessionCookieName string `mapstructure:"session_cookie_name"`
@@ -56,6 +57,7 @@ type ServerConfig struct {
 	// RBAC (Casbin) files
 	RBACModelPath  string `mapstructure:"rbac_model_path"`
 	RBACPolicyPath string `mapstructure:"rbac_policy_path"`
+	LocalUsersPath string `mapstructure:"local_users_path"`
 }
 
 // ControllerConfig holds configuration for the session controller
@@ -108,7 +110,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("log_level", "info")
 	v.SetDefault("jwt_secret", "change-me")
 
-	v.SetDefault("enable_bootstrap_login", false)
+	v.SetDefault("enable_local_login", false)
 	v.SetDefault("bootstrap_user", "")
 	v.SetDefault("bootstrap_password", "")
 
@@ -201,19 +203,66 @@ func (c *ServerConfig) SessionTTL() time.Duration {
 // setupViper configures common Viper settings.
 // envPrefix: e.g. "CODESPACE_SERVER"
 // fileBase:  e.g. "server-config" (-> server-config.yaml)
+// setupViper configures common Viper settings.
+// envPrefix: e.g. "CODESPACE_SERVER"
+// fileBase:  e.g. "server-config" (-> server-config.yaml)
 func setupViper(v *viper.Viper, envPrefix, fileBase string) {
-	// Environment (UPPER_SNAKE with prefix)
+	// --- Environment (UPPER_SNAKE with prefix) ---
 	v.SetEnvPrefix(envPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
-	// Config file (YAML) — searched in common paths
+	// Logging helper (default logger only after logger is setup)
+	now := func() string { return time.Now().Format(time.RFC3339) }
+	log := func(f string, a ...any) {
+		fmt.Fprintf(os.Stderr, now()+" "+f+"\n", a...)
+	}
+
+	// --- Single knob: <PREFIX>_CONFIG_DEFAULT_PATH (file OR directory) ---
+	var dirOverride string
+	if raw := strings.TrimSpace(os.Getenv(envPrefix + "_CONFIG_DEFAULT_PATH")); raw != "" {
+		p := os.ExpandEnv(raw)
+
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			// IMPORTANT: pass the DIRECTORY to AddConfigPath, not a file path.
+			dirOverride = p // remember to search here first
+		} else {
+			// Treat as a FILE path (relative or absolute)
+			if !filepath.IsAbs(p) {
+				if abs, err := filepath.Abs(p); err == nil {
+					p = abs
+				}
+			}
+			if _, err := os.Stat(p); err != nil {
+				panic(fmt.Errorf("%s_CONFIG_DEFAULT_PATH points to missing file: %s (err=%w)", envPrefix, p, err))
+			}
+			v.SetConfigFile(p)
+			if err := v.ReadInConfig(); err != nil {
+				panic(fmt.Errorf("failed to read %s_CONFIG_DEFAULT_PATH=%s: %w", envPrefix, p, err))
+			}
+			log("loaded config override (file): %s", v.ConfigFileUsed())
+			return
+		}
+	}
+
+	// --- Directory search mode ---
 	v.SetConfigName(fileBase)
 	v.SetConfigType("yaml")
+
+	// If a dir override was provided, search it FIRST (can be relative)
+	if dirOverride != "" {
+		v.AddConfigPath(dirOverride)
+	}
+
+	// Default search locations (in order)
 	v.AddConfigPath(".")
 	v.AddConfigPath("/etc/codespace-operator/")
 	v.AddConfigPath("$HOME/.codespace-operator/")
 
-	// Optional file — ignore if missing
-	_ = v.ReadInConfig()
+	// Optional file - ignore if missing
+	if err := v.ReadInConfig(); err == nil {
+		log("loaded config (search): %s", v.ConfigFileUsed())
+	} else {
+		log("no config file found via search (env-only is fine)")
+	}
 }
