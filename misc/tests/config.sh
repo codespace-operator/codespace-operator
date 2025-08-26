@@ -30,8 +30,8 @@ SCHEME="http"
 CONSOLE_HOST="console.${HOST_DOMAIN}"
 KEYCLOAK_HOST="keycloak.${HOST_DOMAIN}"
 KEYCLOAK_INTERNAL_HOST="keycloak-keycloakx-http.keycloak.svc.cluster.local"
-REDIRECT_URI="${SCHEME}://${CONSOLE_HOST}/auth/callback"
-ISSUER="${SCHEME}://${KEYCLOAK_INTERNAL_HOST}/realms/codespace"
+REDIRECT_URL="${SCHEME}://${CONSOLE_HOST}/auth/sso/callback"
+ISSUER="https://${KEYCLOAK_INTERNAL_HOST}/realms/codespace"
 HOSTNAME_URL="${SCHEME}://${KEYCLOAK_HOST}"
 
 # ----- Keycloak manifests/templates -----

@@ -21,6 +21,7 @@ jwt_secret: "change-me" # HS256 key for server-issued session cookie
 
 # Local login (username/password)
 enable_local_login: true
+local_users_path: ./cfg/server-users.yaml
 bootstrap_user: "admin"
 bootstrap_password: "admin"
 
@@ -34,7 +35,7 @@ oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC 
 oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV" # e.g. "https://dev-xxxx.okta.com"
 oidc_client_id: "codespace-server"
 oidc_client_secret: "dev-secret"
-oidc_redirect_url: "http://localhost:8080/auth/callback" # e.g. "https://your-host/auth/callback"
+oidc_redirect_url: "http://localhost:8080/auth/sso/callback" # e.g. "https://your-host/auth/callback"
 oidc_scopes: ["openid", "profile", "email"] # default used when empty: ["openid","profile","email"]
 
 # RBAC (Casbin) files - if empty, server uses built-in defaults

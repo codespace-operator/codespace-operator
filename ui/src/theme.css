@@ -108,6 +108,8 @@
 .pf-v6-c-masthead__main {
   flex-shrink: 0 !important;
   min-width: 0 !important;
+  max-width: 300px !important; /* Match sidebar width */
+  width: 300px !important;
 }
 
 .pf-c-masthead__brand,

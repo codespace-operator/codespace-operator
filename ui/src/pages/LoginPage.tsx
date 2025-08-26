@@ -16,39 +16,46 @@ import logoUrl from "../assets/codespace-operator.svg?url";
 
 const base = import.meta.env.VITE_API_BASE || "";
 
+interface AuthFeatures {
+  ssoEnabled: boolean;
+  localLoginEnabled: boolean;
+  ssoLoginPath: string;
+  localLoginPath: string;
+}
+
 export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
-  const { login } = useAuth();
+  const { loginLocal, loginSSO } = useAuth();
   const location = useLocation() as any;
   const next = (location?.state?.from?.pathname as string) || "/sessions";
 
-  const [features, setFeatures] = useState<{
-    oidcEnabled: boolean;
-    localLoginPath: string;
-  } | null>(null);
+  const [features, setFeatures] = useState<AuthFeatures | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Load authentication features
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch(`${base}/auth/features`, {
           credentials: "include",
         });
-        if (r.ok) setFeatures(await r.json());
+        if (r.ok) {
+          setFeatures(await r.json());
+        }
       } catch {
         setFeatures(null);
       }
     })();
   }, []);
 
-  const onSubmit: React.FormEventHandler = async (e) => {
+  const onLocalSubmit: React.FormEventHandler = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await login(username, password);
+      await loginLocal(username, password);
       onLoggedIn?.();
     } catch (e: any) {
       setError(e?.message || "Login failed");
@@ -56,6 +63,39 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
       setBusy(false);
     }
   };
+
+  const onSSOClick = () => {
+    loginSSO(next);
+  };
+
+  // Show loading state while features are being fetched
+  if (!features) {
+    return (
+      <div className="login-container">
+        <div className="login-content">
+          <div className="login-brand-section">
+            <div className="login-brand-content">
+              <Brand
+                src={logoUrl}
+                alt="Codespace Operator"
+                className="login-logo"
+              />
+              <div className="login-brand-text">
+                <Title
+                  headingLevel="h1"
+                  size="4xl"
+                  className="login-brand-title"
+                >
+                  Codespace Operator
+                </Title>
+                <p className="login-brand-subtitle">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
@@ -78,7 +118,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
             </div>
           </div>
 
-          {/* Optional: Add some feature highlights */}
+          {/* Feature highlights */}
           <div className="login-features">
             <div className="login-feature-item">
               <strong>Secure Access</strong>
@@ -104,7 +144,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
                   Sign in to your account
                 </Title>
                 <p className="login-subtitle">
-                  Enter your credentials to access the platform
+                  Choose your preferred authentication method
                 </p>
               </div>
 
@@ -119,76 +159,89 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
                 </Alert>
               )}
 
-              {features?.oidcEnabled && (
+              {!features.ssoEnabled && !features.localLoginEnabled && (
+                <Alert
+                  variant="warning"
+                  isInline
+                  title="No authentication methods available"
+                  className="login-error"
+                >
+                  Please contact your administrator to configure authentication.
+                </Alert>
+              )}
+
+              {features.ssoEnabled && (
                 <div className="login-sso-section">
                   <Button
                     variant="primary"
                     isBlock
                     size="lg"
-                    onClick={() => {
-                      window.location.href = `${base}/auth/login?next=${encodeURIComponent(next)}`;
-                    }}
+                    onClick={onSSOClick}
                     className="login-sso-button"
                   >
                     Continue with Single Sign-On
                   </Button>
 
-                  <div className="login-divider">
-                    <span className="login-divider-text">
-                      or sign in with credentials
-                    </span>
-                  </div>
+                  {features.localLoginEnabled && (
+                    <div className="login-divider">
+                      <span className="login-divider-text">
+                        or sign in with credentials
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <Form onSubmit={onSubmit} className="login-form">
-                <FormGroup
-                  label="Username"
-                  fieldId="username"
-                  isRequired
-                  className="login-form-group"
-                >
-                  <TextInput
-                    id="username"
-                    name="username"
-                    value={username}
-                    onChange={(_, v) => setUsername(String(v))}
+              {features.localLoginEnabled && (
+                <Form onSubmit={onLocalSubmit} className="login-form">
+                  <FormGroup
+                    label="Username"
+                    fieldId="username"
                     isRequired
-                    placeholder="Enter your username"
-                    className="login-input"
-                  />
-                </FormGroup>
+                    className="login-form-group"
+                  >
+                    <TextInput
+                      id="username"
+                      name="username"
+                      value={username}
+                      onChange={(_, v) => setUsername(String(v))}
+                      isRequired
+                      placeholder="Enter your username"
+                      className="login-input"
+                    />
+                  </FormGroup>
 
-                <FormGroup
-                  label="Password"
-                  fieldId="password"
-                  isRequired
-                  className="login-form-group"
-                >
-                  <TextInput
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={password}
-                    onChange={(_, v) => setPassword(String(v))}
+                  <FormGroup
+                    label="Password"
+                    fieldId="password"
                     isRequired
-                    placeholder="Enter your password"
-                    className="login-input"
-                  />
-                </FormGroup>
+                    className="login-form-group"
+                  >
+                    <TextInput
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={password}
+                      onChange={(_, v) => setPassword(String(v))}
+                      isRequired
+                      placeholder="Enter your password"
+                      className="login-input"
+                    />
+                  </FormGroup>
 
-                <Button
-                  type="submit"
-                  variant="primary"
-                  isBlock
-                  size="lg"
-                  isLoading={busy}
-                  isDisabled={busy || !username || !password}
-                  className="login-submit-button"
-                >
-                  {busy ? "Signing in..." : "Sign in"}
-                </Button>
-              </Form>
+                  <Button
+                    type="submit"
+                    variant={features.ssoEnabled ? "secondary" : "primary"}
+                    isBlock
+                    size="lg"
+                    isLoading={busy}
+                    isDisabled={busy || !username || !password}
+                    className="login-submit-button"
+                  >
+                    {busy ? "Signing in..." : "Sign in with Credentials"}
+                  </Button>
+                </Form>
+              )}
 
               <div className="login-footer">
                 <p className="login-help-text">

@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +59,7 @@ func newRBACForTest(t *testing.T, dir string) *RBAC {
 	write(t, p, testPolicy)
 	t.Setenv(envModelPath, m)
 	t.Setenv(envPolicyPath, p)
-	r, err := NewRBACFromEnv(context.Background(), log.Default())
+	r, err := NewRBACFromEnv(context.Background())
 	if err != nil {
 		t.Fatalf("NewRBACFromEnv: %v", err)
 	}

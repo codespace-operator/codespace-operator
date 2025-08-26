@@ -10,9 +10,9 @@ make install
 kubectl create namespace "${NAMESPACE_KEYCLOAK}" --dry-run=client -o yaml | kubectl apply -f -
 
 # ----- Prepare Keycloak realm ConfigMap -----
-echo ">>> Rendering Keycloak realm (redirect=${REDIRECT_URI})..."
+echo ">>> Rendering Keycloak realm (redirect=${REDIRECT_URL})..."
 rendered_realm="$(mktemp)"
-sed -e "s#__REDIRECT_URI__#${REDIRECT_URI}#g" \
+sed -e "s#__REDIRECT_URL__#${REDIRECT_URL}#g" \
     -e "s#__CLIENT_SECRET__#${OIDC_CLIENT_SECRET}#g" \
     "${KEYCLOAK_REALM_TMPL}" > "${rendered_realm}"
 
@@ -65,10 +65,11 @@ helm upgrade --install codespace-operator ${HELM_CHART} \
   --set server.ingress.hosts[0].host="${CONSOLE_HOST}" \
   --set server.ingress.hosts[0].path="/" \
   --set server.enableLocalLogin=true \
+  --set server.oidc.insecureSkipVerify=true \
   --set server.oidc.issuer="${ISSUER}" \
   --set server.oidc.clientID="${OIDC_CLIENT_ID}" \
   --set server.oidc.clientSecret="${OIDC_CLIENT_SECRET}" \
-  --set server.oidc.redirectURL="${REDIRECT_URI}" \
+  --set server.oidc.redirectURL="${REDIRECT_URL}" \
   --set server.oidc.scopes="{openid,profile,email}"
 
 echo ">>> Waiting for operator + server..."

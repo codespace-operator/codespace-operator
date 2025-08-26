@@ -27,6 +27,7 @@ function isExpired(token: string | null): boolean {
 function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
+
 export function useAuth() {
   const [user, setUser] = useState<string | null>(
     localStorage.getItem(USER_KEY),
@@ -44,8 +45,7 @@ export function useAuth() {
           credentials: "include",
         });
         if (resp.status === 401) {
-          // Not authenticated. Let the router redirect to /login when a protected
-          // page is visited. Just clear local state and finish loading.
+          // Not authenticated. Clear local state and finish loading.
           if (!cancelled) {
             localStorage.removeItem(USER_KEY);
             localStorage.removeItem(TOKEN_KEY);
@@ -63,9 +63,9 @@ export function useAuth() {
           : [];
         setUser(subject);
         setRoles(rs);
-        // (optionally set token if backend returns one)
+        // Optionally set token if backend returns one
       } catch {
-        // swallow; treat like unauth
+        // Treat like unauth
         if (!cancelled) {
           setUser(null);
           setRoles([]);
@@ -80,35 +80,37 @@ export function useAuth() {
     };
   }, []);
 
-  // Local (bootstrap) login: try /auth/local-login, then /auth/login
-  async function login(username: string, password: string) {
+  // Local login using the dedicated endpoint
+  async function loginLocal(username: string, password: string) {
     const body = JSON.stringify({ username, password });
-    const tryPaths = ["/auth/local-login", "/auth/login"];
-    let lastErr: any;
-    for (const p of tryPaths) {
-      try {
-        const r = await fetch(`${base}${p}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body,
-          credentials: "include",
-        });
-        if (!r.ok) throw new Error((await r.text()) || "Login failed");
-        const data = await r.json();
-        if (data.user) localStorage.setItem(USER_KEY, data.user);
-        if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
-        setUser(data.user || username);
-        setRoles(Array.isArray(data.roles) ? data.roles : []);
-        setToken(data.token || null);
-        return;
-      } catch (e) {
-        lastErr = e;
-      }
+    const r = await fetch(`${base}/auth/local/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body,
+      credentials: "include",
+    });
+
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(errorText || "Local login failed");
     }
-    throw lastErr;
+
+    const data = await r.json();
+    if (data.user) localStorage.setItem(USER_KEY, data.user);
+    if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+    setUser(data.user || username);
+    setRoles(Array.isArray(data.roles) ? data.roles : []);
+    setToken(data.token || null);
+  }
+
+  // SSO login - redirect to the SSO endpoint
+  function loginSSO(next?: string) {
+    const params = new URLSearchParams();
+    if (next) params.set("next", next);
+    window.location.href = `${base}/auth/sso/login${params.toString() ? "?" + params.toString() : ""}`;
   }
 
   async function logout() {
@@ -126,5 +128,15 @@ export function useAuth() {
   }
 
   const isAuthenticated = useMemo(() => !!user, [user]);
-  return { user, roles, token, isAuthenticated, isLoading, login, logout };
+
+  return {
+    user,
+    roles,
+    token,
+    isAuthenticated,
+    isLoading,
+    loginLocal,
+    loginSSO,
+    logout,
+  };
 }
