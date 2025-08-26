@@ -1,14 +1,10 @@
-# ---- Default Roles ----
-# admin: full cluster-wide rights (incl. namespace discovery)
-p, admin,      *,           *,               *,    allow
-p, admin,      namespaces,  list,            *,    allow
+# Map IdP roles -> app roles (inheritance)
+g, codespace-operator:admin,  admin
+g, codespace-operator:editor, editor
+g, codespace-operator:viewer, viewer
 
-# editor: full session CRUD per-namespace (default: all namespaces; tighten if needed)
-p, editor,     session,     (create|update|delete|scale|get|list|watch), *, allow
-
-# viewer: read-only on sessions
-p, viewer,     session,     (get|list|watch),      *,    allow
-
-# Example user/group→role bindings (uncomment & edit to use):
-# g, alice, admin
-# g, developers, editor
+# Keep your clean, human RBAC
+p, admin,  *,       *,                           *, allow
+p, admin,  namespaces, list,                     *, allow
+p, editor, session, (create|update|delete|scale|get|list|watch), *, allow
+p, viewer, session, (get|list|watch),            *, allow
