@@ -84,7 +84,7 @@
       "emailVerified": true,
       "email": "admin@codespace.test",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "admin", "temporary": false }
       ],
       "realmRoles": ["codespace-operator:admin"]
     },
@@ -94,7 +94,7 @@
       "emailVerified": true,
       "email": "alice@codespace.test",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "alice", "temporary": false }
       ],
       "realmRoles": ["codespace-operator:editor"]
     },
@@ -104,7 +104,7 @@
       "emailVerified": true,
       "email": "bob@codespace.test",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "bob", "temporary": false }
       ],
       "realmRoles": ["codespace-operator:viewer"]
     }
