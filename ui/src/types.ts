@@ -14,3 +14,33 @@ export type Session = {
 };
 
 export type SessionEvent = { type: string; object: Session };
+
+export type Introspection = {
+  user: {
+    subject: string;
+    roles: string[];
+    provider: string;
+    exp?: number;
+    iat?: number;
+  };
+  cluster: {
+    casbin: { namespaces: { list: boolean } };
+    serverServiceAccount: {
+      namespaces: Record<"list" | "watch", boolean>;
+      session: Record<
+        "get" | "list" | "watch" | "create" | "update" | "delete" | "patch",
+        boolean
+      >;
+    };
+  };
+  namespaces: {
+    all?: string[];
+    withSessions?: string[];
+    userAllowed: string[];
+  };
+  domains: Record<string, { session: Record<string, boolean> }>;
+  subjects?: Record<
+    string,
+    Record<string, { session: Record<string, boolean> }>
+  >;
+};

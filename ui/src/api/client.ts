@@ -1,4 +1,4 @@
-import type { Session } from "./types";
+import type { Session } from "../types";
 
 const base = import.meta.env.VITE_API_BASE || "";
 const TOKEN_KEY = "co_token";
@@ -122,20 +122,23 @@ export const api = {
   },
 };
 
-export const nsApi = {
-  async listSessionNamespaces(): Promise<string[]> {
-    const r = await apiFetch(`/api/v1/server/namespace/fetch-sessions`);
-    const data = await r.json();
-    // Accept ["ns1","ns2"] or {items:["ns1","ns2"]}
-    if (Array.isArray(data)) return data;
-    return normalizeList<string>(data);
-  },
-  async listWritableNamespaces(): Promise<string[]> {
-    const r = await apiFetch(
-      `/api/v1/server/namespace/all-namespaces?sessions=true`,
-    );
-    const data = await r.json();
-    if (Array.isArray(data)) return data;
-    return normalizeList<string>(data);
+export const introspectApi = {
+  get: async (opts?: {
+    discover?: boolean;
+    namespaces?: string[];
+    roles?: string[];
+    actions?: string[];
+  }) => {
+    const p = new URLSearchParams();
+    if (opts?.discover) p.set("discover", "1");
+    if (opts?.namespaces?.length)
+      p.set("namespaces", opts.namespaces.join(","));
+    if (opts?.roles?.length) p.set("roles", opts.roles.join(","));
+    if (opts?.actions?.length) p.set("actions", opts.actions.join(","));
+    // ✅ include base (was missing)
+    const url = `${base}/api/v1/introspect?${p.toString()}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) throw new Error(`introspect failed: ${r.status}`);
+    return r.json();
   },
 };

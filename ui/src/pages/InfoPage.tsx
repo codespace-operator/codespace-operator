@@ -1,10 +1,10 @@
 import React from "react";
-import { 
-  PageSection, 
-  Card, 
-  CardBody, 
-  Title, 
-  List, 
+import {
+  PageSection,
+  Card,
+  CardBody,
+  Title,
+  List,
   ListItem,
   DescriptionList,
   DescriptionListGroup,
@@ -15,21 +15,23 @@ import {
   Label,
   CodeBlock,
   CodeBlockCode,
-  Alert
+  Alert,
 } from "@patternfly/react-core";
-import { 
-  CubesIcon, 
-  ServerIcon, 
-  CogIcon, 
+import {
+  CubesIcon,
+  ServerIcon,
+  CogIcon,
   InfoCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from "@patternfly/react-icons";
 
 export function InfoPage() {
   return (
     <PageSection isWidthLimited>
       <div className="pf-u-mb-lg">
-        <Title headingLevel="h1" className="pf-u-mb-sm">Cluster Settings</Title>
+        <Title headingLevel="h1" className="pf-u-mb-sm">
+          Cluster Settings
+        </Title>
         <p className="pf-u-color-200">
           View cluster information, operator configuration, and system status
         </p>
@@ -43,7 +45,7 @@ export function InfoPage() {
                 <ServerIcon className="pf-u-mr-sm" />
                 Operator Information
               </Title>
-              
+
               <DescriptionList isHorizontal>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Version</DescriptionListTerm>
@@ -51,24 +53,28 @@ export function InfoPage() {
                     <Label color="green">v0.1.0-dev</Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>Namespace</DescriptionListTerm>
-                  <DescriptionListDescription>codespace-operator-system</DescriptionListDescription>
+                  <DescriptionListDescription>
+                    codespace-operator-system
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>Controller Status</DescriptionListTerm>
                   <DescriptionListDescription>
                     <Label color="green">Running</Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>API Version</DescriptionListTerm>
-                  <DescriptionListDescription>codespace.codespace.dev/v1</DescriptionListDescription>
+                  <DescriptionListDescription>
+                    codespace.codespace.dev/v1
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>Webhook Status</DescriptionListTerm>
                   <DescriptionListDescription>
@@ -85,35 +91,46 @@ export function InfoPage() {
                 <CubesIcon className="pf-u-mr-sm" />
                 Resource Limits
               </Title>
-              
+
               <Alert
                 variant="info"
                 isInline
                 title="Default Configuration"
                 className="pf-u-mb-md"
               >
-                These are the default resource limits for new sessions. Users can override these in their session specifications.
+                These are the default resource limits for new sessions. Users
+                can override these in their session specifications.
               </Alert>
-              
+
               <DescriptionList>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Max Sessions per Namespace</DescriptionListTerm>
-                  <DescriptionListDescription>Unlimited</DescriptionListDescription>
+                  <DescriptionListTerm>
+                    Max Sessions per Namespace
+                  </DescriptionListTerm>
+                  <DescriptionListDescription>
+                    Unlimited
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>Default CPU Limit</DescriptionListTerm>
                   <DescriptionListDescription>1000m</DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Default Memory Limit</DescriptionListTerm>
+                  <DescriptionListTerm>
+                    Default Memory Limit
+                  </DescriptionListTerm>
                   <DescriptionListDescription>2Gi</DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Default Storage Size</DescriptionListTerm>
-                  <DescriptionListDescription>10Gi (Home), 5Gi (Scratch)</DescriptionListDescription>
+                  <DescriptionListTerm>
+                    Default Storage Size
+                  </DescriptionListTerm>
+                  <DescriptionListDescription>
+                    10Gi (Home), 5Gi (Scratch)
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>
             </CardBody>
@@ -127,15 +144,18 @@ export function InfoPage() {
                 <CogIcon className="pf-u-mr-sm" />
                 Configuration
               </Title>
-              
+
               <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
                 Supported IDEs
               </Title>
               <List className="pf-u-mb-lg">
                 <ListItem>
-                  <strong>JupyterLab</strong> - Interactive data science environment
+                  <strong>JupyterLab</strong> - Interactive data science
+                  environment
                   <CodeBlock className="pf-u-mt-xs">
-                    <CodeBlockCode>jupyter/minimal-notebook:latest</CodeBlockCode>
+                    <CodeBlockCode>
+                      jupyter/minimal-notebook:latest
+                    </CodeBlockCode>
                   </CodeBlock>
                 </ListItem>
                 <ListItem>
@@ -169,7 +189,8 @@ export function InfoPage() {
                   <strong>Home Volume</strong> - Persistent user workspace
                 </ListItem>
                 <ListItem>
-                  <strong>Scratch Volume</strong> - Temporary high-performance storage
+                  <strong>Scratch Volume</strong> - Temporary high-performance
+                  storage
                 </ListItem>
                 <ListItem>
                   <strong>Storage Classes</strong> - Configurable per deployment
@@ -186,7 +207,7 @@ export function InfoPage() {
             <InfoCircleIcon className="pf-u-mr-sm" />
             Deployment Information
           </Title>
-          
+
           <Grid hasGutter>
             <GridItem md={4}>
               <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
@@ -201,7 +222,7 @@ export function InfoPage() {
                 <ListItem>✅ OAuth2 Proxy integration</ListItem>
               </List>
             </GridItem>
-            
+
             <GridItem md={4}>
               <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
                 Planned Features
@@ -215,18 +236,17 @@ export function InfoPage() {
                 <ListItem>🚧 Backup/restore</ListItem>
               </List>
             </GridItem>
-            
+
             <GridItem md={4}>
               <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
                 Integration Roadmap
               </Title>
               <List isPlain>
-                <ListItem>📋 Keycloak SSO</ListItem>
+                <ListItem>✅ Keycloak SSO</ListItem>
                 <ListItem>📋 LDAP/Active Directory</ListItem>
                 <ListItem>📋 Prometheus monitoring</ListItem>
                 <ListItem>📋 Grafana dashboards</ListItem>
-                <ListItem>📋 ArgoCD deployment</ListItem>
-                <ListItem>📋 Helm chart</ListItem>
+                <ListItem>✅ Helm chart</ListItem>
               </List>
             </GridItem>
           </Grid>
@@ -241,22 +261,26 @@ export function InfoPage() {
             icon={<ExclamationTriangleIcon />}
             className="pf-u-mb-md"
           >
-            This operator is currently in active development. Features and APIs may change without notice.
-            Not recommended for production workloads at this time.
+            This operator is currently in active development. Features and APIs
+            may change without notice. Not recommended for production workloads
+            at this time.
           </Alert>
-          
+
           <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
             Getting Started
           </Title>
           <List>
             <ListItem>
-              <strong>Documentation:</strong> Visit our GitHub repository for setup guides and examples
+              <strong>Documentation:</strong> Visit our GitHub repository for
+              setup guides and examples
             </ListItem>
             <ListItem>
-              <strong>Community:</strong> Join our discussions for support and feature requests
+              <strong>Community:</strong> Join our discussions for support and
+              feature requests
             </ListItem>
             <ListItem>
-              <strong>Contributing:</strong> PRs and issues are welcome on our GitHub project
+              <strong>Contributing:</strong> PRs and issues are welcome on our
+              GitHub project
             </ListItem>
           </List>
         </CardBody>

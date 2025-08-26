@@ -31,23 +31,37 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function getMe(): Promise<{
-  user: string;
+export type Me = {
+  user: string | null;
   roles: string[];
-  provider: string;
-  exp: number;
-  iat: number;
-  email?: string;
-}> {
-  return apiFetch("/api/v1/me");
+  provider?: string;
+  email?: string; // <-- add this
+  exp?: number;
+  iat?: number;
+};
+
+// DEPRECATED: prefer introspectApi from api/client.ts
+
+export async function getMe() {
+  const r = await fetch("/api/v1/introspect", { credentials: "include" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const j = await r.json();
+  return {
+    user: j?.user?.subject,
+    roles: j?.user?.roles || [],
+    provider: j?.user?.provider,
+    email: j?.user?.email,
+    exp: j?.user?.exp,
+    iat: j?.user?.iat,
+  };
 }
 
-export async function introspect(
-  namespaces: string[],
-): Promise<IntrospectResponse> {
-  const qs =
-    namespaces && namespaces.length > 0
-      ? "?namespaces=" + encodeURIComponent(namespaces.join(","))
-      : "";
-  return apiFetch(`/api/v1/rbac/introspect${qs}`);
+export async function introspect(namespaces: string[]) {
+  const p = new URLSearchParams();
+  if (namespaces?.length) p.set("namespaces", namespaces.join(","));
+  const r = await fetch(`/api/v1/introspect?${p.toString()}`, {
+    credentials: "include",
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }

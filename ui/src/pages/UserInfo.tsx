@@ -34,11 +34,11 @@ import {
 } from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
 import { introspect, getMe, IntrospectResponse } from "../api/rbac";
-
+import type { Me } from "../api/rbac";
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [rbac, setRBAC] = useState<IntrospectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 

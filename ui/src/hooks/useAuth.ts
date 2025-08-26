@@ -35,17 +35,31 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(getToken());
   const [isLoading, setLoading] = useState(true);
 
-  // Try to restore from cookie session (OIDC/local)
+  // Try to restore from cookie session (OIDC/local) via /introspect
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`${base}/api/v1/me`, { credentials: "include" });
-        if (!r.ok) return; // unauthenticated -> ignore
-        const data = await r.json();
+        const resp = await fetch("/api/v1/introspect", {
+          credentials: "include",
+        });
+        if (resp.status === 401) {
+          window.location.href = "/auth/login";
+          return;
+        }
+        const data = await resp.json();
         if (cancelled) return;
-        setUser(data.user || null);
-        setRoles(Array.isArray(data.roles) ? data.roles : []);
+
+        const subject = data?.user?.subject ?? null;
+        const rs: string[] = Array.isArray(data?.user?.roles)
+          ? data.user.roles
+          : [];
+        setUser(subject);
+        setRoles(rs);
+
+        // optional: if you want to reflect JWT lifetime in state
+        // (depends on what you show in the UI)
+        // const exp = data?.user?.exp as number | undefined;
       } catch {
         /* noop */
       } finally {
