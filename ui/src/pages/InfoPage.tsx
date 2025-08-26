@@ -40,7 +40,8 @@ export function InfoPage() {
                   <DescriptionListTerm>Version</DescriptionListTerm>
                   <DescriptionListDescription>
                     <Label color="green" isCompact>
-                      v0.1.0-dev
+                      {/* !TODO: stamp during build */}
+                      1.0.0
                     </Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
@@ -64,7 +65,7 @@ export function InfoPage() {
                 <DescriptionListGroup>
                   <DescriptionListTerm>API</DescriptionListTerm>
                   <DescriptionListDescription>
-                    codespace.dev/v1
+                    codespace.codespace.dev/v1
                   </DescriptionListDescription>
                 </DescriptionListGroup>
 
