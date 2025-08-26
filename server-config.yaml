@@ -14,7 +14,7 @@ kube_qps: 50.0
 kube_burst: 100
 
 # Logging
-debug: true
+log_level: debug # one of: debug, info, warn, error
 
 # Sessions / auth
 jwt_secret: "change-me" # HS256 key for server-issued session cookie

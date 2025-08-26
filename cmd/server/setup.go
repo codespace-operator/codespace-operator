@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -15,18 +14,13 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux.HandleFunc("/healthz", handleHealthz)
 	mux.HandleFunc("/readyz", handleReadyz(deps))
 
-	// RBAC
-	mux.HandleFunc("/api/v1/rbac/introspect", handleRBACIntrospect(deps))
-
 	// API (top-level middleware applies auth)
 	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
 	mux.HandleFunc("/api/v1/server/sessions", handleServerSessions(deps))
 	mux.HandleFunc("/api/v1/server/sessions/", handleServerSessionsWithPath(deps))
-	mux.HandleFunc("/api/v1/server/namespace/fetch-sessions", handleServerNamespacesWithSessions(deps))
-	mux.HandleFunc("/api/v1/server/namespace/all-namespaces", handleServerWritableNamespaces(deps))
-
+	mux.HandleFunc("/api/v1/introspect", handleIntrospect(deps))
 	// UI
-	log.Println("Setting up static web UI...")
+	logger.Info("Setting up static web UI...")
 	setupStaticUI(mux)
 	return mux
 }
@@ -35,12 +29,12 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 func setupStaticUI(mux *http.ServeMux) {
 	ui, err := fsSub(staticFS, "static")
 	if err != nil {
-		log.Fatalf("Failed to create static file system: %v", err)
+		logger.Fatal("Failed to create static file system", "err", err)
 	}
 	files := http.FileServer(ui)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("DEBUG") == "true" {
-			log.Printf("Static request: %s", r.URL.Path)
+			logger.Printf("Static request: %s", r.URL.Path)
 		}
 		if path.Ext(r.URL.Path) != "" && r.URL.Path != "/" {
 			files.ServeHTTP(w, r)

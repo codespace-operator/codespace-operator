@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -70,14 +69,15 @@ func main() {
 	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Command execution failed: %v", err)
+		logger.Fatal("Command execution failed", "err", err)
 	}
 }
 
 func runServer(cmd *cobra.Command, args []string) {
 	cfg, err := config.LoadServerConfig()
+	configureLogger(cfg.LogLevel)
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logger.Fatal("Failed to load configuration", "err", err)
 	}
 
 	// CLI overrides
@@ -103,7 +103,6 @@ func runServer(cmd *cobra.Command, args []string) {
 	}
 
 	setString(&cfg.AllowOrigin, "allow-origin")
-	setBool(&cfg.Debug, "debug")
 	if cmd.Flags().Changed("kube-qps") {
 		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")
 	}
@@ -124,13 +123,13 @@ func runServer(cmd *cobra.Command, args []string) {
 	setString(&cfg.SessionCookieName, "session-cookie-name")
 	setString(&cfg.RBACModelPath, "rbac-model-path")
 	setString(&cfg.RBACPolicyPath, "rbac-policy-path")
-	if cfg.Debug {
-		log.Printf("Configuration: %+v", cfg)
+	if cfg.LogLevel == "debug" {
+		logger.Printf("Configuration: %+v", cfg)
 	}
 
 	k8sCfg, err := helpers.BuildKubeConfig()
 	if err != nil {
-		log.Fatalf("Kubernetes config: %v", err)
+		logger.Fatal("Kubernetes config", "err", err)
 	}
 	k8sCfg.Timeout = 30 * time.Second
 	k8sCfg.QPS = cfg.KubeQPS
@@ -138,19 +137,19 @@ func runServer(cmd *cobra.Command, args []string) {
 
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {
-		log.Fatalf("Add corev1 scheme: %v", err)
+		logger.Fatal("Add corev1 scheme", "err", err)
 	}
 	if err := codespacev1.AddToScheme(scheme); err != nil {
-		log.Fatalf("Add scheme: %v", err)
+		logger.Fatal("Add scheme", "err", err)
 	}
 
 	typed, err := client.New(k8sCfg, client.Options{Scheme: scheme})
 	if err != nil {
-		log.Fatalf("Typed client: %v", err)
+		logger.Fatal("Typed client", "err", err)
 	}
 	dyn, err := dynamic.NewForConfig(k8sCfg)
 	if err != nil {
-		log.Fatalf("Dynamic client: %v", err)
+		logger.Fatal("Dynamic client", "err", err)
 	}
 
 	// If explicit RBAC paths are provided, push them into env so NewRBACFromEnv picks them up.
@@ -160,9 +159,9 @@ func runServer(cmd *cobra.Command, args []string) {
 	if cfg.RBACPolicyPath != "" {
 		_ = os.Setenv(envPolicyPath, cfg.RBACPolicyPath)
 	}
-	rbac, err := NewRBACFromEnv(context.Background(), log.Default())
+	rbac, err := NewRBACFromEnv(context.Background())
 	if err != nil {
-		log.Fatalf("RBAC init failed: %v", err)
+		logger.Fatal("RBAC init failed", "err", err)
 	}
 
 	deps := &serverDeps{
@@ -176,17 +175,20 @@ func runServer(cmd *cobra.Command, args []string) {
 	mux := setupHandlers(deps)
 	registerAuthHandlers(mux, deps)
 
+	// build middleware chain:
+	//   authGate( logRequests( withCORS( mux )))
 	var handler http.Handler = mux
-	handler = withCORS(cfg.AllowOrigin, handler)
+	handler = withCORS(cfg.AllowOrigin, handler) // CORS first so preflights are handled
+	handler = logRequests(handler)               // wrap CORS so OPTIONS are logged too
 	handler = authGate(&configLike{
 		JWTSecret:         cfg.JWTSecret,
 		SessionCookieName: cfg.SessionCookieName,
 		AllowTokenParam:   cfg.AllowTokenParam,
 	}, handler)
 
-	log.Printf("Listening on %s", cfg.GetAddr())
+	logger.Printf("Listening on %s", cfg.GetAddr())
 	if err := http.ListenAndServe(cfg.GetAddr(), handler); err != nil {
-		log.Fatalf("ListenAndServe: %v", err)
+		logger.Fatal("ListenAndServe", "err", err)
 	}
 
 }

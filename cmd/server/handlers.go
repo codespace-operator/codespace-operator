@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -80,8 +78,11 @@ func handleMe() http.HandlerFunc {
 			return
 		}
 		writeJSON(w, map[string]any{
-			"user":     cl.Sub,
+			"sub":      cl.Sub,
+			"username": cl.Username,
+			"email":    cl.Email,
 			"roles":    cl.Roles,
+			"groups":   cl.Groups,
 			"provider": cl.Provider,
 			"exp":      cl.ExpiresAt,
 			"iat":      cl.IssuedAt,
@@ -181,56 +182,6 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 				flusher.Flush()
 			}
 		}
-	}
-}
-
-// GET /api/v1/server/namespace/fetch-sessions
-// Returns unique namespaces that currently have Session CRs.
-func handleServerNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := serverMustCan(deps, w, r, "namespaces", "list", "*"); !ok {
-			return
-		}
-
-		ul, err := deps.dyn.Resource(gvr).List(r.Context(), metav1.ListOptions{})
-		if err != nil {
-			errJSON(w, err)
-			return
-		}
-		set := map[string]struct{}{}
-		for _, u := range ul.Items {
-			ns := u.GetNamespace()
-			set[ns] = struct{}{}
-		}
-		var out []string
-		for ns := range set {
-			out = append(out, ns)
-		}
-		sort.Strings(out)
-		writeJSON(w, out)
-	}
-}
-
-// cmd/server/handlers.go
-// GET /api/v1/server/namespace/all-namespaces?sessions=true
-// (cluster namespace discovery now guarded by a cluster-level permission)
-func handleServerWritableNamespaces(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := serverMustCan(deps, w, r, "namespaces", "list", "*"); !ok {
-			return
-		}
-
-		var nsl corev1.NamespaceList
-		if err := deps.typed.List(r.Context(), &nsl); err != nil {
-			errJSON(w, err)
-			return
-		}
-		var out []string
-		for _, n := range nsl.Items {
-			out = append(out, n.Name)
-		}
-		sort.Strings(out)
-		writeJSON(w, out)
 	}
 }
 

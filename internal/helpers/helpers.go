@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"time"
 
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	"github.com/golang-jwt/jwt/v5"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 // retryOnConflict runs fn with standard backoff if a 409 occurs.

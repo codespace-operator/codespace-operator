@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/log"
 	oidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
@@ -62,17 +61,17 @@ func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, erro
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 (intentional; guarded by config)
 		}
 		hc = &http.Client{Transport: tr, Timeout: 15 * time.Second}
-		log.Warn("OIDCInsecureSkipVerify is enabled - do not use in production")
+		logger.Warn("OIDCInsecureSkipVerify is enabled - do not use in production")
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
 	}
 
-	log.Info("Constructing provider...")
+	logger.Info("Constructing provider...")
 	provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuerURL)
 	if err != nil {
-		log.Errorf("Fail constructing OIDC provider: %s", err.Error())
+		logger.Errorf("Fail constructing OIDC provider: %s", err.Error())
 		return nil, err
 	}
-	log.Info("Verifying realm...")
+	logger.Info("Verifying realm...")
 	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID})
 	scopes := cfg.OIDCScopes
 	if len(scopes) == 0 {
@@ -185,6 +184,7 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 			Groups   []string `json:"groups"`
 			Roles    []string `json:"roles"`
 			Nonce    string   `json:"nonce"`
+			Username string   `json:"preferred_username"`
 		}
 		if err := idt.Claims(&idc); err != nil {
 			http.Error(w, "claims parse failed", http.StatusUnauthorized)

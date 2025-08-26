@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	cmodel "github.com/casbin/casbin/v2/model"
 	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	"github.com/fsnotify/fsnotify"
+	authv1 "k8s.io/api/authorization/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Default on-disk paths; overridden by env if set.
@@ -37,7 +38,7 @@ type RBAC struct {
 
 // NewRBACFromEnv loads model/policy from disk and starts a file watcher
 // to hot-reload on ConfigMap updates (K8s updates the symlink atomically).
-func NewRBACFromEnv(ctx context.Context, logger *log.Logger) (*RBAC, error) {
+func NewRBACFromEnv(ctx context.Context) (*RBAC, error) {
 	modelPath := strings.TrimSpace(os.Getenv(envModelPath))
 	if modelPath == "" {
 		modelPath = defaultModelPath
@@ -91,13 +92,13 @@ func NewRBACFromEnv(ctx context.Context, logger *log.Logger) (*RBAC, error) {
 				}
 				last = now
 				if err := r.reload(); err != nil && logger != nil {
-					logger.Printf("rbac reload failed: %v", err)
+					logger.Info("rbac reload failed: %v", err)
 				} else if logger != nil {
-					logger.Printf("rbac reloaded after fsnotify: %s", ev.Name)
+					logger.Info("rbac reloaded after fsnotify: %s", ev.Name)
 				}
 			case err := <-watcher.Errors:
 				if logger != nil && err != nil {
-					logger.Printf("rbac watcher error: %v", err)
+					logger.Info("rbac watcher error: %v", err)
 				}
 			}
 		}
@@ -194,4 +195,32 @@ func serverMustCan(deps *serverDeps, w http.ResponseWriter, r *http.Request, obj
 		return nil, false
 	}
 	return cl, true
+}
+
+// Checks if a given user can perform an action on an object in a domain
+func userMustCan() (*claims, bool) {
+	//! TODO
+	return nil, false
+}
+
+func (r *RBAC) EnforceAsSubject(sub, obj, act, dom string) (bool, error) {
+	r.mu.RLock()
+	enf := r.enf
+	r.mu.RUnlock()
+	if enf == nil {
+		return false, errors.New("rbac not initialized")
+	}
+	return enf.Enforce(sub, obj, act, dom)
+}
+func k8sCan(ctx context.Context, c client.Client, ra authv1.ResourceAttributes) bool {
+	ssar := &authv1.SelfSubjectAccessReview{
+		Spec: authv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &ra,
+		},
+	}
+	// NB: controller-runtime client can Create() arbitrary resources
+	if err := c.Create(ctx, ssar); err != nil {
+		return false
+	}
+	return ssar.Status.Allowed
 }

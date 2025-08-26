@@ -30,7 +30,7 @@ type ServerConfig struct {
 	KubeBurst int     `mapstructure:"kube_burst"`
 
 	// Logging
-	Debug bool `mapstructure:"debug"`
+	LogLevel string `mapstructure:"log_level"`
 
 	// Sessions / auth
 	JWTSecret string `mapstructure:"jwt_secret"`
@@ -105,7 +105,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("kube_qps", 50.0)
 	v.SetDefault("kube_burst", 100)
 
-	v.SetDefault("debug", false)
+	v.SetDefault("log_level", "info")
 	v.SetDefault("jwt_secret", "change-me")
 
 	v.SetDefault("enable_bootstrap_login", false)
