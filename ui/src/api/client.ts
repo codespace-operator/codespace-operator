@@ -64,14 +64,14 @@ export const api = {
     // If namespace is "All", omit the namespace parameter to get all namespaces
     const url =
       ns === "All"
-        ? `/api/v1/sessions?all=true`
-        : `/api/v1/sessions?namespace=${encodeURIComponent(ns)}`;
+        ? `/api/v1/server/sessions?all=true`
+        : `/api/v1/server/sessions?namespace=${encodeURIComponent(ns)}`;
     const r = await apiFetch(url);
     return normalizeList<Session>(await r.json());
   },
 
   async create(body: Partial<Session>): Promise<Session> {
-    const r = await apiFetch(`/api/v1/sessions`, {
+    const r = await apiFetch(`/api/v1/server/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -81,7 +81,7 @@ export const api = {
 
   async remove(ns: string, name: string): Promise<void> {
     await apiFetch(
-      `/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
+      `/api/v1/server/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
       {
         method: "DELETE",
       },
@@ -90,7 +90,7 @@ export const api = {
 
   async scale(ns: string, name: string, replicas: number): Promise<Session> {
     const r = await apiFetch(
-      `/api/v1/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`,
+      `/api/v1/server/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,14 +124,16 @@ export const api = {
 
 export const nsApi = {
   async listSessionNamespaces(): Promise<string[]> {
-    const r = await apiFetch(`/api/v1/namespaces/sessions`);
+    const r = await apiFetch(`/api/v1/server/namespace/fetch-sessions`);
     const data = await r.json();
     // Accept ["ns1","ns2"] or {items:["ns1","ns2"]}
     if (Array.isArray(data)) return data;
     return normalizeList<string>(data);
   },
   async listWritableNamespaces(): Promise<string[]> {
-    const r = await apiFetch(`/api/v1/namespaces/writable?sessions=true`);
+    const r = await apiFetch(
+      `/api/v1/server/namespace/all-namespaces?sessions=true`,
+    );
     const data = await r.json();
     if (Array.isArray(data)) return data;
     return normalizeList<string>(data);

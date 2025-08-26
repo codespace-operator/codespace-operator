@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   PageSection,
   Card,
@@ -20,78 +20,103 @@ import {
   Spinner,
   EmptyState,
   EmptyStateBody,
+  Divider,
+  Tooltip,
 } from "@patternfly/react-core";
-import { UserIcon, KeyIcon, ShieldAltIcon, ExclamationTriangleIcon } from "@patternfly/react-icons";
+import {
+  UserIcon,
+  KeyIcon,
+  ShieldAltIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  TimesCircleIcon,
+  InfoCircleIcon,
+} from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
-
-// Mock RBAC data - in a real implementation, this would come from API
-const mockRBACData = {
-  roles: [
-    {
-      name: "codespace-operator:admin",
-      namespace: "*",
-      permissions: ["sessions.create", "sessions.delete", "sessions.update", "sessions.list", "sessions.watch"]
-    },
-    {
-      name: "codespace-user",
-      namespace: "default",
-      permissions: ["sessions.create", "sessions.list", "sessions.watch"]
-    }
-  ],
-  clusterRoles: [
-    {
-      name: "system:authenticated",
-      permissions: ["system.info"]
-    }
-  ]
-};
+import { introspect, getMe, IntrospectResponse } from "../api/rbac";
 
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [rbacData, setRBACData] = useState<typeof mockRBACData | null>(null);
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | null>(null);
+  const [rbac, setRBAC] = useState<IntrospectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // choose a small set of namespaces to display by default
+  const namespacesToQuery = useMemo(() => ["default", "*"], []);
+
   useEffect(() => {
-    // Simulate loading RBAC data
-    const loadRBACData = async () => {
-      setLoading(true);
+    let cancelled = false;
+    (async () => {
       try {
-        // In a real implementation, you would fetch this from your backend:
-        // const response = await api.getUserRBAC();
-        // setRBACData(response);
-        
-        // For now, simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setRBACData(mockRBACData);
-      } catch (err: any) {
-        setError(err.message || "Failed to load user permissions");
+        setLoading(true);
+        const [who, perms] = await Promise.all([
+          getMe(),
+          introspect(namespacesToQuery),
+        ]);
+        if (!cancelled) {
+          setMe(who);
+          setRBAC(perms);
+          setError(null);
+        }
+      } catch (e: any) {
+        if (!cancelled)
+          setError(e?.message || "Failed to load user permissions");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [namespacesToQuery]);
 
-    loadRBACData();
-  }, []);
-
-  const decodeJWTPayload = (token: string) => {
+  const decodeJWTPayload = (t?: string | null) => {
+    if (!t) return null;
     try {
-      const parts = token.split(".");
+      const parts = t.split(".");
       if (parts.length < 2) return null;
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return payload;
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join(""),
+      );
+      return JSON.parse(json);
     } catch {
       return null;
     }
   };
 
-  const tokenPayload = token ? decodeJWTPayload(token) : null;
-  const isExpired = tokenPayload?.exp ? Date.now() / 1000 >= tokenPayload.exp : false;
+  const tokenPayload = useMemo(() => decodeJWTPayload(token), [token]);
+  const isExpired = tokenPayload?.exp
+    ? Date.now() / 1000 >= tokenPayload.exp
+    : false;
+
+  const renderBool = (v: boolean, hint?: string) =>
+    v ? (
+      <span className="pf-u-color-success-400">
+        <CheckCircleIcon className="pf-u-mr-xs" />
+        Allowed
+      </span>
+    ) : (
+      <span className="pf-u-color-danger-400">
+        <TimesCircleIcon className="pf-u-mr-xs" />
+        Denied
+      </span>
+    );
+
+  const actionOrder: Array<
+    keyof IntrospectResponse["domains"][string]["session"]
+  > = ["get", "list", "watch", "create", "update", "delete", "scale"];
 
   return (
     <PageSection isWidthLimited>
       <div className="pf-u-mb-lg">
-        <Title headingLevel="h1" className="pf-u-mb-sm">User Management</Title>
+        <Title headingLevel="h1" className="pf-u-mb-sm">
+          User Management
+        </Title>
         <p className="pf-u-color-200">
           View your account information, permissions, and authentication details
         </p>
@@ -105,7 +130,7 @@ export function UserInfoPage() {
                 <UserIcon className="pf-u-mr-sm" />
                 Account Information
               </Title>
-              
+
               <DescriptionList isHorizontal>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Username</DescriptionListTerm>
@@ -113,7 +138,25 @@ export function UserInfoPage() {
                     <strong>{user || "Not authenticated"}</strong>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
+                {me?.provider && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Auth Provider</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {me.provider}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+
+                {me?.email && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Email</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {me.email}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+
                 {tokenPayload && (
                   <>
                     <DescriptionListGroup>
@@ -124,28 +167,43 @@ export function UserInfoPage() {
                         </Label>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
-                    
+
                     <DescriptionListGroup>
                       <DescriptionListTerm>Issued</DescriptionListTerm>
                       <DescriptionListDescription>
-                        {tokenPayload.iat ? 
-                          new Date(tokenPayload.iat * 1000).toLocaleString() : 
-                          "Unknown"
-                        }
+                        {tokenPayload.iat
+                          ? new Date(tokenPayload.iat * 1000).toLocaleString()
+                          : "Unknown"}
                       </DescriptionListDescription>
                     </DescriptionListGroup>
-                    
+
                     <DescriptionListGroup>
                       <DescriptionListTerm>Expires</DescriptionListTerm>
                       <DescriptionListDescription>
-                        {tokenPayload.exp ? 
-                          new Date(tokenPayload.exp * 1000).toLocaleString() : 
-                          "Never"
-                        }
+                        {tokenPayload.exp
+                          ? new Date(tokenPayload.exp * 1000).toLocaleString()
+                          : "Never"}
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   </>
                 )}
+
+                {me?.roles?.length ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Roles / Groups</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {me.roles.map((r) => (
+                        <Label
+                          key={r}
+                          color="blue"
+                          className="pf-u-mr-sm pf-u-mb-sm"
+                        >
+                          {r}
+                        </Label>
+                      ))}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
               </DescriptionList>
 
               <div className="pf-u-mt-lg">
@@ -162,7 +220,7 @@ export function UserInfoPage() {
                 <KeyIcon className="pf-u-mr-sm" />
                 Authentication Token
               </Title>
-              
+
               {isExpired && (
                 <Alert
                   variant="warning"
@@ -173,15 +231,18 @@ export function UserInfoPage() {
                   Your authentication token has expired. Please sign in again.
                 </Alert>
               )}
-              
+
               <CodeBlock>
                 <CodeBlockCode>
-                  {token ? `${token.substring(0, 50)}...` : "No token available"}
+                  {token
+                    ? `${token.substring(0, 50)}...`
+                    : "No token available"}
                 </CodeBlockCode>
               </CodeBlock>
-              
+
               <p className="pf-u-mt-sm pf-u-color-200 pf-u-font-size-sm">
-                JWT tokens contain your identity information and are used to authenticate API requests.
+                JWT tokens contain your identity information and are used to
+                authenticate API requests.
               </p>
             </CardBody>
           </Card>
@@ -203,64 +264,79 @@ export function UserInfoPage() {
               ) : error ? (
                 <EmptyState>
                   <EmptyStateBody>
-                    <ExclamationTriangleIcon className="pf-u-mb-md" style={{ fontSize: '2rem', color: 'var(--pf-global--warning-color--100)' }} />
+                    <ExclamationTriangleIcon
+                      className="pf-u-mb-md"
+                      style={{
+                        fontSize: "2rem",
+                        color: "var(--pf-global--warning-color--100)",
+                      }}
+                    />
                     <div>{error}</div>
                   </EmptyStateBody>
                 </EmptyState>
-              ) : rbacData ? (
+              ) : rbac ? (
                 <>
                   <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                    Namespace Roles
+                    Cluster Permissions
                   </Title>
-                  {rbacData.roles.length > 0 ? (
-                    <div className="pf-u-mb-lg">
-                      {rbacData.roles.map((role, index) => (
-                        <div key={index} className="pf-u-mb-md pf-u-p-md" 
-                             style={{ backgroundColor: "rgba(0,0,0,0.05)", borderRadius: "4px" }}>
-                          <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center pf-u-mb-sm">
-                            <strong>{role.name}</strong>
-                            <Label color="blue" variant="filled">
-                              {role.namespace === "*" ? "All Namespaces" : role.namespace}
-                            </Label>
-                          </div>
-                          <List isPlain>
-                            {role.permissions.map((permission, pIndex) => (
-                              <ListItem key={pIndex} className="pf-u-font-size-sm pf-u-color-200">
-                                {permission}
-                              </ListItem>
-                            ))}
-                          </List>
-                        </div>
-                      ))}
+                  <div
+                    className="pf-u-mb-lg pf-u-p-md"
+                    style={{
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <div className="pf-u-display-flex pf-u-align-items-center pf-u-mb-sm">
+                      <strong>namespaces.list</strong>
+                      <Tooltip content="Required for 'All namespaces' discovery">
+                        <InfoCircleIcon className="pf-u-ml-sm pf-u-color-200" />
+                      </Tooltip>
                     </div>
-                  ) : (
-                    <p className="pf-u-color-200 pf-u-mb-lg">No namespace roles assigned.</p>
-                  )}
+                    {renderBool(rbac.cluster.namespaces.list)}
+                  </div>
+
+                  <Divider className="pf-u-mb-md" />
 
                   <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                    Cluster Roles
+                    Effective Permissions by Namespace
                   </Title>
-                  {rbacData.clusterRoles.length > 0 ? (
+
+                  {Object.keys(rbac.domains).length === 0 ? (
+                    <p className="pf-u-color-200">No namespaces to display.</p>
+                  ) : (
                     <div>
-                      {rbacData.clusterRoles.map((role, index) => (
-                        <div key={index} className="pf-u-mb-md pf-u-p-md" 
-                             style={{ backgroundColor: "rgba(0,0,0,0.05)", borderRadius: "4px" }}>
+                      {Object.entries(rbac.domains).map(([ns, obj]) => (
+                        <div
+                          key={ns}
+                          className="pf-u-mb-md pf-u-p-md"
+                          style={{
+                            backgroundColor: "rgba(0,0,0,0.05)",
+                            borderRadius: 4,
+                          }}
+                        >
                           <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center pf-u-mb-sm">
-                            <strong>{role.name}</strong>
-                            <Label color="purple" variant="filled">Cluster-wide</Label>
+                            <strong>Namespace</strong>
+                            <Label color="blue" variant="filled">
+                              {ns === "*" ? "All namespaces" : ns}
+                            </Label>
                           </div>
+
                           <List isPlain>
-                            {role.permissions.map((permission, pIndex) => (
-                              <ListItem key={pIndex} className="pf-u-font-size-sm pf-u-color-200">
-                                {permission}
+                            {actionOrder.map((act) => (
+                              <ListItem
+                                key={act}
+                                className="pf-u-font-size-sm pf-u-color-200"
+                              >
+                                <span className="pf-u-mr-sm">
+                                  session.{act}
+                                </span>
+                                {renderBool(obj.session[act])}
                               </ListItem>
                             ))}
                           </List>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="pf-u-color-200">No cluster roles assigned.</p>
                   )}
                 </>
               ) : null}
@@ -271,33 +347,32 @@ export function UserInfoPage() {
 
       <Card className="pf-u-mt-lg">
         <CardBody>
-          <Title headingLevel="h2" className="pf-u-mb-md">Integration Information</Title>
-          
+          <Title headingLevel="h2" className="pf-u-mb-md">
+            Integration Information
+          </Title>
+
           <Alert
             variant="info"
             isInline
-            title="Development Environment"
+            title="OIDC + Casbin"
             className="pf-u-mb-md"
           >
-            This is currently running in development mode with mock authentication. 
-            In production, this would integrate with your organization's identity provider 
-            (LDAP, Active Directory, OIDC, etc.) and show real RBAC data from Kubernetes.
+            The server validates OIDC tokens and issues a short-lived session
+            cookie. Casbin evaluates permissions dynamically from a ConfigMap
+            and supports hot-reload.
           </Alert>
 
           <DescriptionList isHorizontal>
             <DescriptionListGroup>
-              <DescriptionListTerm>Authentication Method</DescriptionListTerm>
-              <DescriptionListDescription>Demo JWT (Development)</DescriptionListDescription>
+              <DescriptionListTerm>Authentication</DescriptionListTerm>
+              <DescriptionListDescription>
+                {me?.provider || "N/A"}
+              </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>
-              <DescriptionListTerm>Future Integrations</DescriptionListTerm>
+              <DescriptionListTerm>RBAC Engine</DescriptionListTerm>
               <DescriptionListDescription>
-                <List isPlain>
-                  <ListItem>• OIDC (Keycloak, Auth0, etc.)</ListItem>
-                  <ListItem>• LDAP/Active Directory</ListItem>
-                  <ListItem>• Kubernetes ServiceAccount tokens</ListItem>
-                  <ListItem>• OAuth2 providers (GitHub, Google, etc.)</ListItem>
-                </List>
+                Casbin (model/policy from ConfigMap)
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>

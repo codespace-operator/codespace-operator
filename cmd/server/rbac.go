@@ -176,9 +176,9 @@ func (r *RBAC) Enforce(sub string, roles []string, obj, act, dom string) (bool, 
 	return false, nil
 }
 
-// mustCan checks authorization and writes 403 if denied.
+// serverMustCan checks authorization and writes 403 if denied.
 // Returns claims when authorized.
-func mustCan(deps *serverDeps, w http.ResponseWriter, r *http.Request, obj, act, dom string) (*claims, bool) {
+func serverMustCan(deps *serverDeps, w http.ResponseWriter, r *http.Request, obj, act, dom string) (*claims, bool) {
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)

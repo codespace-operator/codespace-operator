@@ -10,16 +10,20 @@ import (
 func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	// Auth endpoints (registered separately in registerAuthHandlers)
 	// Health
 	mux.HandleFunc("/healthz", handleHealthz)
 	mux.HandleFunc("/readyz", handleReadyz(deps))
 
+	// RBAC
+	mux.HandleFunc("/api/v1/rbac/introspect", handleRBACIntrospect(deps))
+
 	// API (top-level middleware applies auth)
 	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
-	mux.HandleFunc("/api/v1/sessions", handleSessions(deps))
-	mux.HandleFunc("/api/v1/sessions/", handleSessionsWithPath(deps))
-	mux.HandleFunc("/api/v1/namespaces/sessions", handleNamespacesWithSessions(deps))
-	mux.HandleFunc("/api/v1/namespaces/writable", handleWritableNamespaces(deps))
+	mux.HandleFunc("/api/v1/server/sessions", handleServerSessions(deps))
+	mux.HandleFunc("/api/v1/server/sessions/", handleServerSessionsWithPath(deps))
+	mux.HandleFunc("/api/v1/server/namespace/fetch-sessions", handleServerNamespacesWithSessions(deps))
+	mux.HandleFunc("/api/v1/server/namespace/all-namespaces", handleServerWritableNamespaces(deps))
 
 	// UI
 	log.Println("Setting up static web UI...")

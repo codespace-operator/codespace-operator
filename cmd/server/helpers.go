@@ -128,3 +128,24 @@ func q(r *http.Request, key, dflt string) string {
 	}
 	return dflt
 }
+
+func splitCSVQuery(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	raw := strings.Split(s, ",")
+	out := make([]string, 0, len(raw))
+	seen := map[string]struct{}{}
+	for _, p := range raw {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
+	}
+	return out
+}

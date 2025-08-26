@@ -127,7 +127,7 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 		if r.URL.Query().Get("all") == "true" {
 			dom = "*"
 		}
-		if _, ok := mustCan(deps, w, r, "session", "watch", dom); !ok {
+		if _, ok := serverMustCan(deps, w, r, "session", "watch", dom); !ok {
 			return
 		}
 
@@ -184,11 +184,11 @@ func handleStreamSessions(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
-// GET /api/v1/namespaces/sessions
+// GET /api/v1/server/namespace/fetch-sessions
 // Returns unique namespaces that currently have Session CRs.
-func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
+func handleServerNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := mustCan(deps, w, r, "namespaces", "list", "*"); !ok {
+		if _, ok := serverMustCan(deps, w, r, "namespaces", "list", "*"); !ok {
 			return
 		}
 
@@ -212,11 +212,11 @@ func handleNamespacesWithSessions(deps *serverDeps) http.HandlerFunc {
 }
 
 // cmd/server/handlers.go
-// GET /api/v1/namespaces/writable?sessions=true
+// GET /api/v1/server/namespace/all-namespaces?sessions=true
 // (cluster namespace discovery now guarded by a cluster-level permission)
-func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
+func handleServerWritableNamespaces(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := mustCan(deps, w, r, "namespaces", "list", "*"); !ok {
+		if _, ok := serverMustCan(deps, w, r, "namespaces", "list", "*"); !ok {
 			return
 		}
 
@@ -234,7 +234,7 @@ func handleWritableNamespaces(deps *serverDeps) http.HandlerFunc {
 	}
 }
 
-func handleSessions(deps *serverDeps) http.HandlerFunc {
+func handleServerSessions(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -242,7 +242,7 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 			if r.URL.Query().Get("all") == "true" {
 				dom = "*"
 			}
-			if _, ok := mustCan(deps, w, r, "session", "list", dom); !ok {
+			if _, ok := serverMustCan(deps, w, r, "session", "list", dom); !ok {
 				return
 			}
 
@@ -272,7 +272,7 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 			if s.Namespace == "" {
 				s.Namespace = "default"
 			}
-			if _, ok := mustCan(deps, w, r, "session", "create", s.Namespace); !ok {
+			if _, ok := serverMustCan(deps, w, r, "session", "create", s.Namespace); !ok {
 				return
 			}
 
@@ -292,10 +292,10 @@ func handleSessions(deps *serverDeps) http.HandlerFunc {
 }
 
 // cmd/server/handlers.go
-// GET/DELETE/SCALE: /api/v1/sessions/{ns}/{name}[ /scale ]
-func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
+// GET/DELETE/SCALE: /api/v1/server/sessions/{ns}/{name}[ /scale ]
+func handleServerSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/sessions/"), "/")
+		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/server/sessions/"), "/")
 		if len(parts) < 2 {
 			http.Error(w, "invalid path", http.StatusBadRequest)
 			return
@@ -303,7 +303,7 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 		ns, name := parts[0], parts[1]
 
 		if len(parts) == 3 && parts[2] == "scale" && r.Method == http.MethodPost {
-			if _, ok := mustCan(deps, w, r, "session", "scale", ns); !ok {
+			if _, ok := serverMustCan(deps, w, r, "session", "scale", ns); !ok {
 				return
 			}
 			type scaleBody struct {
@@ -331,7 +331,7 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 
 		switch r.Method {
 		case http.MethodGet:
-			if _, ok := mustCan(deps, w, r, "session", "get", ns); !ok {
+			if _, ok := serverMustCan(deps, w, r, "session", "get", ns); !ok {
 				return
 			}
 			var s codespacev1.Session
@@ -342,7 +342,7 @@ func handleSessionsWithPath(deps *serverDeps) http.HandlerFunc {
 			writeJSON(w, s)
 
 		case http.MethodDelete:
-			if _, ok := mustCan(deps, w, r, "session", "delete", ns); !ok {
+			if _, ok := serverMustCan(deps, w, r, "session", "delete", ns); !ok {
 				return
 			}
 			err := deps.typed.Delete(r.Context(), &codespacev1.Session{
