@@ -33,13 +33,23 @@ import {
   InfoCircleIcon,
 } from "@patternfly/react-icons";
 import { useAuth } from "../hooks/useAuth";
-import { introspect, getMe, IntrospectResponse } from "../api/rbac";
-import type { Me } from "../api/rbac";
+import { introspectApi } from "../api/client";
+import type { Introspection } from "../types";
+
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
+
+  // Local state
   const [loading, setLoading] = useState(true);
-  const [me, setMe] = useState<Me | null>(null);
-  const [rbac, setRBAC] = useState<IntrospectResponse | null>(null);
+  const [me, setMe] = useState<{
+    user: string | null;
+    roles: string[];
+    provider?: string;
+    email?: string;
+    exp?: number;
+    iat?: number;
+  } | null>(null);
+  const [rbac, setRBAC] = useState<Introspection | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // choose a small set of namespaces to display by default
@@ -50,10 +60,20 @@ export function UserInfoPage() {
     (async () => {
       try {
         setLoading(true);
-        const [who, perms] = await Promise.all([
-          getMe(),
-          introspect(namespacesToQuery),
-        ]);
+        // Use a single source of truth: backend /introspect
+        const perms: Introspection = await introspectApi.get({
+          namespaces: namespacesToQuery,
+        });
+
+        const who = {
+          user: perms?.user?.subject ?? null,
+          roles: Array.isArray(perms?.user?.roles) ? perms.user.roles : [],
+          provider: perms?.user?.provider,
+          email: (perms as any)?.user?.email, // optional, if backend provides it
+          exp: perms?.user?.exp,
+          iat: perms?.user?.iat,
+        };
+
         if (!cancelled) {
           setMe(who);
           setRBAC(perms);
@@ -71,6 +91,7 @@ export function UserInfoPage() {
     };
   }, [namespacesToQuery]);
 
+  // Decode JWT (if you still show it)
   const decodeJWTPayload = (t?: string | null) => {
     if (!t) return null;
     try {
@@ -94,7 +115,7 @@ export function UserInfoPage() {
     ? Date.now() / 1000 >= tokenPayload.exp
     : false;
 
-  const renderBool = (v: boolean, hint?: string) =>
+  const renderBool = (v: boolean) =>
     v ? (
       <span className="pf-u-color-success-400">
         <CheckCircleIcon className="pf-u-mr-xs" />
@@ -107,12 +128,13 @@ export function UserInfoPage() {
       </span>
     );
 
+  // Ordered list of actions for namespace permissions table
   const actionOrder: Array<
-    keyof IntrospectResponse["domains"][string]["session"]
+    keyof NonNullable<Introspection["domains"][string]>["session"]
   > = ["get", "list", "watch", "create", "update", "delete", "scale"];
 
   return (
-    <PageSection isWidthLimited>
+    <PageSection isWidthLimited style={{ padding: "1rem" }}>
       <div className="pf-u-mb-lg">
         <Title headingLevel="h1" className="pf-u-mb-sm">
           User Management
@@ -292,7 +314,7 @@ export function UserInfoPage() {
                         <InfoCircleIcon className="pf-u-ml-sm pf-u-color-200" />
                       </Tooltip>
                     </div>
-                    {renderBool(rbac.cluster.namespaces.list)}
+                    {renderBool(!!rbac?.cluster?.casbin?.namespaces?.list)}
                   </div>
 
                   <Divider className="pf-u-mb-md" />
@@ -301,7 +323,7 @@ export function UserInfoPage() {
                     Effective Permissions by Namespace
                   </Title>
 
-                  {Object.keys(rbac.domains).length === 0 ? (
+                  {Object.keys(rbac?.domains ?? {}).length === 0 ? (
                     <p className="pf-u-color-200">No namespaces to display.</p>
                   ) : (
                     <div>
@@ -330,7 +352,7 @@ export function UserInfoPage() {
                                 <span className="pf-u-mr-sm">
                                   session.{act}
                                 </span>
-                                {renderBool(obj.session[act])}
+                                {renderBool(!!obj.session?.[act])}
                               </ListItem>
                             ))}
                           </List>

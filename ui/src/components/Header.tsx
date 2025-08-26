@@ -8,6 +8,7 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  ToolbarGroup,
   Title,
   Button,
   Brand,
@@ -128,7 +129,7 @@ export function Header({
       <MastheadContent>
         <Toolbar isFullHeight isStatic>
           <ToolbarContent>
-            {/* Namespace selector */}
+            {/* Left side - Namespace selector */}
             <ToolbarItem>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span
@@ -159,62 +160,66 @@ export function Header({
               </div>
             </ToolbarItem>
 
-            <ToolbarItem>
-              <Button
-                variant="secondary"
-                onClick={onRefresh}
-                size="sm"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderColor: "rgba(255,255,255,0.3)",
-                  color: "var(--pf-global--Color--light-100)",
-                }}
-              >
-                <SyncIcon style={{ marginRight: 4 }} />
-                Refresh
-              </Button>
-            </ToolbarItem>
-
-            {user && (
-              <ToolbarItem>
-                <Dropdown
-                  isOpen={isUserMenuOpen}
-                  onSelect={() => setUserMenuOpen(false)}
-                  toggle={(toggleRef: React.Ref<any>) => (
-                    <MenuToggle
-                      ref={toggleRef}
-                      onClick={() => setUserMenuOpen(!isUserMenuOpen)}
-                      isExpanded={isUserMenuOpen}
-                      style={{
-                        color: "var(--pf-global--Color--light-100)",
-                        backgroundColor: "transparent",
-                        borderColor: "rgba(255,255,255,0.3)",
-                      }}
-                    >
-                      <UserIcon style={{ marginRight: 6 }} />
-                      {user}
-                    </MenuToggle>
-                  )}
-                  shouldFocusToggleOnSelect
-                >
-                  <DropdownList>{userMenuItems}</DropdownList>
-                </Dropdown>
-              </ToolbarItem>
-            )}
-            {user && (
+            {/* Right side - User controls grouped together */}
+            <ToolbarGroup align={{ default: "alignEnd" }}>
               <ToolbarItem>
                 <Button
-                  variant="tertiary"
-                  onClick={handleLogout}
+                  variant="secondary"
+                  onClick={onRefresh}
+                  size="sm"
                   style={{
-                    color: "var(--pf-global--Color--light-100)",
+                    backgroundColor: "rgba(255,255,255,0.1)",
                     borderColor: "rgba(255,255,255,0.3)",
+                    color: "var(--pf-global--Color--light-100)",
                   }}
                 >
-                  Sign out
+                  <SyncIcon style={{ marginRight: 4 }} />
+                  Refresh
                 </Button>
               </ToolbarItem>
-            )}
+
+              {user && (
+                <ToolbarItem>
+                  <Dropdown
+                    isOpen={isUserMenuOpen}
+                    onSelect={() => setUserMenuOpen(false)}
+                    toggle={(toggleRef: React.Ref<any>) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setUserMenuOpen(!isUserMenuOpen)}
+                        isExpanded={isUserMenuOpen}
+                        style={{
+                          color: "var(--pf-global--Color--light-100)",
+                          backgroundColor: "transparent",
+                          borderColor: "rgba(255,255,255,0.3)",
+                        }}
+                      >
+                        <UserIcon style={{ marginRight: 6 }} />
+                        {user}
+                      </MenuToggle>
+                    )}
+                    shouldFocusToggleOnSelect
+                  >
+                    <DropdownList>{userMenuItems}</DropdownList>
+                  </Dropdown>
+                </ToolbarItem>
+              )}
+
+              {user && (
+                <ToolbarItem>
+                  <Button
+                    variant="tertiary"
+                    onClick={handleLogout}
+                    style={{
+                      color: "var(--pf-global--Color--light-100)",
+                      borderColor: "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    Sign out
+                  </Button>
+                </ToolbarItem>
+              )}
+            </ToolbarGroup>
           </ToolbarContent>
         </Toolbar>
       </MastheadContent>

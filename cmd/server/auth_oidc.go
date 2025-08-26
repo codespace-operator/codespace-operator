@@ -195,12 +195,15 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 			return
 		}
 
-		roles := idc.Groups
-		if len(roles) == 0 && len(idc.Roles) > 0 {
-			roles = idc.Roles
-		}
+		// Roles for Casbin = application roles (prefer explicit roles; fallback to groups if roles are absent)
+		roles := idc.Roles
 
-		extra := map[string]any{"email": idc.Email}
+		// Put display + group info into the JWT so /api/v1/me can surface it.
+		extra := map[string]any{
+			"email":    idc.Email,
+			"username": idc.Username,
+			"groups":   idc.Groups,
+		}
 		sessionTTL := time.Duration(cfg.SessionTTLMinutes) * time.Minute
 		if sessionTTL <= 0 {
 			sessionTTL = 60 * time.Minute

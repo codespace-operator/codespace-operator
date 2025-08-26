@@ -17,25 +17,36 @@
   --pf-v6-global--link--Color--hover: #9ec2ff;
 
   /* DARK DEFAULTS */
-  --pf-c-page--BackgroundColor: #151515;              /* PF v5 */
-  --pf-v6-c-page--BackgroundColor: #151515;           /* PF v6 */
-  --pf-v6-c-page__main--BackgroundColor: #151515;     /* PF v6 main */
+  --pf-c-page--BackgroundColor: #151515; /* PF v5 */
+  --pf-v6-c-page--BackgroundColor: #151515; /* PF v6 */
+  --pf-v6-c-page__main--BackgroundColor: #151515; /* PF v6 main */
 
   /* Cards in dark */
-  --pf-c-card--BackgroundColor: #1f1f1f;              /* PF v5 */
-  --pf-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.35);
-  --pf-v6-c-card--BackgroundColor: #1f1f1f;           /* PF v6 */
-  --pf-v6-c-card--BoxShadow: 0 1px 2px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.35);
+  --pf-c-card--BackgroundColor: #1f1f1f; /* PF v5 */
+  --pf-c-card--BoxShadow:
+    0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --pf-v6-c-card--BackgroundColor: #1f1f1f; /* PF v6 */
+  --pf-v6-c-card--BoxShadow:
+    0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.35);
 
   /* Primary buttons */
-  --pf-c-button--m-primary--BackgroundColor: var(--pf-global--primary-color--100);
-  --pf-c-button--m-primary--hover--BackgroundColor: var(--pf-global--primary-color--200);
-  --pf-v6-c-button--m-primary--BackgroundColor: var(--pf-v6-global--primary-color--100);
-  --pf-v6-c-button--m-primary--hover--BackgroundColor: var(--pf-v6-global--primary-color--200);
+  --pf-c-button--m-primary--BackgroundColor: var(
+    --pf-global--primary-color--100
+  );
+  --pf-c-button--m-primary--hover--BackgroundColor: var(
+    --pf-global--primary-color--200
+  );
+  --pf-v6-c-button--m-primary--BackgroundColor: var(
+    --pf-v6-global--primary-color--100
+  );
+  --pf-v6-c-button--m-primary--hover--BackgroundColor: var(
+    --pf-v6-global--primary-color--200
+  );
 
   /* Masthead + Sidebar */
   --pf-c-masthead--BackgroundColor: #151515;
-  --pf-c-masthead--BoxShadow: 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.6);
+  --pf-c-masthead--BoxShadow:
+    0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.6);
   --pf-c-nav--BackgroundColor: #0f0f0f;
   --pf-c-page__sidebar--md--Width: 300px;
 
@@ -46,9 +57,14 @@
   /* Dark nav link colors */
   --pf-c-nav--m-dark__link--Color: #c7c7c7;
   --pf-c-nav--m-dark__link--m-current--Color: #ffffff;
-  --pf-c-nav--m-dark__link--m-current--BackgroundColor: rgba(255,255,255,0.08);
+  --pf-c-nav--m-dark__link--m-current--BackgroundColor: rgba(
+    255,
+    255,
+    255,
+    0.08
+  );
   --pf-c-nav--m-dark__link--hover--Color: #ffffff;
-  --pf-c-nav--m-dark__link--hover--BackgroundColor: rgba(255,255,255,0.04);
+  --pf-c-nav--m-dark__link--hover--BackgroundColor: rgba(255, 255, 255, 0.04);
 }
 
 /* Ensure page bg */
@@ -56,7 +72,10 @@
 .pf-c-page__main,
 .pf-v6-c-page,
 .pf-v6-c-page__main {
-  background-color: var(--pf-v6-c-page__main--BackgroundColor, var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))) !important;
+  background-color: var(
+    --pf-v6-c-page__main--BackgroundColor,
+    var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))
+  ) !important;
 }
 
 /* Dark sidebar */
@@ -67,7 +86,7 @@
 
 /* Table hover in dark */
 .pf-c-table tr:hover > td {
-  background-color: rgba(255,255,255,0.02);
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 /* ----- Login Page Styles ----- */
@@ -115,20 +134,27 @@
   text-decoration: none !important;
   cursor: pointer !important;
   display: block !important;
-  padding: var(--pf-global--spacer--sm, 0.5rem) var(--pf-global--spacer--md, 1rem) !important;
+  padding: var(--pf-global--spacer--sm, 0.5rem)
+    var(--pf-global--spacer--md, 1rem) !important;
   border-radius: 3px !important;
   transition: all 0.15s ease-in-out !important;
 }
 
 .pf-c-nav.pf-m-dark .pf-c-nav__link:hover {
   color: var(--pf-c-nav--m-dark__link--hover--Color, #ffffff) !important;
-  background-color: var(--pf-c-nav--m-dark__link--hover--BackgroundColor, rgba(255,255,255,0.04)) !important;
+  background-color: var(
+    --pf-c-nav--m-dark__link--hover--BackgroundColor,
+    rgba(255, 255, 255, 0.04)
+  ) !important;
 }
 
 .pf-c-nav.pf-m-dark .pf-c-nav__item.pf-m-current > .pf-c-nav__link,
 .pf-c-nav.pf-m-dark .pf-c-nav__link.pf-m-current {
   color: var(--pf-c-nav--m-dark__link--m-current--Color, #fff) !important;
-  background-color: var(--pf-c-nav--m-dark__link--m-current--BackgroundColor, rgba(255,255,255,.08)) !important;
+  background-color: var(
+    --pf-c-nav--m-dark__link--m-current--BackgroundColor,
+    rgba(255, 255, 255, 0.08)
+  ) !important;
   font-weight: 600 !important;
 }
 
@@ -137,7 +163,7 @@
 .pf-v6-c-modal-box {
   background-color: #1f1f1f !important;
   color: #ffffff !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 8px !important;
 }
 
@@ -145,9 +171,10 @@
 .pf-c-modal-box__header,
 .pf-v6-c-modal-box__header {
   background-color: transparent !important;
-  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
-  padding: var(--pf-global--spacer--md, 1rem) var(--pf-global--spacer--lg, 1.25rem) !important;
+  padding: var(--pf-global--spacer--md, 1rem)
+    var(--pf-global--spacer--lg, 1.25rem) !important;
 }
 
 /* Modal title */
@@ -170,10 +197,11 @@
 .pf-v6-c-modal-box__footer {
   display: flex !important;
   justify-content: flex-end !important;
-  gap: var(--pf-global--spacer--sm, .5rem) !important;
-  padding: var(--pf-global--spacer--md, 1rem) var(--pf-global--spacer--lg, 1.25rem) !important;
+  gap: var(--pf-global--spacer--sm, 0.5rem) !important;
+  padding: var(--pf-global--spacer--md, 1rem)
+    var(--pf-global--spacer--lg, 1.25rem) !important;
   background-color: #1f1f1f !important;
-  border-top: 1px solid rgba(255,255,255,0.1) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
   position: relative !important;
   z-index: 1 !important;
 }
@@ -212,7 +240,7 @@
 .pf-c-modal-box .pf-c-text-input-group__text-input,
 .pf-v6-c-modal-box .pf-v6-c-text-input-group__text-input {
   background-color: #2a2a2a !important;
-  border-color: rgba(255,255,255,0.2) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
   color: #ffffff !important;
 }
 
@@ -267,7 +295,7 @@ select.pf-c-form-control optgroup,
 .pf-c-dropdown__menu,
 .pf-v6-c-dropdown__menu {
   background-color: #2a2a2a !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
@@ -278,7 +306,7 @@ select.pf-c-form-control optgroup,
 
 .pf-c-dropdown__menu-item:hover,
 .pf-v6-c-dropdown__menu-item:hover {
-  background-color: rgba(255,255,255,0.04) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
 /* ----- Alert ----- */
@@ -444,7 +472,7 @@ select.pf-c-form-control optgroup,
 /* Hover state */
 .pf-c-nav__link:hover {
   color: #ffffff !important;
-  background-color: rgba(255,255,255,0.04) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
   text-decoration: none !important;
 }
 
@@ -452,7 +480,7 @@ select.pf-c-form-control optgroup,
 .pf-c-nav__item.pf-m-current .pf-c-nav__link,
 .pf-c-nav__item[aria-current="page"] .pf-c-nav__link {
   color: #ffffff !important;
-  background-color: rgba(255,255,255,0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
   font-weight: 600 !important;
   position: relative !important;
 }
@@ -498,4 +526,90 @@ select.pf-c-form-control optgroup,
 .pf-c-page__sidebar.pf-m-collapsed + .pf-c-page__main,
 .pf-v6-c-page__sidebar.pf-m-collapsed + .pf-v6-c-page__main {
   margin-left: 0 !important;
+}
+
+/* Add this to the END of your ui/src/theme.css file to fix header squishing */
+
+/* ----- Masthead Layout Fixes ----- */
+.pf-c-masthead,
+.pf-v6-c-masthead {
+  min-height: 64px !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.pf-c-masthead__main,
+.pf-v6-c-masthead__main {
+  flex-shrink: 0 !important;
+  min-width: 0 !important;
+}
+
+.pf-c-masthead__brand,
+.pf-v6-c-masthead__brand {
+  flex-shrink: 0 !important;
+  min-width: 0 !important;
+}
+
+.pf-c-masthead__content,
+.pf-v6-c-masthead__content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Fix toolbar layout in masthead */
+.pf-c-masthead .pf-c-toolbar,
+.pf-v6-c-masthead .pf-v6-c-toolbar {
+  height: auto !important;
+  min-height: 40px !important;
+}
+
+.pf-c-masthead .pf-c-toolbar__content,
+.pf-v6-c-masthead .pf-v6-c-toolbar__content {
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 1rem !important;
+}
+
+.pf-c-masthead .pf-c-toolbar__item,
+.pf-v6-c-masthead .pf-v6-c-toolbar__item {
+  flex-shrink: 0 !important;
+}
+
+/* Ensure title doesn't get squished */
+.pf-c-title {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Fix FormSelect in masthead */
+.pf-c-masthead .pf-c-form-control,
+.pf-v6-c-masthead .pf-v6-c-form-control {
+  min-width: 200px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix button spacing in masthead */
+.pf-c-masthead .pf-c-button,
+.pf-v6-c-masthead .pf-v6-c-button {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Fix hamburger button */
+.pf-c-masthead__toggle,
+.pf-v6-c-masthead__toggle {
+  flex-shrink: 0 !important;
+  margin-right: 1rem !important;
+}
+
+.pf-c-masthead__toggle .pf-c-button,
+.pf-v6-c-masthead__toggle .pf-v6-c-button {
+  padding: 0.5rem !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
 }

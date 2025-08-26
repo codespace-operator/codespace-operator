@@ -24,7 +24,7 @@ const ctxClaimsKey ctxKey = "claims"
 type claims struct {
 	Username  string   `json:"username,omitempty"`
 	Sub       string   `json:"sub"` // Reliable
-	Groups    []string `json:"groups"`
+	Groups    []string `json:"groups,omitempty"`
 	Roles     []string `json:"roles,omitempty"` // mapped from OIDC groups
 	Email     string   `json:"email,omitempty"`
 	Provider  string   `json:"provider,omitempty"`

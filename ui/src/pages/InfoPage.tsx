@@ -27,7 +27,7 @@ import {
 
 export function InfoPage() {
   return (
-    <PageSection isWidthLimited>
+    <PageSection isWidthLimited style={{ padding: "1rem" }}>
       <div className="pf-u-mb-lg">
         <Title headingLevel="h1" className="pf-u-mb-sm">
           Cluster Settings
