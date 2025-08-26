@@ -12,7 +12,7 @@ import { Header } from "./components/Header";
 import { InfoPage } from "./pages/InfoPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UserInfoPage } from "./pages/UserInfo";
-import { SessionsPage } from "./pages/SessionsPage";
+import { SessionsPage, SessionsPageRef } from "./pages/SessionsPage";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAuth } from "./hooks/useAuth";
 import { useIntrospection } from "./hooks/useIntrospection";
@@ -23,6 +23,7 @@ import {
   useLocation,
   useNavigate,
   Link,
+  Outlet,
 } from "react-router-dom";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -52,97 +53,28 @@ function LoginLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+/**
+ * AppChrome: header + (auth-gated) sidebar + alert area + <Outlet />
+ * This renders only for "app" routes, not for /login (which uses LoginLayout).
+ */
+function AppChrome({
+  namespace,
+  setNamespace,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  onRefresh,
+  alerts,
+}: {
+  namespace: string;
+  setNamespace: (ns: string) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (v: boolean) => void;
+  onRefresh: () => void;
+  alerts: ReturnType<typeof useAlerts>;
+}) {
   const { isAuthenticated, user } = useAuth();
-  const { data: ix, error: ixError } = useIntrospection({ discover: true });
-
-  const alerts = useAlerts();
   const location = useLocation();
-  const navigate = useNavigate();
-  const sessionsPageRef = useRef<SessionsPageRef>(null);
 
-  const [namespace, setNamespace] = useState<string>(
-    localStorage.getItem("co_ns") || "All",
-  );
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Button gating: hide "All" if user can't watch across "*"
-  const allowAll = !!ix?.domains?.["*"]?.session?.watch;
-
-  // Derive creatable namespaces for fallback logic
-  const creatableNamespaces = useMemo(() => {
-    if (!ix) return [];
-    return Object.entries(ix.domains || {})
-      .filter(([ns, perms]) => ns !== "*" && perms?.session?.create)
-      .map(([ns]) => ns)
-      .sort();
-  }, [ix]);
-
-  // Persist namespace selection
-  useEffect(() => {
-    // If user picked "All" but it's not allowed, fall back to first allowed ns
-    if (namespace === "All" && !allowAll) {
-      const fallback =
-        creatableNamespaces[0] || ix?.namespaces?.userAllowed?.[0] || "default";
-      setNamespace(fallback);
-      return;
-    }
-    localStorage.setItem("co_ns", namespace);
-  }, [namespace, allowAll, creatableNamespaces, ix?.namespaces?.userAllowed]);
-
-  useEffect(() => {
-    if (ixError) alerts.push(ixError, "danger");
-  }, [ixError]);
-
-  const handleToggleSidebar = () => {
-    console.log("Hamburger clicked! Current sidebar state:", isSidebarOpen);
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const handleRefresh = () => {
-    // Only refresh if we're on the sessions page
-    if (location.pathname.startsWith("/sessions")) {
-      sessionsPageRef.current?.refresh();
-    }
-  };
-
-  // If on login page, show full-screen login layout
-  if (location.pathname === "/login") {
-    return (
-      <LoginLayout>
-        <AlertGroup isToast isLiveRegion>
-          {alerts.list.map((a) => (
-            <Alert
-              key={a.key}
-              title={a.title}
-              variant={a.variant}
-              timeout={6000}
-              actionClose={
-                <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
-              }
-            />
-          ))}
-        </AlertGroup>
-
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <LoginPage
-                onLoggedIn={() => {
-                  const from =
-                    (location.state as any)?.from?.pathname || "/sessions";
-                  navigate(from, { replace: true });
-                }}
-              />
-            }
-          />
-        </Routes>
-      </LoginLayout>
-    );
-  }
-
-  // Custom layout instead of relying on PatternFly's Page sidebar management
   return (
     <div
       style={{
@@ -152,24 +84,16 @@ export default function App() {
         backgroundColor: "var(--pf-c-page--BackgroundColor, #151515)",
       }}
     >
-      {/* Header - remove the wrapper div and let Masthead handle its own layout */}
       <Header
         namespace={namespace}
-        onNamespace={(ns) => setNamespace(ns)}
-        onRefresh={handleRefresh}
-        onToggleSidebar={handleToggleSidebar}
+        onNamespace={setNamespace}
+        onRefresh={onRefresh}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         user={user}
       />
 
-      {/* Main layout with sidebar and content */}
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          overflow: "hidden",
-        }}
-      >
-        {/* Sidebar */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Sidebar only when authenticated */}
         {isAuthenticated && (
           <div
             style={{
@@ -185,7 +109,6 @@ export default function App() {
           >
             <Nav
               aria-label="Primary navigation"
-              theme="dark"
               style={{ padding: "1rem 0", width: "300px" }}
             >
               <NavList>
@@ -247,13 +170,13 @@ export default function App() {
           </div>
         )}
 
-        {/* Main content area */}
+        {/* Main content */}
         <div
           style={{
             flex: 1,
             overflow: "auto",
             backgroundColor: "var(--pf-c-page--BackgroundColor, #151515)",
-            padding: "0",
+            padding: 0,
           }}
         >
           <AlertGroup isToast isLiveRegion>
@@ -270,45 +193,145 @@ export default function App() {
             ))}
           </AlertGroup>
 
-          <Routes>
-            <Route
-              path="/sessions"
-              element={
-                <RequireAuth>
-                  <SessionsPage
-                    ref={sessionsPageRef}
-                    namespace={namespace}
-                    onAlert={(message, variant) =>
-                      alerts.push(message, variant)
-                    }
-                  />
-                </RequireAuth>
-              }
-            />
-
-            <Route
-              path="/user-info"
-              element={
-                <RequireAuth>
-                  <UserInfoPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route
-              path="/info"
-              element={
-                <RequireAuth>
-                  <InfoPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route path="/" element={<Navigate to="/sessions" replace />} />
-            <Route path="*" element={<Navigate to="/sessions" replace />} />
-          </Routes>
+          {/* Child route outlet */}
+          <Outlet />
         </div>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  const { user } = useAuth();
+  const { data: ix, error: ixError } = useIntrospection({ discover: true });
+
+  const alerts = useAlerts();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sessionsPageRef = useRef<SessionsPageRef>(null);
+
+  const [namespace, setNamespace] = useState<string>(
+    localStorage.getItem("co_ns") || "All",
+  );
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Button gating: hide "All" if user can't watch across "*"
+  const allowAll = !!ix?.domains?.["*"]?.session?.watch;
+
+  // Derive creatable namespaces for fallback logic
+  const creatableNamespaces = useMemo(() => {
+    if (!ix) return [];
+    return Object.entries(ix.domains || {})
+      .filter(([ns, perms]) => ns !== "*" && perms?.session?.create)
+      .map(([ns]) => ns)
+      .sort();
+  }, [ix]);
+
+  // Persist namespace selection
+  useEffect(() => {
+    if (namespace === "All" && !allowAll) {
+      const fallback =
+        creatableNamespaces[0] || ix?.namespaces?.userAllowed?.[0] || "default";
+      setNamespace(fallback);
+      return;
+    }
+    localStorage.setItem("co_ns", namespace);
+  }, [namespace, allowAll, creatableNamespaces, ix?.namespaces?.userAllowed]);
+
+  useEffect(() => {
+    if (ixError) alerts.push(ixError, "danger");
+  }, [ixError]);
+
+  const handleRefresh = () => {
+    if (location.pathname.startsWith("/sessions")) {
+      sessionsPageRef.current?.refresh();
+    }
+  };
+
+  // Helper component so we can keep Login fullscreen + alerts + navigate-after-login.
+  const LoginRoute = () => {
+    const loc = useLocation();
+    const nav = useNavigate();
+    return (
+      <LoginLayout>
+        <AlertGroup isToast isLiveRegion>
+          {alerts.list.map((a) => (
+            <Alert
+              key={a.key}
+              title={a.title}
+              variant={a.variant}
+              timeout={6000}
+              actionClose={
+                <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
+              }
+            />
+          ))}
+        </AlertGroup>
+
+        <LoginPage
+          onLoggedIn={() => {
+            const from = (loc.state as any)?.from?.pathname || "/sessions";
+            nav(from, { replace: true });
+          }}
+        />
+      </LoginLayout>
+    );
+  };
+
+  return (
+    <Routes>
+      {/* Public, full-screen login */}
+      <Route path="/login" element={<LoginRoute />} />
+
+      {/* App chrome wraps protected routes */}
+      <Route
+        path="/"
+        element={
+          <AppChrome
+            namespace={namespace}
+            setNamespace={setNamespace}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            onRefresh={handleRefresh}
+            alerts={alerts}
+          />
+        }
+      >
+        <Route
+          path="sessions"
+          element={
+            <RequireAuth>
+              <SessionsPage
+                ref={sessionsPageRef}
+                namespace={namespace}
+                onAlert={(message, variant) => alerts.push(message, variant)}
+              />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="user-info"
+          element={
+            <RequireAuth>
+              <UserInfoPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="info"
+          element={
+            <RequireAuth>
+              <InfoPage />
+            </RequireAuth>
+          }
+        />
+
+        {/* Default “home” → sessions */}
+        <Route index element={<Navigate to="/sessions" replace />} />
+      </Route>
+
+      {/* Fallbacks */}
+      <Route path="*" element={<Navigate to="/sessions" replace />} />
+    </Routes>
   );
 }

@@ -31,11 +31,11 @@ allow_token_param: false # allow ?access_token=... (NOT recommended)
 
 # OIDC (leave blank to disable)
 oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
-oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace%20DEV" # e.g. "https://dev-xxxx.okta.com"
+oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV" # e.g. "https://dev-xxxx.okta.com"
 oidc_client_id: "codespace-server"
 oidc_client_secret: "dev-secret"
 oidc_redirect_url: "http://console.codespace.test/auth/callback" # e.g. "https://your-host/auth/callback"
-oidc_scopes: [] # default used when empty: ["openid","profile","email"]
+oidc_scopes: ["openid", "profile", "email"] # default used when empty: ["openid","profile","email"]
 
 # RBAC (Casbin) files — if empty, server uses built-in defaults
 rbac_model_path: "./misc/tests/model.conf" # defaults to /etc/codespace-operator/rbac/model.conf

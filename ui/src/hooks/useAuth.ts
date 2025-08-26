@@ -44,24 +44,33 @@ export function useAuth() {
           credentials: "include",
         });
         if (resp.status === 401) {
-          window.location.href = "/auth/login";
+          // Not authenticated. Let the router redirect to /login when a protected
+          // page is visited. Just clear local state and finish loading.
+          if (!cancelled) {
+            localStorage.removeItem(USER_KEY);
+            localStorage.removeItem(TOKEN_KEY);
+            setUser(null);
+            setRoles([]);
+            setToken(null);
+          }
           return;
         }
         const data = await resp.json();
         if (cancelled) return;
-
         const subject = data?.user?.subject ?? null;
         const rs: string[] = Array.isArray(data?.user?.roles)
           ? data.user.roles
           : [];
         setUser(subject);
         setRoles(rs);
-
-        // optional: if you want to reflect JWT lifetime in state
-        // (depends on what you show in the UI)
-        // const exp = data?.user?.exp as number | undefined;
+        // (optionally set token if backend returns one)
       } catch {
-        /* noop */
+        // swallow; treat like unauth
+        if (!cancelled) {
+          setUser(null);
+          setRoles([]);
+          setToken(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
