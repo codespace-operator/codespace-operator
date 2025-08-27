@@ -38,6 +38,18 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
     // Derive creatable namespaces from /introspect (single source of truth)
     const creatableNamespaces = useMemo(() => {
       if (!ix) return [];
+      // 1) Use server-provided list if present
+      const fromApi = ix.namespaces?.userCreatable;
+      if (fromApi?.length) return [...fromApi].sort();
+
+      // 2) If wildcard create is granted, allow all user-allowed namespaces
+      const starCreate = !!ix.domains?.["*"]?.session?.create;
+      if (starCreate) {
+        const allowed = ix.namespaces?.userAllowed ?? [];
+        return [...allowed].sort();
+      }
+
+      // 3) Fallback: scan per-namespace flags
       return Object.entries(ix.domains || {})
         .filter(([ns, perms]) => ns !== "*" && perms?.session?.create)
         .map(([ns]) => ns)

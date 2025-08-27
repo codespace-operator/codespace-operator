@@ -210,10 +210,6 @@ export function UserInfoPage() {
                   </DescriptionListGroup>
                 ) : null}
               </DescriptionList>
-
-              <Button variant="link" onClick={logout} className="logout-button">
-                Sign out
-              </Button>
             </CardBody>
           </Card>
         </GridItem>

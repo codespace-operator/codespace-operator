@@ -46,14 +46,15 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res;
 }
 
-function normalizeList<T = any>(x: any): T[] {
+function normalizeList<T = unknown>(x: any): T[] {
   if (!x) return [];
   if (Array.isArray(x)) return x as T[];
   if (Array.isArray(x.items)) return x.items as T[];
   if (x.data && Array.isArray(x.data.items)) return x.data.items as T[];
   return [];
 }
-function normalizeObject<T = any>(x: any): T {
+
+function normalizeObject<T = unknown>(x: any): T {
   if (!x) throw new Error("empty response");
   if (x.object) return x.object as T;
   return x as T;
@@ -61,7 +62,7 @@ function normalizeObject<T = any>(x: any): T {
 
 export const api = {
   async list(ns: string): Promise<Session[]> {
-    // If namespace is "All", omit the namespace parameter to get all namespaces
+    // For the UI's "All", ask the server for everything
     const url =
       ns === "All"
         ? `/api/v1/server/sessions?all=true`
@@ -100,22 +101,22 @@ export const api = {
     return normalizeObject<Session>(await r.json());
   },
 
-  // SSE: prefer cookie; attach token as query only if no cookie is present
+  // Server-Sent Events stream of Session updates
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
     const token = getToken();
-    // old: const hasCookie = document.cookie.includes("codespace_jwt=");
+
+    // Prefer cookie session; only fall back to access_token param when there is no session cookie.
     const hasCookie =
       document.cookie.includes("codespace_session=") ||
       document.cookie.includes("codespace_jwt="); // back-compat
 
-    // Adjust URL for "All" namespace
     const baseUrl = `${base}/api/v1/stream/sessions`;
-    const queryParams =
+    const query =
       ns === "All" ? `?all=true` : `?namespace=${encodeURIComponent(ns)}`;
     const tokenParam =
       !hasCookie && token ? `&access_token=${encodeURIComponent(token)}` : "";
-    const url = baseUrl + queryParams + tokenParam;
 
+    const url = baseUrl + query + tokenParam;
     const es = new EventSource(url, { withCredentials: true as any });
     es.onmessage = onEvent;
     return es;
@@ -123,7 +124,9 @@ export const api = {
 };
 
 export const introspectApi = {
-  // Legacy combined endpoint (deprecated but kept for backward compatibility)
+  /**
+   * Legacy combined endpoint (kept for back-compat with useIntrospection)
+   */
   get: async (opts?: {
     discover?: boolean;
     namespaces?: string[];
@@ -143,7 +146,9 @@ export const introspectApi = {
     return r.json();
   },
 
-  // Get user-specific information only
+  /**
+   * User-scoped introspection (permissions, roles, allowed namespaces)
+   */
   getUser: async (opts?: {
     namespaces?: string[];
     actions?: string[];
@@ -154,21 +159,26 @@ export const introspectApi = {
       p.set("namespaces", opts.namespaces.join(","));
     if (opts?.actions?.length) p.set("actions", opts.actions.join(","));
     if (opts?.discover) p.set("discover", "1");
+
     const url = `${base}/api/v1/introspect/user?${p.toString()}`;
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`user introspect failed: ${r.status}`);
     return r.json();
   },
 
-  // Get server/cluster information only (may require elevated permissions)
+  /**
+   * Server/cluster-scoped introspection (may require elevated permissions)
+   */
   getServer: async (opts?: { discover?: boolean }) => {
     const p = new URLSearchParams();
     if (opts?.discover) p.set("discover", "1");
 
     const url = `${base}/api/v1/introspect/server?${p.toString()}`;
     const r = await fetch(url, { credentials: "include" });
+
     if (!r.ok) {
       if (r.status === 403) {
+        // bubble a friendly error that callers can optionally suppress
         throw new Error("Insufficient permissions to view server information");
       }
       throw new Error(`server introspect failed: ${r.status}`);

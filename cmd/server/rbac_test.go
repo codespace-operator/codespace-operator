@@ -120,6 +120,11 @@ func TestPolicyBasics(t *testing.T) {
 		t.Fatal("admin should be allowed")
 	}
 
+	ok, _ = r.Enforce("developer", nil, "session", "create", "dev-frontend")
+	if !ok {
+		t.Fatal("dev-* should match dev-frontend")
+	}
+
 	// Viewer: read-only
 	ok, _ = r.Enforce("viewer", nil, "session", "get", "team-a")
 	if !ok {

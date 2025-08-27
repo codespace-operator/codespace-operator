@@ -3,10 +3,16 @@ g, codespace-operator:admin, admin
 g, codespace-operator:editor, editor  
 g, codespace-operator:viewer, viewer
 
+# Example for a single targeted user from an IdP
+# IssuerID derived from: https://idp.example.com/abcd/efgh
+# -> idp.example.com~abcd~efgh
+# p, oidc:idp.example.com~abcd~efgh:8f9a2c...., session, *, team-alpha, allow
+
 # Admin permissions (full access everywhere)
 p, admin, *, *, *, allow
-p, admin, session, *, *, allow
-p, admin, namespace, *, *, allow
+
+# p, admin, session, *, *, allow
+# p, admin, namespaces, *, *, allow
 
 # Editor permissions (CRUD sessions)
 p, editor, session, get, *, allow
@@ -23,8 +29,9 @@ p, viewer, session, list, *, allow
 p, viewer, session, watch, *, allow
 
 # Specific user permissions (examples)
-p, alice@company.com, session, *, team-alpha, allow
-p, bob@company.com, session, *, team-beta, allow
+p, local:admin, *, *, *, allow
+p, local:alice, session, *, *, allow
+p, local:bob, session, *, default, allow
 
 # Environment-specific restrictions (examples)
 p, developer, session, get, dev-*, allow

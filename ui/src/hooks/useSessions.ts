@@ -103,9 +103,31 @@ export function useSessions(
       }
     },
     create: async (body: Partial<Session>) => {
-      const ns = body?.metadata?.namespace || effectiveNs;
-      if (!canDo(ix!, ns, "create"))
-        throw new Error(`Not allowed to create in ${ns}`);
+      // Resolve namespace
+      const candidate =
+        body?.metadata?.namespace ??
+        (effectiveNs !== "All" ? effectiveNs : undefined);
+
+      if (!candidate) {
+        // either ask the user to pick, or choose a sensible default
+        const firstCreatable = ix?.namespaces?.userCreatable?.[0];
+        if (!firstCreatable) {
+          throw new Error("Pick a namespace to create the session in.");
+        }
+        body = {
+          ...body,
+          metadata: { ...(body?.metadata || {}), namespace: firstCreatable },
+        } as Partial<Session>;
+      } else {
+        // enforce guard on the resolved ns
+        if (!canDo(ix!, candidate, "create")) {
+          throw new Error(`Not allowed to create in ${candidate}`);
+        }
+        body = {
+          ...body,
+          metadata: { ...(body?.metadata || {}), namespace: candidate },
+        } as Partial<Session>;
+      }
       return api.create(body);
     },
     remove: async (ns: string, name: string) => {
@@ -121,11 +143,13 @@ export function useSessions(
       return api.scale(ns, name, replicas);
     },
     can: {
-      list: (ns = effectiveNs) => canDo(ix!, ns, "list"),
+      list: (ns = effectiveNs) => canDo(ix!, ns === "All" ? "*" : ns, "list"),
       watch: (ns = effectiveNs) => canDo(ix!, ns === "All" ? "*" : ns, "watch"),
-      create: (ns = effectiveNs) => canDo(ix!, ns, "create"),
-      delete: (ns = effectiveNs) => canDo(ix!, ns, "delete"),
-      scale: (ns = effectiveNs) => canDo(ix!, ns, "scale"),
+      create: (ns = effectiveNs) =>
+        canDo(ix!, ns === "All" ? "*" : ns, "create"),
+      delete: (ns = effectiveNs) =>
+        canDo(ix!, ns === "All" ? "*" : ns, "delete"),
+      scale: (ns = effectiveNs) => canDo(ix!, ns === "All" ? "*" : ns, "scale"),
     },
     effectiveNamespace: effectiveNs,
   };

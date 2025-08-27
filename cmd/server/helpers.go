@@ -434,3 +434,13 @@ func filterNamespaces(allNamespaces, allowedNamespaces []string) []string {
 
 	return filtered
 }
+
+func hostOrHash(issuer string) string {
+	u, err := url.Parse(issuer)
+	if err == nil && u.Host != "" {
+		return strings.ToLower(u.Host) // okta.example.com
+	}
+	// Fallback: short hash for weird issuers
+	sum := sha256.Sum256([]byte(issuer))
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:16]
+}

@@ -133,7 +133,7 @@ export function useIntrospection({
         setLoading(true);
         // Use the new split endpoints internally
         const [userRes, serverRes] = await Promise.allSettled([
-          introspectApi.getUser({ namespaces }),
+          introspectApi.getUser({ namespaces, discover }),
           introspectApi.getServer({ discover }),
         ]);
 

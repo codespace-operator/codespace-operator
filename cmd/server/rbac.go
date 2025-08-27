@@ -192,6 +192,34 @@ func (r *RBAC) Enforce(sub string, roles []string, obj, act, dom string) (bool, 
 	return false, nil
 }
 
+// EnforceAny checks alternative identities.
+func (r *RBAC) EnforceAny(subjects []string, roles []string, obj, act, dom string) (bool, error) {
+	r.mu.RLock()
+	enf := r.enf
+	r.mu.RUnlock()
+	if enf == nil {
+		return false, errors.New("rbac not initialized")
+	}
+
+	// Try concrete subjects (sub, email, username)
+	for _, s := range uniqueNonEmpty(subjects) {
+		if ok, err := enf.Enforce(s, obj, act, dom); err != nil {
+			return false, err
+		} else if ok {
+			return true, nil
+		}
+	}
+	// Then try roles as subjects (leveraging g(role, roleAlias) in matcher)
+	for _, role := range uniqueNonEmpty(roles) {
+		if ok, err := enf.Enforce(role, obj, act, dom); err != nil {
+			return false, err
+		} else if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // EnforceAsSubject checks permissions for a specific subject (used for role introspection)
 func (r *RBAC) EnforceAsSubject(sub, obj, act, dom string) (bool, error) {
 	r.mu.RLock()

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -26,6 +27,7 @@ const (
 
 type oidcDeps struct {
 	provider   *oidc.Provider
+	issuerID   string
 	verifier   *oidc.IDTokenVerifier
 	oauth2     *oauth2.Config
 	httpClient *http.Client
@@ -95,9 +97,15 @@ func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, erro
 	}
 
 	var meta struct {
+		Issuer             string `json:"issuer"`
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 	}
 	_ = provider.Claims(&meta)
+
+	iss := meta.Issuer
+	if iss == "" {
+		iss = cfg.OIDCIssuerURL
+	}
 
 	return &oidcDeps{
 		provider:   provider,
@@ -105,6 +113,7 @@ func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, erro
 		oauth2:     oauth2cfg,
 		httpClient: hc,
 		endSession: meta.EndSessionEndpoint,
+		issuerID:   issuerIDFrom(iss),
 	}, nil
 }
 
@@ -229,8 +238,10 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 		}
 
 		sessionTTL := cfg.SessionTTL()
-		tok, err := makeJWT(idt.Subject, roles, "oidc", []byte(cfg.JWTSecret), sessionTTL, extra)
+		canonSub := "oidc:" + od.issuerID + ":" + idt.Subject
+		tok, err := makeJWT(canonSub, roles, "oidc", []byte(cfg.JWTSecret), sessionTTL, extra)
 		if err != nil {
+			errJSON(w, err)
 			http.Error(w, "session mint failed", http.StatusInternalServerError)
 			return
 		}
@@ -279,6 +290,7 @@ func handleLocalLogin(deps *serverDeps) http.HandlerFunc {
 		var body struct{ Username, Password string }
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			errJSON(w, err)
+			http.Error(w, "session mint failed", http.StatusInternalServerError)
 			return
 		}
 
@@ -317,7 +329,9 @@ func handleLocalLogin(deps *serverDeps) http.HandlerFunc {
 		}
 
 		sessionTTL := cfg.SessionTTL()
-		tok, err := makeJWT(body.Username, roles, "local", secret, sessionTTL, map[string]any{
+		// cmd/server/auth_local.go (in handleLocalLogin)
+		canonSub := "local:" + body.Username
+		tok, err := makeJWT(canonSub, roles, "local", secret, sessionTTL, map[string]any{
 			"email":    email,
 			"username": body.Username,
 		})
@@ -425,4 +439,21 @@ func expireTempCookie(w http.ResponseWriter, name string) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
+}
+func issuerIDFrom(issuer string) string {
+	u, err := url.Parse(issuer)
+	if err != nil {
+		return shortHash(issuer)
+	}
+	s := strings.ToLower(strings.TrimSuffix(u.Host+u.Path, "/"))
+	s = strings.ReplaceAll(s, "/", "~") // keycloak.example.com~realms~prod
+	s = strings.ReplaceAll(s, ":", "-") // avoid delimiter collision
+	if s == "" {
+		return shortHash(issuer)
+	}
+	return s
+}
+func shortHash(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:16]
 }
