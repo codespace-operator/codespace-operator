@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -13,8 +14,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
+
+	authv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type responseWriter struct {
@@ -195,4 +201,68 @@ func splitCSVQuery(s string) []string {
 		out = append(out, p)
 	}
 	return out
+}
+
+// buildServerCapabilities checks what the server's service account can do
+func buildServerCapabilities(ctx context.Context, deps *serverDeps) ServiceAccountInfo {
+	// Check namespace permissions
+	nsPerms := NamespacePermissions{
+		List: k8sCan(ctx, deps.typed, authv1.ResourceAttributes{
+			Group:    "",
+			Resource: "namespaces",
+			Verb:     "list",
+		}),
+	}
+
+	// Check session resource permissions
+	sessionPerms := make(map[string]bool)
+	sessionVerbs := []string{"get", "list", "watch", "create", "update", "delete", "patch"}
+
+	for _, verb := range sessionVerbs {
+		allowed := k8sCan(ctx, deps.typed, authv1.ResourceAttributes{
+			Group:    gvr.Group,
+			Resource: gvr.Resource,
+			Verb:     verb,
+		})
+		sessionPerms[verb] = allowed
+	}
+
+	return ServiceAccountInfo{
+		Namespaces: nsPerms,
+		Session:    sessionPerms,
+	}
+}
+
+// discoverNamespaces finds all namespaces and those with sessions
+func discoverNamespaces(ctx context.Context, deps *serverDeps) ([]string, []string, error) {
+	// Get all namespaces
+	var nsList corev1.NamespaceList
+	if err := deps.typed.List(ctx, &nsList); err != nil {
+		return nil, nil, fmt.Errorf("failed to list namespaces: %w", err)
+	}
+
+	allNamespaces := make([]string, 0, len(nsList.Items))
+	for _, ns := range nsList.Items {
+		allNamespaces = append(allNamespaces, ns.Name)
+	}
+	sort.Strings(allNamespaces)
+
+	// Find namespaces with sessions
+	sessionNamespaces := []string{}
+	ul, err := deps.dyn.Resource(gvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return allNamespaces, nil, fmt.Errorf("failed to list sessions: %w", err)
+	}
+
+	nsSet := make(map[string]struct{})
+	for _, item := range ul.Items {
+		nsSet[item.GetNamespace()] = struct{}{}
+	}
+
+	for ns := range nsSet {
+		sessionNamespaces = append(sessionNamespaces, ns)
+	}
+	sort.Strings(sessionNamespaces)
+
+	return allNamespaces, sessionNamespaces, nil
 }

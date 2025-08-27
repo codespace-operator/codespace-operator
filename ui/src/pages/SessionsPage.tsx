@@ -1,16 +1,7 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useImperativeHandle,
-  forwardRef,
-} from "react";
+import { useState, useMemo, useImperativeHandle, forwardRef } from "react";
 import {
   PageSection,
   PageSectionVariants,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
   TextInput,
   Button,
   Card,
@@ -20,7 +11,6 @@ import {
 import { PlusCircleIcon } from "@patternfly/react-icons";
 import { SessionsTable } from "../components/SessionsTable";
 import { CreateSessionModal } from "../components/CreateSessionModal";
-import { useAlerts } from "../hooks/useAlerts";
 import { useFilteredSessions, useSessions } from "../hooks/useSessions";
 import { useIntrospection } from "../hooks/useIntrospection";
 import type { Session } from "../types";

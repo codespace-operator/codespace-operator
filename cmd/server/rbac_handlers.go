@@ -1,0 +1,448 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+)
+
+// UserIntrospectionResponse represents user-specific information only
+type UserIntrospectionResponse struct {
+	User         UserInfo                     `json:"user"`
+	Domains      map[string]DomainPermissions `json:"domains"`
+	Namespaces   NamespaceInfo                `json:"namespaces"`
+	Capabilities UserCapabilities             `json:"capabilities"`
+}
+
+// ServerIntrospectionResponse represents server/cluster information only
+type ServerIntrospectionResponse struct {
+	Cluster      ClusterInfo         `json:"cluster"`
+	Namespaces   ServerNamespaceInfo `json:"namespaces"`
+	Capabilities SystemCapabilities  `json:"capabilities"`
+	Version      ServerVersionInfo   `json:"version,omitempty"`
+}
+
+// UserInfo contains authenticated user details
+type UserInfo struct {
+	Subject       string   `json:"subject"`
+	Username      string   `json:"username,omitempty"`
+	Email         string   `json:"email,omitempty"`
+	Roles         []string `json:"roles"`
+	Provider      string   `json:"provider"`
+	IssuedAt      int64    `json:"iat,omitempty"`
+	ExpiresAt     int64    `json:"exp,omitempty"`
+	ImplicitRoles []string `json:"implicitRoles,omitempty"` // Roles from Casbin inheritance
+}
+
+// ClusterInfo contains cluster-level permission information
+type ClusterInfo struct {
+	Casbin               CasbinPermissions  `json:"casbin"`
+	ServerServiceAccount ServiceAccountInfo `json:"serverServiceAccount"`
+}
+
+// CasbinPermissions contains Casbin-managed cluster permissions
+type CasbinPermissions struct {
+	Namespaces NamespacePermissions `json:"namespaces"`
+}
+
+// NamespacePermissions contains namespace-level operations
+type NamespacePermissions struct {
+	List  bool `json:"list"`
+	Watch bool `json:"watch"`
+}
+
+// ServiceAccountInfo contains server SA capabilities
+type ServiceAccountInfo struct {
+	Namespaces NamespacePermissions `json:"namespaces"`
+	Session    map[string]bool      `json:"session"`
+}
+
+// DomainPermissions contains resource permissions for a domain/namespace
+type DomainPermissions struct {
+	Session map[string]bool `json:"session"`
+}
+
+// NamespaceInfo contains user-specific namespace access information
+type NamespaceInfo struct {
+	UserAllowed   []string `json:"userAllowed"`             // Namespaces user can access
+	UserCreatable []string `json:"userCreatable,omitempty"` // Namespaces user can create sessions in
+	UserDeletable []string `json:"userDeletable,omitempty"` // Namespaces user can delete sessions from
+}
+
+// ServerNamespaceInfo contains server-discoverable namespace information
+type ServerNamespaceInfo struct {
+	All          []string `json:"all,omitempty"`          // All namespaces (if discoverable)
+	WithSessions []string `json:"withSessions,omitempty"` // Namespaces containing sessions
+}
+
+// UserCapabilities contains user-specific capability information
+type UserCapabilities struct {
+	NamespaceScope []string `json:"namespaceScope"` // Effective namespace scope for user
+	ClusterScope   bool     `json:"clusterScope"`   // Whether user has any cluster-level access
+	AdminAccess    bool     `json:"adminAccess"`    // Whether user has admin privileges
+}
+
+// SystemCapabilities contains system-wide capability information
+type SystemCapabilities struct {
+	MultiTenant bool `json:"multiTenant"` // Whether system supports multiple tenants
+}
+
+// ServerVersionInfo contains server version and build information
+type ServerVersionInfo struct {
+	Version   string `json:"version,omitempty"`
+	GitCommit string `json:"gitCommit,omitempty"`
+	BuildDate string `json:"buildDate,omitempty"`
+}
+
+// handleUserIntrospect provides user-specific RBAC and permission information
+func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := r.Context()
+
+		// Parse query parameters
+		namespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
+		actions := splitCSVQuery(r.URL.Query().Get("actions"))
+
+		// Default actions if not specified
+		if len(actions) == 0 {
+			actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
+		}
+
+		// Get implicit roles from Casbin
+		implicitRoles, _ := deps.rbac.GetRolesForUser(cl.Sub)
+
+		// Build user info
+		userInfo := UserInfo{
+			Subject:       cl.Sub,
+			Username:      cl.Username,
+			Email:         cl.Email,
+			Roles:         cl.Roles,
+			Provider:      cl.Provider,
+			IssuedAt:      cl.IssuedAt,
+			ExpiresAt:     cl.ExpiresAt,
+			ImplicitRoles: implicitRoles,
+		}
+
+		// Check cluster-level permissions for user
+		nsListAllowed, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
+		nsWatchAllowed, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "watch", "*")
+
+		// Determine target namespaces for permission checking
+		targetNamespaces := namespaces
+		if len(targetNamespaces) == 0 {
+			// Default set for user introspection
+			targetNamespaces = []string{"default", "kube-system", "*"}
+		}
+
+		// Build domain permissions for user
+		domains := make(map[string]DomainPermissions)
+		userAllowed := []string{}
+		userCreatable := []string{}
+		userDeletable := []string{}
+
+		for _, ns := range targetNamespaces {
+			sessionPerms := make(map[string]bool)
+			hasAnyPermission := false
+			canCreate := false
+			canDelete := false
+
+			for _, action := range actions {
+				allowed, err := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", action, ns)
+				if err != nil {
+					logger.Warn("RBAC enforcement error", "subject", cl.Sub, "action", action, "namespace", ns, "err", err)
+					allowed = false
+				}
+				sessionPerms[action] = allowed
+
+				if allowed {
+					hasAnyPermission = true
+					if action == "create" {
+						canCreate = true
+					}
+					if action == "delete" {
+						canDelete = true
+					}
+				}
+			}
+
+			domains[ns] = DomainPermissions{
+				Session: sessionPerms,
+			}
+
+			// Track accessible namespaces (excluding "*" from user lists)
+			if hasAnyPermission && ns != "*" {
+				userAllowed = append(userAllowed, ns)
+			}
+			if canCreate && ns != "*" {
+				userCreatable = append(userCreatable, ns)
+			}
+			if canDelete && ns != "*" {
+				userDeletable = append(userDeletable, ns)
+			}
+		}
+
+		sort.Strings(userAllowed)
+		sort.Strings(userCreatable)
+		sort.Strings(userDeletable)
+
+		namespaceInfo := NamespaceInfo{
+			UserAllowed:   userAllowed,
+			UserCreatable: userCreatable,
+			UserDeletable: userDeletable,
+		}
+
+		// Build user-specific capabilities
+		capabilities := UserCapabilities{
+			NamespaceScope: userAllowed,
+			ClusterScope:   domains["*"].Session["list"] || domains["*"].Session["watch"] || nsListAllowed,
+			AdminAccess:    domains["*"].Session["create"] && domains["*"].Session["delete"], // Can create/delete anywhere
+		}
+
+		// Build user response
+		response := UserIntrospectionResponse{
+			User:         userInfo,
+			Domains:      domains,
+			Namespaces:   namespaceInfo,
+			Capabilities: capabilities,
+		}
+
+		logger.Debug("User introspection completed", "user", cl.Sub, "namespaces", len(targetNamespaces))
+		writeJSON(w, response)
+	}
+}
+
+// handleServerIntrospect provides server/cluster information (requires appropriate permissions)
+func handleServerIntrospect(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Require at least some level of admin access to see server info
+		// Users with cluster-wide list permissions can see server capabilities
+		hasClusterAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
+		if !hasClusterAccess {
+			// Alternatively, allow if user has admin role or can list sessions across namespaces
+			hasAdminAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+			if !hasAdminAccess {
+				http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
+				return
+			}
+		}
+
+		ctx := r.Context()
+		discover := r.URL.Query().Get("discover") == "1"
+
+		// Check server service account capabilities
+		serverCapabilities := buildServerCapabilities(ctx, deps)
+
+		clusterInfo := ClusterInfo{
+			Casbin: CasbinPermissions{
+				Namespaces: NamespacePermissions{
+					List:  serverCapabilities.Namespaces.List,
+					Watch: serverCapabilities.Namespaces.List, // Assume watch follows list
+				},
+			},
+			ServerServiceAccount: serverCapabilities,
+		}
+
+		// Server namespace info
+		serverNamespaceInfo := ServerNamespaceInfo{}
+
+		// Discover namespaces if requested and server has permissions
+		if discover && serverCapabilities.Namespaces.List {
+			allNs, sessNs, err := discoverNamespaces(ctx, deps)
+			if err != nil {
+				logger.Warn("Failed to discover namespaces", "err", err, "user", cl.Sub)
+			} else {
+				serverNamespaceInfo.All = allNs
+				serverNamespaceInfo.WithSessions = sessNs
+			}
+		}
+
+		// Build system capabilities
+		systemCapabilities := SystemCapabilities{
+			MultiTenant: len(serverNamespaceInfo.All) > 3, // Heuristic for multi-tenancy
+		}
+
+		// Version info (could be populated from build-time variables)
+		versionInfo := ServerVersionInfo{
+			Version: "1.0.0", // TODO: populate from build
+		}
+
+		// Build server response
+		response := ServerIntrospectionResponse{
+			Cluster:      clusterInfo,
+			Namespaces:   serverNamespaceInfo,
+			Capabilities: systemCapabilities,
+			Version:      versionInfo,
+		}
+
+		logger.Debug("Server introspection completed", "user", cl.Sub, "discover", discover)
+		writeJSON(w, response)
+	}
+}
+
+// Legacy handleIntrospect maintains backward compatibility by combining both responses
+func handleIntrospect(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if this is a request for user or server info specifically
+		infoType := r.URL.Query().Get("type")
+
+		switch infoType {
+		case "user":
+			handleUserIntrospect(deps)(w, r)
+			return
+		case "server":
+			handleServerIntrospect(deps)(w, r)
+			return
+		}
+
+		// Legacy behavior: return combined response but log deprecation warning
+		logger.Warn("Using deprecated combined introspect endpoint", "user", cl.Sub, "recommendation", "Use ?type=user or ?type=server")
+
+		// For backward compatibility, provide a combined response
+		// Get user info
+		userReq := r.Clone(r.Context())
+		userReq.URL.RawQuery = r.URL.Query().Encode() + "&type=user"
+		userRec := httptest.NewRecorder()
+		handleUserIntrospect(deps)(userRec, userReq)
+
+		if userRec.Code != 200 {
+			http.Error(w, "failed to get user info", userRec.Code)
+			return
+		}
+
+		var userResp UserIntrospectionResponse
+		if err := json.NewDecoder(userRec.Body).Decode(&userResp); err != nil {
+			http.Error(w, "failed to parse user info", http.StatusInternalServerError)
+			return
+		}
+
+		// Try to get server info (may fail due to permissions)
+		serverReq := r.Clone(r.Context())
+		serverReq.URL.RawQuery = r.URL.Query().Encode() + "&type=server"
+		serverRec := httptest.NewRecorder()
+		handleServerIntrospect(deps)(serverRec, serverReq)
+
+		var serverResp ServerIntrospectionResponse
+		if serverRec.Code == 200 {
+			_ = json.NewDecoder(serverRec.Body).Decode(&serverResp)
+		}
+
+		// Combine into legacy format
+		legacyResponse := map[string]interface{}{
+			"user":         userResp.User,
+			"domains":      userResp.Domains,
+			"namespaces":   combineNamespaceInfo(userResp.Namespaces, serverResp.Namespaces),
+			"capabilities": combineCapabilities(userResp.Capabilities, serverResp.Capabilities),
+		}
+
+		// Add server info if available
+		if serverRec.Code == 200 {
+			legacyResponse["cluster"] = serverResp.Cluster
+		}
+
+		writeJSON(w, legacyResponse)
+	}
+}
+
+// Helper functions for legacy compatibility
+func combineNamespaceInfo(user NamespaceInfo, server ServerNamespaceInfo) map[string]interface{} {
+	combined := map[string]interface{}{
+		"userAllowed": user.UserAllowed,
+	}
+
+	if len(user.UserCreatable) > 0 {
+		combined["userCreatable"] = user.UserCreatable
+	}
+	if len(user.UserDeletable) > 0 {
+		combined["userDeletable"] = user.UserDeletable
+	}
+	if len(server.All) > 0 {
+		combined["all"] = server.All
+	}
+	if len(server.WithSessions) > 0 {
+		combined["withSessions"] = server.WithSessions
+	}
+
+	return combined
+}
+
+func combineCapabilities(user UserCapabilities, system SystemCapabilities) map[string]interface{} {
+	return map[string]interface{}{
+		"namespaceScope": user.NamespaceScope,
+		"clusterScope":   user.ClusterScope,
+		"adminAccess":    user.AdminAccess,
+		"multiTenant":    system.MultiTenant,
+	}
+}
+
+// Returns the current subject + roles from the JWT.
+func handleMe() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		writeJSON(w, map[string]any{
+			"sub":      cl.Sub,
+			"username": cl.Username,
+			"email":    cl.Email,
+			"roles":    cl.Roles,
+			"provider": cl.Provider,
+			"exp":      cl.ExpiresAt,
+			"iat":      cl.IssuedAt,
+		})
+	}
+}
+
+// handleUserPermissions - GET /api/v1/user/permissions (detailed user permission info)
+func handleUserPermissions(deps *serverDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cl := fromContext(r)
+		if cl == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Parse parameters
+		namespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
+		actions := splitCSVQuery(r.URL.Query().Get("actions"))
+
+		if len(actions) == 0 {
+			actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
+		}
+
+		if len(namespaces) == 0 {
+			namespaces = []string{"default", "*"}
+		}
+
+		// Get comprehensive user permissions
+		permissions, err := deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, namespaces, actions)
+		if err != nil {
+			logger.Error("Failed to get user permissions", "err", err, "user", cl.Sub)
+			errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
+			return
+		}
+
+		writeJSON(w, permissions)
+	}
+}

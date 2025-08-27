@@ -209,7 +209,6 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 		var idc struct {
 			Email    string   `json:"email"`
 			Verified bool     `json:"email_verified"`
-			Groups   []string `json:"groups"`
 			Roles    []string `json:"roles"`
 			Nonce    string   `json:"nonce"`
 			Username string   `json:"preferred_username"`
@@ -227,7 +226,6 @@ func handleOIDCCallback(cfg *config.ServerConfig, od *oidcDeps) http.HandlerFunc
 		extra := map[string]any{
 			"email":    idc.Email,
 			"username": idc.Username,
-			"groups":   idc.Groups,
 		}
 
 		sessionTTL := cfg.SessionTTL()

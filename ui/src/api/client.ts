@@ -123,6 +123,7 @@ export const api = {
 };
 
 export const introspectApi = {
+  // Legacy combined endpoint (deprecated but kept for backward compatibility)
   get: async (opts?: {
     discover?: boolean;
     namespaces?: string[];
@@ -135,10 +136,39 @@ export const introspectApi = {
       p.set("namespaces", opts.namespaces.join(","));
     if (opts?.roles?.length) p.set("roles", opts.roles.join(","));
     if (opts?.actions?.length) p.set("actions", opts.actions.join(","));
-    // ✅ include base (was missing)
+
     const url = `${base}/api/v1/introspect?${p.toString()}`;
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`introspect failed: ${r.status}`);
+    return r.json();
+  },
+
+  // Get user-specific information only
+  getUser: async (opts?: { namespaces?: string[]; actions?: string[] }) => {
+    const p = new URLSearchParams();
+    if (opts?.namespaces?.length)
+      p.set("namespaces", opts.namespaces.join(","));
+    if (opts?.actions?.length) p.set("actions", opts.actions.join(","));
+
+    const url = `${base}/api/v1/introspect/user?${p.toString()}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) throw new Error(`user introspect failed: ${r.status}`);
+    return r.json();
+  },
+
+  // Get server/cluster information only (may require elevated permissions)
+  getServer: async (opts?: { discover?: boolean }) => {
+    const p = new URLSearchParams();
+    if (opts?.discover) p.set("discover", "1");
+
+    const url = `${base}/api/v1/introspect/server?${p.toString()}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) {
+      if (r.status === 403) {
+        throw new Error("Insufficient permissions to view server information");
+      }
+      throw new Error(`server introspect failed: ${r.status}`);
+    }
     return r.json();
   },
 };

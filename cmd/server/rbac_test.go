@@ -1,13 +1,57 @@
-// cmd/server/rbac_test.go
 package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+// Example: shows how to use the RBAC system in HTTP handlers
+/*
+func demonstrateAPIUsage() {
+		Example HTTP handler usage:
+
+		func handleCreateSession(deps *serverDeps) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				// Extract session creation request
+				var req SessionCreateRequest
+				json.NewDecoder(r.Body).Decode(&req)
+
+				// RBAC check - user must have 'create' permission in target namespace
+				cl, ok := mustCan(deps, w, r, "session", "create", req.Namespace)
+				if !ok {
+					return // Error already written by mustCan
+				}
+
+				// Proceed with session creation
+				session := createSession(req, cl.Sub)
+				writeJSON(w, session)
+			}
+		}
+
+		// For operations requiring multiple permissions:
+		func handleBulkDelete(deps *serverDeps) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				var req BulkDeleteRequest
+				json.NewDecoder(r.Body).Decode(&req)
+
+				// Check permissions for each namespace
+				for _, ns := range req.Namespaces {
+					if _, ok := mustCan(deps, w, r, "session", "delete", ns); !ok {
+						return
+					}
+				}
+
+				// Proceed with bulk deletion
+				result := performBulkDelete(req)
+				writeJSON(w, result)
+			}
+		}
+}
+*/
 
 func write(t *testing.T, p, s string) {
 	t.Helper()
@@ -140,3 +184,271 @@ func TestHotReload(t *testing.T) {
 		t.Fatal("viewer create should be allowed after policy update")
 	}
 }
+
+// ExampleRBACUsage demonstrates how to use the enhanced RBAC system
+func ExampleRBACUsage() {
+	// This example shows how the RBAC system works in practice
+
+	// 1. User Authentication (handled by auth handlers)
+	user := &claims{
+		Sub:      "alice@company.com",
+		Username: "alice",
+		Email:    "alice@company.com",
+		Roles:    []string{"codespace-editor"},
+		Groups:   []string{"/team-alpha"},
+		Provider: "oidc",
+	}
+
+	// 2. RBAC Enforcement Examples
+	rbac, _ := NewRBACFromEnv(context.Background())
+
+	// Check if user can create sessions in team-alpha namespace
+	canCreate, _ := rbac.Enforce(user.Sub, user.Roles, "session", "create", "team-alpha")
+	fmt.Printf("Alice can create in team-alpha: %v\n", canCreate)
+
+	// Check if user can delete sessions everywhere (should be false for non-admin)
+	canDeleteAll, _ := rbac.Enforce(user.Sub, user.Roles, "session", "delete", "*")
+	fmt.Printf("Alice can delete everywhere: %v\n", canDeleteAll)
+
+	// Get comprehensive permissions for user
+	permissions, _ := rbac.GetUserPermissions(user.Sub, user.Roles,
+		[]string{"team-alpha", "team-beta", "prod-env"},
+		[]string{"create", "delete", "list"})
+	fmt.Printf("Alice's permissions: %+v\n", permissions)
+}
+
+// TestRBACScenarios tests common RBAC scenarios
+func TestRBACScenarios(t *testing.T) {
+	// Setup test RBAC
+	dir := t.TempDir()
+	rbac := newRBACForTest(t, dir)
+
+	testCases := []struct {
+		name        string
+		subject     string
+		roles       []string
+		resource    string
+		action      string
+		namespace   string
+		expected    bool
+		description string
+	}{
+		// Admin scenarios
+		{
+			name:    "admin_can_do_anything",
+			subject: "admin-user", roles: []string{"admin"},
+			resource: "session", action: "delete", namespace: "production",
+			expected:    true,
+			description: "Admins should have full access to all namespaces",
+		},
+		{
+			name:    "admin_can_list_namespaces",
+			subject: "admin-user", roles: []string{"admin"},
+			resource: "namespaces", action: "list", namespace: "*",
+			expected:    true,
+			description: "Admins should be able to list namespaces cluster-wide",
+		},
+
+		// Editor scenarios
+		{
+			name:    "editor_can_crud_sessions",
+			subject: "editor-user", roles: []string{"editor"},
+			resource: "session", action: "create", namespace: "dev-team-a",
+			expected:    true,
+			description: "Editors should be able to CRUD sessions in allowed namespaces",
+		},
+		{
+			name:    "editor_cannot_delete_in_prod",
+			subject: "editor-user", roles: []string{"editor"},
+			resource: "session", action: "delete", namespace: "prod-env",
+			expected:    false, // Based on deny policy in our example
+			description: "Editors should be denied delete in production namespaces",
+		},
+
+		// Viewer scenarios
+		{
+			name:    "viewer_can_read_sessions",
+			subject: "viewer-user", roles: []string{"viewer"},
+			resource: "session", action: "get", namespace: "any-namespace",
+			expected:    true,
+			description: "Viewers should have read access to sessions",
+		},
+		{
+			name:    "viewer_cannot_create_sessions",
+			subject: "viewer-user", roles: []string{"viewer"},
+			resource: "session", action: "create", namespace: "any-namespace",
+			expected:    false,
+			description: "Viewers should not be able to create sessions",
+		},
+
+		// Namespace-specific scenarios
+		{
+			name:    "user_specific_namespace_access",
+			subject: "alice@company.com", roles: []string{},
+			resource: "session", action: "create", namespace: "team-alpha",
+			expected:    true, // Based on specific user policy
+			description: "Users should have access to their assigned namespaces",
+		},
+		{
+			name:    "user_no_access_other_namespace",
+			subject: "alice@company.com", roles: []string{},
+			resource: "session", action: "create", namespace: "team-beta",
+			expected:    false,
+			description: "Users should not have access to unassigned namespaces",
+		},
+
+		// Pattern matching scenarios
+		{
+			name:    "dev_pattern_matching",
+			subject: "developer", roles: []string{"developer"},
+			resource: "session", action: "create", namespace: "dev-frontend",
+			expected:    true, // Matches dev-* pattern
+			description: "Pattern matching should work for namespace prefixes",
+		},
+		{
+			name:    "prod_pattern_deny",
+			subject: "developer", roles: []string{"developer"},
+			resource: "session", action: "create", namespace: "prod-frontend",
+			expected:    false, // Should not match dev-* pattern
+			description: "Pattern matching should restrict access appropriately",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := rbac.Enforce(tc.subject, tc.roles, tc.resource, tc.action, tc.namespace)
+			if err != nil {
+				t.Fatalf("RBAC enforcement failed: %v", err)
+			}
+
+			if result != tc.expected {
+				t.Errorf("%s: expected %v, got %v", tc.description, tc.expected, result)
+			}
+		})
+	}
+}
+
+// BenchmarkRBACPerformance tests RBAC performance under load
+func BenchmarkRBACPerformance(b *testing.B) {
+	dir := b.TempDir()
+	rbac := newRBACForTest(b, dir)
+
+	// Test different scenarios
+	scenarios := []struct {
+		name      string
+		subject   string
+		roles     []string
+		resource  string
+		action    string
+		namespace string
+	}{
+		{"admin_access", "admin", []string{"admin"}, "session", "delete", "production"},
+		{"editor_access", "editor", []string{"editor"}, "session", "create", "dev-team"},
+		{"viewer_access", "viewer", []string{"viewer"}, "session", "get", "any-ns"},
+		{"user_specific", "alice@company.com", []string{}, "session", "create", "team-alpha"},
+	}
+
+	for _, scenario := range scenarios {
+		b.Run(scenario.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, err := rbac.Enforce(scenario.subject, scenario.roles,
+					scenario.resource, scenario.action, scenario.namespace)
+				if err != nil {
+					b.Fatalf("RBAC enforcement failed: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// Policy configuration examples and best practices
+const policyExamples = `
+# RBAC Policy Configuration Examples
+
+## 1. Role Hierarchy
+# Create a hierarchy where admin inherits editor, editor inherits viewer
+g, admin, editor
+g, editor, viewer
+
+## 2. Namespace-Specific Access
+# Grant team leads full access to their team namespaces
+p, team-lead, session, *, team-*, allow
+p, alice@company.com, session, *, team-alpha, allow
+p, bob@company.com, session, *, team-beta, allow
+
+## 3. Environment-Specific Restrictions
+# Allow developers in dev environments, but restrict production
+p, developer, session, (get|list|watch|create|update), dev-*, allow
+p, developer, session, *, prod-*, deny
+
+## 4. Action-Specific Permissions
+# Give analysts read-only access across all namespaces
+p, analyst, session, (get|list|watch), *, allow
+
+## 5. Time-Based or Conditional Access (advanced)
+# These would require custom matchers in the Casbin model
+p, on-call-engineer, session, *, prod-*, allow  # During on-call hours
+p, emergency-response, session, *, *, allow     # During incidents
+
+## 6. Group-Based Access
+# Map OIDC groups to internal roles
+g, /ops-team, admin
+g, /dev-team, editor
+g, /qa-team, viewer
+
+## 7. Resource-Specific Deny Policies
+# Prevent deletion of sessions with specific labels
+p, *, session, delete, *, deny  # Would need custom logic to check labels
+
+## Best Practices:
+# 1. Use explicit deny policies sparingly - they override allows
+# 2. Prefer role-based policies over user-specific ones for maintainability
+# 3. Use pattern matching (*) carefully - it can grant unintended access
+# 4. Test policies thoroughly with the scenarios above
+# 5. Use namespace patterns (dev-*, prod-*) for environment segregation
+# 6. Document your policies and their intended use cases
+`
+
+// Configuration examples for different deployment scenarios
+const configExamples = `
+# Deployment Configuration Examples
+
+## Single Tenant (Development)
+# All authenticated users get admin access
+g, authenticated-user, admin
+p, admin, *, *, *, allow
+
+## Multi-Tenant (Production)
+# Strict role separation with namespace isolation
+g, cluster-admin, admin
+g, namespace-admin, editor
+g, namespace-user, viewer
+
+# Namespace-specific access
+p, admin, *, *, *, allow
+p, editor, session, *, {{.UserNamespace}}, allow
+p, viewer, session, (get|list|watch), {{.UserNamespace}}, allow
+
+## Enterprise (Complex Organization)
+# Department-based access with cross-cutting roles
+g, /dept-engineering/ops, admin
+g, /dept-engineering/senior-dev, editor
+g, /dept-engineering/dev, developer
+g, /dept-qa, qa-engineer
+g, /security-team, security-auditor
+
+# Project-based namespaces
+p, developer, session, *, proj-{{.ProjectName}}-*, allow
+p, qa-engineer, session, (get|list|watch), *, allow
+p, security-auditor, session, get, *, allow
+
+## Regulatory Compliance (SOX/HIPAA)
+# Segregation of duties and audit requirements
+p, admin, *, *, non-prod-*, allow
+p, prod-admin, *, *, prod-*, allow  # Separate role for production
+p, auditor, *, get, *, allow       # Read-only access for auditors
+
+# Deny policies for compliance
+p, developer, session, (delete|update), prod-*, deny
+p, *, session, *, audit-*, deny      # Special audit namespace
+`

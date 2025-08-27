@@ -57,11 +57,11 @@ export function useAuth() {
         }
         const data = await resp.json();
         if (cancelled) return;
-        const subject = data?.user?.subject ?? null;
+        const display = data?.user?.username ?? data?.user?.subject ?? null;
         const rs: string[] = Array.isArray(data?.user?.roles)
           ? data.user.roles
           : [];
-        setUser(subject);
+        setUser(display);
         setRoles(rs);
         // Optionally set token if backend returns one
       } catch {
@@ -99,9 +99,10 @@ export function useAuth() {
     }
 
     const data = await r.json();
-    if (data.user) localStorage.setItem(USER_KEY, data.user);
+    const display = data?.username ?? data?.user ?? username;
+    if (display) localStorage.setItem(USER_KEY, display);
     if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data.user || username);
+    setUser(display);
     setRoles(Array.isArray(data.roles) ? data.roles : []);
     setToken(data.token || null);
   }

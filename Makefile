@@ -162,11 +162,11 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/session-controller cmd/session-controller/session-controller.go
+	go build -o bin/session-controller cmd/session-controller/session_controller.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/session-controller/session-controller.go
+	go run ./cmd/session-controller/session_controller.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
