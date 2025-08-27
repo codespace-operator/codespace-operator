@@ -8,7 +8,7 @@ Thanks for helping improve **codespace-operator**! This project is a mono‑repo
 
 1. Fork → feature branch → small, focused MR/PR.
 2. Use **Conventional Commits** with a **required scope** (see below).
-3. Run `make build` (Go), `make build-ui` (UI), and `make manifests` (CRDs) locally as needed.
+3. Run `make build` (Go), `make build-server` (UI), and `make manifests` (CRDs) locally as needed.
 4. Ensure hooks/linters pass (`prettier`, `gofmt`, commitlint).
 5. Open an MR/PR with the template and checklist. Prefer **squash merge**.
 
@@ -74,7 +74,7 @@ Each lane uses `releaseRules` so it **only** versions on matching scopes. A sing
 
 - **UI**: under `ui/`
   - `npm ci && npm run build`
-  - Or repo root: `make build-ui` (builds UI and server binary)
+  - Or repo root: `make build-server` (builds UI and server binary)
 
 - **CRDs**:
   - `make manifests` → regenerate CRDs
@@ -105,7 +105,7 @@ See `commitlint.config.cjs`, `.lintstagedrc.json`, and `.husky/*` for details.
 
   ```bash
   make build            # Go
-  make build-ui         # UI + server
+  make build-server         # UI + server
   ```
 
 - Tests: `make test` (unit), `make test-e2e` (kind-based e2e)

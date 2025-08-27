@@ -20,7 +20,7 @@ module.exports = {
     ['@semantic-release/exec', {
       prepareCmd: [
         'set -e',
-        'make build-ui'
+        'make build-server'
       ].join(' && '),
       publishCmd: [
         'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version}',
