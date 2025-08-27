@@ -116,7 +116,7 @@ App : http://demo.codespace.test
 Build UI + server:
 
 ```bash
-make build-ui
+make build-server
 ./bin/codespace-server
 ```
 
