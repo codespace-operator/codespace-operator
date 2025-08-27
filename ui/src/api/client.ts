@@ -144,12 +144,16 @@ export const introspectApi = {
   },
 
   // Get user-specific information only
-  getUser: async (opts?: { namespaces?: string[]; actions?: string[] }) => {
+  getUser: async (opts?: {
+    namespaces?: string[];
+    actions?: string[];
+    discover?: boolean;
+  }) => {
     const p = new URLSearchParams();
     if (opts?.namespaces?.length)
       p.set("namespaces", opts.namespaces.join(","));
     if (opts?.actions?.length) p.set("actions", opts.actions.join(","));
-
+    if (opts?.discover) p.set("discover", "1");
     const url = `${base}/api/v1/introspect/user?${p.toString()}`;
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`user introspect failed: ${r.status}`);

@@ -136,6 +136,7 @@ export default function App() {
 
   // Use the new split introspection hooks
   const { data: userIx, error: userIxError } = useUserIntrospection({
+    discover: true,
     enabled: ixEnabled,
   });
 
@@ -176,7 +177,7 @@ export default function App() {
 
   // Derive user's accessible namespaces
   const userAccessibleNamespaces = useMemo(() => {
-    if (!userIx?.namespaces?.userAllowed) return ["default"];
+    if (!userIx?.namespaces?.userAllowed) return [""];
     return userIx.namespaces.userAllowed;
   }, [userIx]);
 
@@ -197,7 +198,7 @@ export default function App() {
 
     if (!isCurrentNamespaceValid) {
       // Current namespace is not accessible, find a fallback
-      let fallback: string;
+      let fallback: string = "";
 
       if (allowAll) {
         fallback = "All";
@@ -207,9 +208,6 @@ export default function App() {
           userAccessibleNamespaces.includes(ns),
         );
         fallback = preferredNamespace || userAccessibleNamespaces[0];
-      } else {
-        // Final fallback
-        fallback = "default";
       }
 
       if (fallback !== namespace) {

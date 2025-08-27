@@ -9,11 +9,9 @@ import type {
 // Hook for user-specific introspection
 export function useUserIntrospection({
   namespaces,
+  discover,
   enabled = true,
-}: {
-  namespaces?: string[];
-  enabled?: boolean;
-} = {}) {
+}: { namespaces?: string[]; discover?: boolean; enabled?: boolean } = {}) {
   const [data, setData] = useState<UserIntrospection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +28,7 @@ export function useUserIntrospection({
     (async () => {
       try {
         setLoading(true);
-        const res = await introspectApi.getUser({ namespaces });
+        const res = await introspectApi.getUser({ namespaces, discover });
         if (!cancelled) {
           setData(res);
           setError(null);
@@ -48,7 +46,7 @@ export function useUserIntrospection({
       cancelled = true;
       ac.abort();
     };
-  }, [enabled, JSON.stringify(namespaces || [])]);
+  }, [enabled, discover, JSON.stringify(namespaces || [])]);
 
   return { data, loading: enabled && loading, error };
 }
