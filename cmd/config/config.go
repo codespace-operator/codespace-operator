@@ -1,33 +1,63 @@
+// config/config.go
 package config
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
 
+// -----------------------------
+// Structs (snake_case tags)
+// -----------------------------
+
 // ServerConfig holds all configuration for the codespace server
 type ServerConfig struct {
-	// Server settings
+	// Network
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
 	ReadTimeout  int    `mapstructure:"read_timeout"`
 	WriteTimeout int    `mapstructure:"write_timeout"`
 
-	// CORS settings
+	// CORS
 	AllowOrigin string `mapstructure:"allow_origin"`
 
-	// Kubernetes settings
+	// Kubernetes
 	KubeQPS   float32 `mapstructure:"kube_qps"`
 	KubeBurst int     `mapstructure:"kube_burst"`
 
-	// Development/Debug settings
-	Debug bool `mapstructure:"debug"`
+	// Logging
+	LogLevel string `mapstructure:"log_level"`
 
-	JWTSecret         string `mapstructure:"jwt_secret"`
+	// Sessions / auth
+	JWTSecret string `mapstructure:"jwt_secret"`
+
+	// Local login
+	EnableLocalLogin  bool   `mapstructure:"enable_local_login"`
 	BootstrapUser     string `mapstructure:"bootstrap_user"`
 	BootstrapPassword string `mapstructure:"bootstrap_password"`
+
+	// Session cookie
+	SessionCookieName string `mapstructure:"session_cookie_name"`
+	SessionTTLMinutes int    `mapstructure:"session_ttl_minutes"`
+	AllowTokenParam   bool   `mapstructure:"allow_token_param"`
+
+	// OIDC
+	OIDCInsecureSkipVerify bool     `mapstructure:"oidc_insecure_skip_verify"`
+	OIDCIssuerURL          string   `mapstructure:"oidc_issuer_url"`
+	OIDCClientID           string   `mapstructure:"oidc_client_id"`
+	OIDCClientSecret       string   `mapstructure:"oidc_client_secret"`
+	OIDCRedirectURL        string   `mapstructure:"oidc_redirect_url"`
+	OIDCScopes             []string `mapstructure:"oidc_scopes"`
+
+	// RBAC (Casbin) files
+	RBACModelPath  string `mapstructure:"rbac_model_path"`
+	RBACPolicyPath string `mapstructure:"rbac_policy_path"`
+	LocalUsersPath string `mapstructure:"local_users_path"`
 }
 
 // ControllerConfig holds configuration for the session controller
@@ -54,91 +84,185 @@ type ControllerConfig struct {
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
 
-	// Development/Debug settings
+	// Logging
 	Debug bool `mapstructure:"debug"`
 }
 
-// LoadServerConfig loads configuration for the codespace server
+// -----------------------------
+// Loader entry points
+// -----------------------------
+
+// LoadServerConfig reads server-config.yaml + env (CODESPACE_SERVER_*) into ServerConfig.
 func LoadServerConfig() (*ServerConfig, error) {
 	v := viper.New()
 
-	// Set defaults
-	v.SetDefault("port", 8080)
+	// Defaults (match prior behavior)
 	v.SetDefault("host", "")
-	v.SetDefault("read_timeout", 5)
-	v.SetDefault("write_timeout", 10)
+	v.SetDefault("port", 8080)
+	v.SetDefault("read_timeout", 0)
+	v.SetDefault("write_timeout", 0)
+
 	v.SetDefault("allow_origin", "")
+
 	v.SetDefault("kube_qps", 50.0)
 	v.SetDefault("kube_burst", 100)
-	v.SetDefault("debug", false)
-	v.SetDefault("jwt_secret", "")
+
+	v.SetDefault("log_level", "info")
+	v.SetDefault("jwt_secret", "change-me")
+
+	v.SetDefault("enable_local_login", false)
 	v.SetDefault("bootstrap_user", "")
 	v.SetDefault("bootstrap_password", "")
-	// Configure viper
-	setupViper(v, "CODESPACE_SERVER")
 
-	var config ServerConfig
-	if err := v.Unmarshal(&config); err != nil {
+	v.SetDefault("session_cookie_name", "")
+	v.SetDefault("session_ttl_minutes", 60)
+	v.SetDefault("allow_token_param", false)
+
+	v.SetDefault("oidc_insecure_skip_verify", false)
+	v.SetDefault("oidc_issuer_url", "")
+	v.SetDefault("oidc_client_id", "")
+	v.SetDefault("oidc_client_secret", "")
+	v.SetDefault("oidc_redirect_url", "")
+	v.SetDefault("oidc_scopes", []string{}) // default scopes applied later in code if empty
+
+	v.SetDefault("rbac_model_path", "")
+	v.SetDefault("rbac_policy_path", "")
+
+	setupViper(v, "CODESPACE_SERVER", "server-config")
+
+	var cfg ServerConfig
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal server config: %w", err)
 	}
 
-	return &config, nil
+	// Allow a comma-separated env override for OIDC scopes
+	// (e.g., CODESPACE_SERVER_OIDC_SCOPES="openid,profile,email")
+	if len(cfg.OIDCScopes) == 0 {
+		if raw := strings.TrimSpace(os.Getenv("CODESPACE_SERVER_OIDC_SCOPES")); raw != "" {
+			cfg.OIDCScopes = splitCSV(raw)
+		}
+	}
+
+	return &cfg, nil
 }
 
-// LoadControllerConfig loads configuration for the session controller
+// LoadControllerConfig reads controller-config.yaml + env (CODESPACE_CONTROLLER_*) into ControllerConfig.
 func LoadControllerConfig() (*ControllerConfig, error) {
 	v := viper.New()
 
-	// Set defaults
+	// Defaults (unchanged from previous)
 	v.SetDefault("metrics_addr", "0")
 	v.SetDefault("probe_addr", ":8081")
 	v.SetDefault("enable_leader_election", false)
 	v.SetDefault("leader_election_id", "a51c5837.codespace.dev")
+
 	v.SetDefault("metrics_cert_path", "")
 	v.SetDefault("metrics_cert_name", "tls.crt")
 	v.SetDefault("metrics_cert_key", "tls.key")
+
 	v.SetDefault("webhook_cert_path", "")
 	v.SetDefault("webhook_cert_name", "tls.crt")
 	v.SetDefault("webhook_cert_key", "tls.key")
+
 	v.SetDefault("secure_metrics", true)
 	v.SetDefault("enable_http2", false)
+
 	v.SetDefault("session_name_prefix", "cs-")
 	v.SetDefault("field_owner", "codespace-operator")
+
 	v.SetDefault("debug", false)
 
-	// Configure viper
-	setupViper(v, "CODESPACE_CONTROLLER")
+	setupViper(v, "CODESPACE_CONTROLLER", "controller-config")
 
-	var config ControllerConfig
-	if err := v.Unmarshal(&config); err != nil {
+	var cfg ControllerConfig
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal controller config: %w", err)
 	}
-
-	return &config, nil
+	return &cfg, nil
 }
 
-// setupViper configures common viper settings
-func setupViper(v *viper.Viper, envPrefix string) {
-	// Environment variables
+// -----------------------------
+// Helpers / methods
+// -----------------------------
+
+func (c *ServerConfig) GetAddr() string {
+	if strings.TrimSpace(c.Host) == "" {
+		return fmt.Sprintf(":%d", c.Port)
+	}
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+func (c *ServerConfig) SessionTTL() time.Duration {
+	min := c.SessionTTLMinutes
+	if min <= 0 {
+		min = 60
+	}
+	return time.Duration(min) * time.Minute
+}
+
+// setupViper configures common Viper settings.
+// envPrefix: e.g. "CODESPACE_SERVER"
+// fileBase:  e.g. "server-config" (-> server-config.yaml)
+// setupViper configures common Viper settings.
+// envPrefix: e.g. "CODESPACE_SERVER"
+// fileBase:  e.g. "server-config" (-> server-config.yaml)
+func setupViper(v *viper.Viper, envPrefix, fileBase string) {
+	// --- Environment (UPPER_SNAKE with prefix) ---
 	v.SetEnvPrefix(envPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
-	// Config file support
-	v.SetConfigName("config")
+	// Logging helper (default logger only after logger is setup)
+	now := func() string { return time.Now().Format(time.RFC3339) }
+	log := func(f string, a ...any) {
+		fmt.Fprintf(os.Stderr, now()+" "+f+"\n", a...)
+	}
+
+	// --- Single knob: <PREFIX>_CONFIG_DEFAULT_PATH (file OR directory) ---
+	var dirOverride string
+	if raw := strings.TrimSpace(os.Getenv(envPrefix + "_CONFIG_DEFAULT_PATH")); raw != "" {
+		p := os.ExpandEnv(raw)
+
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			// IMPORTANT: pass the DIRECTORY to AddConfigPath, not a file path.
+			dirOverride = p // remember to search here first
+		} else {
+			// Treat as a FILE path (relative or absolute)
+			if !filepath.IsAbs(p) {
+				if abs, err := filepath.Abs(p); err == nil {
+					p = abs
+				}
+			}
+			if _, err := os.Stat(p); err != nil {
+				panic(fmt.Errorf("%s_CONFIG_DEFAULT_PATH points to missing file: %s (err=%w)", envPrefix, p, err))
+			}
+			v.SetConfigFile(p)
+			if err := v.ReadInConfig(); err != nil {
+				panic(fmt.Errorf("failed to read %s_CONFIG_DEFAULT_PATH=%s: %w", envPrefix, p, err))
+			}
+			log("loaded config override (file): %s", v.ConfigFileUsed())
+			return
+		}
+	}
+
+	// --- Directory search mode ---
+	v.SetConfigName(fileBase)
 	v.SetConfigType("yaml")
+
+	// If a dir override was provided, search it FIRST (can be relative)
+	if dirOverride != "" {
+		v.AddConfigPath(dirOverride)
+	}
+
+	// Default search locations (in order)
 	v.AddConfigPath(".")
 	v.AddConfigPath("/etc/codespace-operator/")
 	v.AddConfigPath("$HOME/.codespace-operator/")
 
-	// Try to read config file (ignore if not found)
-	_ = v.ReadInConfig()
-}
-
-// GetAddr returns the full address string for binding
-func (c *ServerConfig) GetAddr() string {
-	if c.Host == "" {
-		return fmt.Sprintf(":%d", c.Port)
+	// Optional file - ignore if missing
+	if err := v.ReadInConfig(); err == nil {
+		log("loaded config (search): %s", v.ConfigFileUsed())
+	} else {
+		log("no config file found via search (env-only is fine)")
 	}
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

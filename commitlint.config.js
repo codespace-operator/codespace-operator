@@ -14,7 +14,8 @@ module.exports = {
       'rbac',
       'api',
       'repo',  // release, repo workflow rules etc
-      'ci'     // ci workflow rules etc
+      'ci',     // ci workflow rules etc
+      'test'
     ]],
     'type-enum': [2, 'always', [
       'feat', 'fix', 'perf', 'refactor', 'docs', 'chore', 'ci', 'build', 'test'

@@ -1,11 +1,9 @@
 import React from "react";
-import { 
-  PageSection, 
-  Card, 
-  CardBody, 
-  Title, 
-  List, 
-  ListItem,
+import {
+  PageSection,
+  Card,
+  CardBody,
+  Title,
   DescriptionList,
   DescriptionListGroup,
   DescriptionListTerm,
@@ -13,254 +11,288 @@ import {
   Grid,
   GridItem,
   Label,
-  CodeBlock,
-  CodeBlockCode,
-  Alert
 } from "@patternfly/react-core";
-import { 
-  CubesIcon, 
-  ServerIcon, 
-  CogIcon, 
-  InfoCircleIcon,
-  ExclamationTriangleIcon
-} from "@patternfly/react-icons";
+import { CubesIcon, ServerIcon, CogIcon } from "@patternfly/react-icons";
 
 export function InfoPage() {
   return (
-    <PageSection isWidthLimited>
-      <div className="pf-u-mb-lg">
-        <Title headingLevel="h1" className="pf-u-mb-sm">Cluster Settings</Title>
-        <p className="pf-u-color-200">
-          View cluster information, operator configuration, and system status
-        </p>
+    <PageSection className="info-page">
+      <div className="info-header">
+        <Title headingLevel="h1" size="2xl">
+          System
+        </Title>
       </div>
 
-      <Grid hasGutter>
-        <GridItem lg={6}>
-          <Card>
+      <Grid hasGutter className="info-grid">
+        {/* Operator Card */}
+        <GridItem lg={4}>
+          <Card className="info-card">
             <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <ServerIcon className="pf-u-mr-sm" />
-                Operator Information
-              </Title>
-              
-              <DescriptionList isHorizontal>
+              <div className="card-header">
+                <ServerIcon />
+                <Title headingLevel="h3" size="lg">
+                  Operator
+                </Title>
+              </div>
+
+              <DescriptionList isCompact>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Version</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <Label color="green">v0.1.0-dev</Label>
+                    <Label color="green" isCompact>
+                      {/* !TODO: stamp during build */}
+                      1.0.0
+                    </Label>
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
                   <DescriptionListTerm>Namespace</DescriptionListTerm>
-                  <DescriptionListDescription>codespace-operator-system</DescriptionListDescription>
-                </DescriptionListGroup>
-                
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Controller Status</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <Label color="green">Running</Label>
+                    codespace-operator-system
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                
-                <DescriptionListGroup>
-                  <DescriptionListTerm>API Version</DescriptionListTerm>
-                  <DescriptionListDescription>codespace.codespace.dev/v1</DescriptionListDescription>
-                </DescriptionListGroup>
-                
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Webhook Status</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    <Label color="orange">Disabled</Label>
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-              </DescriptionList>
-            </CardBody>
-          </Card>
 
-          <Card className="pf-u-mt-md">
-            <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <CubesIcon className="pf-u-mr-sm" />
-                Resource Limits
-              </Title>
-              
-              <Alert
-                variant="info"
-                isInline
-                title="Default Configuration"
-                className="pf-u-mb-md"
-              >
-                These are the default resource limits for new sessions. Users can override these in their session specifications.
-              </Alert>
-              
-              <DescriptionList>
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Max Sessions per Namespace</DescriptionListTerm>
-                  <DescriptionListDescription>Unlimited</DescriptionListDescription>
+                  <DescriptionListTerm>Controller</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Label color="green" isCompact>
+                      Running
+                    </Label>
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Default CPU Limit</DescriptionListTerm>
-                  <DescriptionListDescription>1000m</DescriptionListDescription>
+                  <DescriptionListTerm>API</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    codespace.codespace.dev/v1
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
-                
+
                 <DescriptionListGroup>
-                  <DescriptionListTerm>Default Memory Limit</DescriptionListTerm>
-                  <DescriptionListDescription>2Gi</DescriptionListDescription>
-                </DescriptionListGroup>
-                
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Default Storage Size</DescriptionListTerm>
-                  <DescriptionListDescription>10Gi (Home), 5Gi (Scratch)</DescriptionListDescription>
+                  <DescriptionListTerm>Webhook</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Label color="orange" isCompact>
+                      Disabled
+                    </Label>
+                  </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>
             </CardBody>
           </Card>
         </GridItem>
 
-        <GridItem lg={6}>
-          <Card>
+        {/* Resources Card */}
+        <GridItem lg={4}>
+          <Card className="info-card">
             <CardBody>
-              <Title headingLevel="h2" className="pf-u-mb-md">
-                <CogIcon className="pf-u-mr-sm" />
-                Configuration
-              </Title>
-              
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Supported IDEs
-              </Title>
-              <List className="pf-u-mb-lg">
-                <ListItem>
-                  <strong>JupyterLab</strong> - Interactive data science environment
-                  <CodeBlock className="pf-u-mt-xs">
-                    <CodeBlockCode>jupyter/minimal-notebook:latest</CodeBlockCode>
-                  </CodeBlock>
-                </ListItem>
-                <ListItem>
-                  <strong>VS Code Server</strong> - Web-based VS Code editor
-                  <CodeBlock className="pf-u-mt-xs">
-                    <CodeBlockCode>codercom/code-server:latest</CodeBlockCode>
-                  </CodeBlock>
-                </ListItem>
-                <ListItem>
-                  <strong>Custom</strong> - Bring your own container image
-                </ListItem>
-              </List>
+              <div className="card-header">
+                <CubesIcon />
+                <Title headingLevel="h3" size="lg">
+                  Resources
+                </Title>
+              </div>
 
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Authentication Modes
-              </Title>
-              <List className="pf-u-mb-lg">
-                <ListItem>
-                  <strong>None</strong> - Direct access (development only)
-                </ListItem>
-                <ListItem>
-                  <strong>OAuth2 Proxy</strong> - OIDC-based authentication
-                </ListItem>
-              </List>
+              <DescriptionList isCompact>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>CPU Limit</DescriptionListTerm>
+                  <DescriptionListDescription>1000m</DescriptionListDescription>
+                </DescriptionListGroup>
 
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Storage Options
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Memory Limit</DescriptionListTerm>
+                  <DescriptionListDescription>2Gi</DescriptionListDescription>
+                </DescriptionListGroup>
+
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Home Storage</DescriptionListTerm>
+                  <DescriptionListDescription>10Gi</DescriptionListDescription>
+                </DescriptionListGroup>
+
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Scratch Storage</DescriptionListTerm>
+                  <DescriptionListDescription>5Gi</DescriptionListDescription>
+                </DescriptionListGroup>
+
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Max Sessions</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    Unlimited
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              </DescriptionList>
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* Configuration Card */}
+        <GridItem lg={4}>
+          <Card className="info-card">
+            <CardBody>
+              <div className="card-header">
+                <CogIcon />
+                <Title headingLevel="h3" size="lg">
+                  Configuration
+                </Title>
+              </div>
+
+              <div className="config-section">
+                <Title headingLevel="h4" size="md">
+                  IDEs
+                </Title>
+                <div className="config-items">
+                  <div className="config-item">
+                    <span>JupyterLab</span>
+                    <Label color="blue" isCompact>
+                      Available
+                    </Label>
+                  </div>
+                  <div className="config-item">
+                    <span>VS Code</span>
+                    <Label color="blue" isCompact>
+                      Available
+                    </Label>
+                  </div>
+                  <div className="config-item">
+                    <span>Custom</span>
+                    <Label color="grey" isCompact>
+                      Supported
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="config-section">
+                <Title headingLevel="h4" size="md">
+                  Authentication
+                </Title>
+                <div className="config-items">
+                  <div className="config-item">
+                    <span>OAuth2 Proxy</span>
+                    <Label color="green" isCompact>
+                      Enabled
+                    </Label>
+                  </div>
+                  <div className="config-item">
+                    <span>Direct Access</span>
+                    <Label color="orange" isCompact>
+                      Dev Only
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="config-section">
+                <Title headingLevel="h4" size="md">
+                  Storage
+                </Title>
+                <div className="config-items">
+                  <div className="config-item">
+                    <span>Persistent</span>
+                    <Label color="green" isCompact>
+                      Available
+                    </Label>
+                  </div>
+                  <div className="config-item">
+                    <span>Scratch</span>
+                    <Label color="blue" isCompact>
+                      Available
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* Features Status - Full Width */}
+        <GridItem span={12}>
+          <Card className="info-card">
+            <CardBody>
+              <Title headingLevel="h3" size="lg" className="features-title">
+                Feature Status
               </Title>
-              <List>
-                <ListItem>
-                  <strong>Home Volume</strong> - Persistent user workspace
-                </ListItem>
-                <ListItem>
-                  <strong>Scratch Volume</strong> - Temporary high-performance storage
-                </ListItem>
-                <ListItem>
-                  <strong>Storage Classes</strong> - Configurable per deployment
-                </ListItem>
-              </List>
+
+              <Grid hasGutter>
+                <GridItem md={4}>
+                  <div className="feature-group">
+                    <Title headingLevel="h4" size="md">
+                      Core Features
+                    </Title>
+                    <div className="feature-list">
+                      <div className="feature-item available">
+                        <span>Session Management</span>
+                      </div>
+                      <div className="feature-item available">
+                        <span>Multi-IDE Support</span>
+                      </div>
+                      <div className="feature-item available">
+                        <span>Persistent Storage</span>
+                      </div>
+                      <div className="feature-item available">
+                        <span>Ingress Config</span>
+                      </div>
+                      <div className="feature-item available">
+                        <span>Scaling</span>
+                      </div>
+                    </div>
+                  </div>
+                </GridItem>
+
+                <GridItem md={4}>
+                  <div className="feature-group">
+                    <Title headingLevel="h4" size="md">
+                      In Development
+                    </Title>
+                    <div className="feature-list">
+                      <div className="feature-item development">
+                        <span>Resource Quotas</span>
+                      </div>
+                      <div className="feature-item development">
+                        <span>Session Templates</span>
+                      </div>
+                      <div className="feature-item development">
+                        <span>Multi-tenancy</span>
+                      </div>
+                      <div className="feature-item development">
+                        <span>Git Integration</span>
+                      </div>
+                      <div className="feature-item development">
+                        <span>Registry Integration</span>
+                      </div>
+                    </div>
+                  </div>
+                </GridItem>
+
+                <GridItem md={4}>
+                  <div className="feature-group">
+                    <Title headingLevel="h4" size="md">
+                      Integrations
+                    </Title>
+                    <div className="feature-list">
+                      <div className="feature-item available">
+                        <span>Keycloak SSO</span>
+                      </div>
+                      <div className="feature-item available">
+                        <span>Helm Charts</span>
+                      </div>
+                      <div className="feature-item planned">
+                        <span>LDAP/AD</span>
+                      </div>
+                      <div className="feature-item planned">
+                        <span>Prometheus</span>
+                      </div>
+                      <div className="feature-item planned">
+                        <span>Grafana</span>
+                      </div>
+                    </div>
+                  </div>
+                </GridItem>
+              </Grid>
             </CardBody>
           </Card>
         </GridItem>
       </Grid>
-
-      <Card className="pf-u-mt-lg">
-        <CardBody>
-          <Title headingLevel="h2" className="pf-u-mb-md">
-            <InfoCircleIcon className="pf-u-mr-sm" />
-            Deployment Information
-          </Title>
-          
-          <Grid hasGutter>
-            <GridItem md={4}>
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Current Features
-              </Title>
-              <List isPlain>
-                <ListItem>✅ Session lifecycle management</ListItem>
-                <ListItem>✅ Multi-IDE support</ListItem>
-                <ListItem>✅ Persistent storage</ListItem>
-                <ListItem>✅ Ingress configuration</ListItem>
-                <ListItem>✅ Scaling support</ListItem>
-                <ListItem>✅ OAuth2 Proxy integration</ListItem>
-              </List>
-            </GridItem>
-            
-            <GridItem md={4}>
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Planned Features
-              </Title>
-              <List isPlain>
-                <ListItem>🚧 Resource quotas</ListItem>
-                <ListItem>🚧 Session templates</ListItem>
-                <ListItem>🚧 Multi-tenancy</ListItem>
-                <ListItem>🚧 Git integration</ListItem>
-                <ListItem>🚧 Container registry integration</ListItem>
-                <ListItem>🚧 Backup/restore</ListItem>
-              </List>
-            </GridItem>
-            
-            <GridItem md={4}>
-              <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-                Integration Roadmap
-              </Title>
-              <List isPlain>
-                <ListItem>📋 Keycloak SSO</ListItem>
-                <ListItem>📋 LDAP/Active Directory</ListItem>
-                <ListItem>📋 Prometheus monitoring</ListItem>
-                <ListItem>📋 Grafana dashboards</ListItem>
-                <ListItem>📋 ArgoCD deployment</ListItem>
-                <ListItem>📋 Helm chart</ListItem>
-              </List>
-            </GridItem>
-          </Grid>
-        </CardBody>
-      </Card>
-
-      <Card className="pf-u-mt-md">
-        <CardBody>
-          <Alert
-            variant="warning"
-            title="Development Environment"
-            icon={<ExclamationTriangleIcon />}
-            className="pf-u-mb-md"
-          >
-            This operator is currently in active development. Features and APIs may change without notice.
-            Not recommended for production workloads at this time.
-          </Alert>
-          
-          <Title headingLevel="h3" size="md" className="pf-u-mb-sm">
-            Getting Started
-          </Title>
-          <List>
-            <ListItem>
-              <strong>Documentation:</strong> Visit our GitHub repository for setup guides and examples
-            </ListItem>
-            <ListItem>
-              <strong>Community:</strong> Join our discussions for support and feature requests
-            </ListItem>
-            <ListItem>
-              <strong>Contributing:</strong> PRs and issues are welcome on our GitHub project
-            </ListItem>
-          </List>
-        </CardBody>
-      </Card>
     </PageSection>
   );
 }

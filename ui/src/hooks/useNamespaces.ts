@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { nsApi } from "../api/client";
+import { introspectApi } from "../api/client";
 
 export function useNamespaces() {
   const [sessionNamespaces, setSessionNamespaces] = useState<string[]>([]);
@@ -12,23 +12,25 @@ export function useNamespaces() {
     (async () => {
       try {
         setLoading(true);
-        const [a, b] = await Promise.all([
-          nsApi.listSessionNamespaces(),
-          nsApi.listWritableNamespaces(),
-        ]);
-        if (!cancelled) {
-          const uniq = (arr: string[]) => Array.from(new Set(arr)).sort();
-          setSessionNamespaces(uniq(a || []));
-          setWritableNamespaces(uniq(b || []));
-          setError(null);
-        }
+        // One call to rule them all
+        const ix = await introspectApi.get({ discover: true });
+        if (cancelled) return;
+        const uniq = (arr?: string[]) => Array.from(new Set(arr || [])).sort();
+
+        setSessionNamespaces(uniq(ix?.namespaces?.withSessions));
+        // "writable" = namespaces the *server* can list, but if to list user-centric "where can I act",
+        // use ix.namespaces.userAllowed instead (or expose a separate list from the backend).
+        setWritableNamespaces(uniq(ix?.namespaces?.all));
+        setError(null);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load namespaces");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { sessionNamespaces, writableNamespaces, loading, error };

@@ -179,8 +179,8 @@ docker-build: ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
 
-.PHONY: build-ui
-build-ui:
+.PHONY: build-server
+build-server:
 	cd ui && npm run build
 	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
 	cp -r ./ui/dist/* cmd/server/static/

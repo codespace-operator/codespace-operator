@@ -1,13 +1,11 @@
 package main
 
 import (
+	"context"
 	"embed"
-	"fmt"
-	"io/fs"
-	"log"
 	"net/http"
 	"os"
-	"path"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -34,10 +32,12 @@ var (
 )
 
 type serverDeps struct {
-	typed  client.Client
-	dyn    dynamic.Interface
-	scheme *runtime.Scheme
-	config *config.ServerConfig
+	typed      client.Client
+	dyn        dynamic.Interface
+	scheme     *runtime.Scheme
+	config     *config.ServerConfig
+	rbac       *RBAC
+	localUsers *localUsers
 }
 
 func main() {
@@ -48,56 +48,98 @@ func main() {
 		Run:   runServer,
 	}
 
+	rootCmd.Flags().String("config", "", "Path to config file or directory (highest precedence)")
 	rootCmd.Flags().IntP("port", "p", 8080, "Server port")
 	rootCmd.Flags().String("host", "", "Server host (empty for all interfaces)")
 	rootCmd.Flags().String("allow-origin", "", "CORS allow origin")
-	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
+	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().Float32("kube-qps", 50.0, "Kubernetes client QPS limit")
 	rootCmd.Flags().Int("kube-burst", 100, "Kubernetes client burst limit")
 
+	// OIDC + feature flags
+	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
+	rootCmd.Flags().String("oidc-issuer", "", "OIDC issuer URL (e.g., https://dev-xxxx.okta.com)")
+	rootCmd.Flags().String("oidc-client-id", "", "OIDC client ID")
+	rootCmd.Flags().String("oidc-client-secret", "", "OIDC client secret")
+	rootCmd.Flags().String("oidc-redirect-url", "", "OIDC redirect URL (https://host/auth/callback)")
+	rootCmd.Flags().StringSlice("oidc-scopes", []string{}, "OIDC scopes (default: openid profile email)")
+	rootCmd.Flags().Bool("enable-bootstrap-login", false, "Enable legacy bootstrap login (dev only)")
+	rootCmd.Flags().Bool("allow-token-param", false, "Allow ?access_token=... on URLs (NOT recommended)")
+	rootCmd.Flags().Int("session-ttl-minutes", 60, "Session cookie TTL in minutes")
+	rootCmd.Flags().String("session-cookie-name", "", "Override session cookie name")
+	rootCmd.Flags().String("rbac-model-path", "", "Path to Casbin model.conf (overrides default/env)")
+	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
+
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Command execution failed: %v", err)
+		logger.Fatal("Command execution failed", "err", err)
 	}
 }
 
 func runServer(cmd *cobra.Command, args []string) {
-	cfg, err := config.LoadServerConfig()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+	// Highest precedence: --config (file or dir)
+	if cmd.Flags().Changed("config") {
+		p, _ := cmd.Flags().GetString("config")
+		if strings.TrimSpace(p) != "" {
+			// make it visible to config.LoadServerConfig/setupViper
+			_ = os.Setenv("CODESPACE_SERVER_CONFIG_DEFAULT_PATH", p)
+		}
 	}
 
-	if cmd.Flags().Changed("port") {
-		port, _ := cmd.Flags().GetInt("port")
-		cfg.Port = port
+	cfg, err := config.LoadServerConfig()
+	configureLogger(cfg.LogLevel)
+	if err != nil {
+		logger.Fatal("Failed to load configuration", "err", err)
 	}
-	if cmd.Flags().Changed("host") {
-		host, _ := cmd.Flags().GetString("host")
-		cfg.Host = host
+	// CLI overrides
+	setString := func(name *string, flag string) {
+		if cmd.Flags().Changed(flag) {
+			v, _ := cmd.Flags().GetString(flag)
+			if v != "" {
+				*name = v
+			}
+		}
 	}
-	if cmd.Flags().Changed("allow-origin") {
-		origin, _ := cmd.Flags().GetString("allow-origin")
-		cfg.AllowOrigin = origin
+	setBool := func(name *bool, flag string) {
+		if cmd.Flags().Changed(flag) {
+			v, _ := cmd.Flags().GetBool(flag)
+			*name = v
+		}
 	}
-	if cmd.Flags().Changed("debug") {
-		debug, _ := cmd.Flags().GetBool("debug")
-		cfg.Debug = debug
+	setInt := func(name *int, flag string) {
+		if cmd.Flags().Changed(flag) {
+			v, _ := cmd.Flags().GetInt(flag)
+			*name = v
+		}
 	}
+
+	setString(&cfg.AllowOrigin, "allow-origin")
 	if cmd.Flags().Changed("kube-qps") {
-		qps, _ := cmd.Flags().GetFloat32("kube-qps")
-		cfg.KubeQPS = qps
+		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")
 	}
 	if cmd.Flags().Changed("kube-burst") {
-		burst, _ := cmd.Flags().GetInt("kube-burst")
-		cfg.KubeBurst = burst
+		cfg.KubeBurst, _ = cmd.Flags().GetInt("kube-burst")
 	}
-
-	if cfg.Debug {
-		log.Printf("Configuration: %+v", cfg)
+	setString(&cfg.OIDCIssuerURL, "oidc-issuer")
+	setString(&cfg.OIDCClientID, "oidc-client-id")
+	setString(&cfg.OIDCClientSecret, "oidc-client-secret")
+	setString(&cfg.OIDCRedirectURL, "oidc-redirect-url")
+	if cmd.Flags().Changed("oidc-scopes") {
+		cfg.OIDCScopes, _ = cmd.Flags().GetStringSlice("oidc-scopes")
+	}
+	setBool(&cfg.OIDCInsecureSkipVerify, "oidc-insecure-skip-verify")
+	setBool(&cfg.EnableLocalLogin, "enable-local-login")
+	setBool(&cfg.AllowTokenParam, "allow-token-param")
+	setInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
+	setString(&cfg.SessionCookieName, "session-cookie-name")
+	setString(&cfg.RBACModelPath, "rbac-model-path")
+	setString(&cfg.RBACPolicyPath, "rbac-policy-path")
+	if cfg.LogLevel == "debug" {
+		logger.Printf("Configuration: %+v", cfg)
 	}
 
 	k8sCfg, err := helpers.BuildKubeConfig()
 	if err != nil {
-		log.Fatalf("Kubernetes config: %v", err)
+		logger.Fatal("Kubernetes config", "err", err)
 	}
 	k8sCfg.Timeout = 30 * time.Second
 	k8sCfg.QPS = cfg.KubeQPS
@@ -105,116 +147,83 @@ func runServer(cmd *cobra.Command, args []string) {
 
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {
-		log.Fatalf("Add corev1 scheme: %v", err)
+		logger.Fatal("Add corev1 scheme", "err", err)
 	}
-
 	if err := codespacev1.AddToScheme(scheme); err != nil {
-		log.Fatalf("Add scheme: %v", err)
+		logger.Fatal("Add scheme", "err", err)
 	}
 
 	typed, err := client.New(k8sCfg, client.Options{Scheme: scheme})
 	if err != nil {
-		log.Fatalf("Typed client: %v", err)
+		logger.Fatal("Typed client", "err", err)
 	}
 	dyn, err := dynamic.NewForConfig(k8sCfg)
 	if err != nil {
-		log.Fatalf("Dynamic client: %v", err)
+		logger.Fatal("Dynamic client", "err", err)
+	}
+
+	// If explicit RBAC paths are provided, push them into env so NewRBACFromEnv picks them up.
+	if cfg.RBACModelPath != "" {
+		_ = os.Setenv(envModelPath, cfg.RBACModelPath)
+	}
+	if cfg.RBACPolicyPath != "" {
+		_ = os.Setenv(envPolicyPath, cfg.RBACPolicyPath)
+	}
+	rbac, err := NewRBACFromEnv(context.Background())
+	if err != nil {
+		logger.Fatal("RBAC init failed", "err", err)
+	}
+
+	users, err := loadLocalUsers(cfg.LocalUsersPath)
+	if err != nil {
+		logger.Fatal("local users load failed", "err", err)
 	}
 
 	deps := &serverDeps{
-		typed:  typed,
-		dyn:    dyn,
-		scheme: scheme,
-		config: cfg,
-	}
-
-	if err := helpers.TestKubernetesConnection(deps.typed); err != nil {
-		log.Fatalf("Kubernetes connection test failed: %v", err)
-	}
-	if cfg.Debug {
-		log.Println("Kubernetes connection established successfully")
+		typed:      typed,
+		dyn:        dyn,
+		scheme:     scheme,
+		config:     cfg,
+		rbac:       rbac,
+		localUsers: users,
 	}
 
 	mux := setupHandlers(deps)
+	registerAuthHandlers(mux, deps)
 
-	handler := logRequests(withCORS(
-		requireAPIToken([]byte(cfg.JWTSecret), mux),
-		cfg.AllowOrigin,
-	))
-	srv := &http.Server{
-		Addr:              cfg.GetAddr(),
-		Handler:           handler,
-		ReadHeaderTimeout: time.Duration(cfg.ReadTimeout) * time.Second,
-		WriteTimeout:      time.Duration(cfg.WriteTimeout) * time.Second,
+	// build middleware chain:
+	//   authGate( logRequests( withCORS( mux )))
+	var handler http.Handler = mux
+	handler = withCORS(cfg.AllowOrigin, handler) // CORS first so preflights are handled
+	handler = logRequests(handler)               // wrap CORS so OPTIONS are logged too
+	handler = authGate(&configLike{
+		JWTSecret:         cfg.JWTSecret,
+		SessionCookieName: cfg.SessionCookieName,
+		AllowTokenParam:   cfg.AllowTokenParam,
+	}, handler)
+
+	logger.Printf("Listening on %s", cfg.GetAddr())
+	if err := http.ListenAndServe(cfg.GetAddr(), handler); err != nil {
+		logger.Fatal("ListenAndServe", "err", err)
 	}
 
-	log.Printf("Codespace server starting on %s", cfg.GetAddr())
-	if cfg.Debug {
-		log.Printf("Debug mode enabled")
-		log.Printf("CORS allow origin: %s", cfg.AllowOrigin)
-	}
-	log.Fatal(srv.ListenAndServe())
 }
-
-func setupHandlers(deps *serverDeps) *http.ServeMux {
-	mux := http.NewServeMux()
-
-	// Auth endpoints
-	mux.HandleFunc("/api/v1/auth/login", handleLogin(deps.config))
-	mux.Handle("/api/v1/auth/me", requireAPIToken([]byte(deps.config.JWTSecret), http.HandlerFunc(handleMe())))
-
-	// Health endpoints
-	mux.HandleFunc("/healthz", handleHealthz)
-	mux.HandleFunc("/readyz", handleReadyz(deps))
-
-	// API endpoints (protected by top-level middleware too)
-	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
-	mux.HandleFunc("/api/v1/sessions", handleSessions(deps))
-	mux.HandleFunc("/api/v1/sessions/", handleSessionsWithPath(deps))
-	mux.HandleFunc("/api/v1/namespaces/sessions", handleNamespacesWithSessions(deps))
-	mux.HandleFunc("/api/v1/namespaces/writable", handleWritableNamespaces(deps))
-
-	setupStaticUI(mux)
-	if deps.config.Debug {
-		mux.HandleFunc("/debug/static-files", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			err := fs.WalkDir(staticFS, "static", func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(w, "%s (dir: %v)\n", path, d.IsDir())
-				return nil
-			})
-			if err != nil {
-				fmt.Fprintf(w, "Error walking static files: %v\n", err)
-			}
-		})
-	}
-	return mux
-}
-
-// SPA/static serving with simple index fallback
-func setupStaticUI(mux *http.ServeMux) {
-	uiFS, err := fsSub(staticFS, "static")
-	if err != nil {
-		log.Fatalf("Failed to create static file system: %v", err)
-	}
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if os.Getenv("DEBUG") == "true" {
-			log.Printf("Static request: %s", r.URL.Path)
-		}
-		if path.Ext(r.URL.Path) != "" && r.URL.Path != "/" {
-			http.FileServer(uiFS).ServeHTTP(w, r)
+func authGate(cfg *configLike, next http.Handler) http.Handler {
+	// only guard /api/*; allow health, static, and /auth/*
+	authed := requireAPIToken(cfg, next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if p == "/healthz" || p == "/readyz" ||
+			strings.HasPrefix(p, "/auth/") ||
+			p == "/" || strings.HasPrefix(p, "/assets/") || strings.HasPrefix(p, "/static/") {
+			next.ServeHTTP(w, r)
 			return
 		}
-		indexContent, err := staticFS.ReadFile("static/index.html")
-		if err != nil {
-			http.Error(w, "index.html not found", http.StatusNotFound)
+		if strings.HasPrefix(p, "/api/") {
+			authed.ServeHTTP(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.WriteHeader(http.StatusOK)
-		w.Write(indexContent)
+		// default public
+		next.ServeHTTP(w, r)
 	})
 }

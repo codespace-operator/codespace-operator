@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # --- Config & helpers ---
 : "${SETUP_CONFIG:=misc/tests/config.sh}"
 : "${DEPLOY_SCRIPT:=misc/tests/deploy.sh}"
+: "${BUILD_SCRIPT:=misc/tests/build.sh}"
 source "${SETUP_CONFIG}"
 
 need() { command -v "$1" >/dev/null || { echo "Missing '$1' in PATH"; exit 1; }; }
@@ -64,15 +63,8 @@ spec: { selfSigned: {} }
 YAML
 fi
 
-echo ">>> Building operator image (${IMG})..."
-make docker-build IMG="${IMG}"
+./${BUILD_SCRIPT}
 
-echo ">>> Building gateway image (${SERVER_IMG})..."
-make docker-build-server SERVER_IMG="${SERVER_IMG}"
-
-echo ">>> Loading images into kind..."
-kind load docker-image "${IMG}" --name "${CLUSTER_NAME}"
-kind load docker-image "${SERVER_IMG}" --name "${CLUSTER_NAME}"
 
 echo ">>> Installing CRDs via Helm chart (or comment this and use 'make install')..."
 ./${DEPLOY_SCRIPT}

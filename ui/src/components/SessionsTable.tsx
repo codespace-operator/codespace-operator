@@ -1,18 +1,26 @@
 import React from "react";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { Button, Label, Tooltip, Spinner } from "@patternfly/react-core";
-import { ExternalLinkAltIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from "@patternfly/react-icons";
+import {
+  ExternalLinkAltIcon,
+  TrashIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from "@patternfly/react-icons";
 import type { Session } from "../types";
 
 function PhaseLabel({ phase }: { phase?: string }) {
-  const intent: Record<string, "success" | "info" | "warning" | "danger" | "none"> = {
+  const intent: Record<
+    string,
+    "success" | "info" | "warning" | "danger" | "none"
+  > = {
     Ready: "success",
     Pending: "warning",
     Error: "danger",
     none: "info",
   } as any;
   const pfColor = intent[phase || "none"] || "info";
-  return <Label color={pfColor as any}>{phase || "—"}</Label>;
+  return <Label color={pfColor as any}>{phase || "-"}</Label>;
 }
 
 type Props = {
@@ -24,7 +32,14 @@ type Props = {
   onOpen: (s: Session) => void;
 };
 
-export function SessionsTable({ loading, rows, pendingTargets = {}, onScale, onDelete, onOpen }: Props) {
+export function SessionsTable({
+  loading,
+  rows,
+  pendingTargets = {},
+  onScale,
+  onDelete,
+  onOpen,
+}: Props) {
   return (
     <div style={{ borderRadius: 6, overflow: "hidden" }}>
       <Table aria-label="Sessions" variant="compact" borders>
@@ -69,27 +84,49 @@ export function SessionsTable({ loading, rows, pendingTargets = {}, onScale, onD
                   <PhaseLabel phase={s.status?.phase} />
                 </Td>
                 <Td dataLabel="Replicas" textCenter>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
                     <Tooltip content="Scale down">
-                      <Button variant="plain" onClick={() => onScale(s, -1)} aria-label="Scale down">
+                      <Button
+                        variant="plain"
+                        onClick={() => onScale(s, -1)}
+                        aria-label="Scale down"
+                      >
                         <ArrowDownIcon />
                       </Button>
                     </Tooltip>
                     {(() => {
                       const key = `${s.metadata.namespace}/${s.metadata.name}`;
-                      const current = typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
+                      const current =
+                        typeof s.spec.replicas === "number"
+                          ? s.spec.replicas
+                          : 1;
                       const target = pendingTargets[key];
                       if (typeof target === "number" && target !== current) {
                         return (
                           <Tooltip content="Applying…">
-                            <strong>{current} <span className="pf-u-color-200">(→ {target})</span></strong>
+                            <strong>
+                              {current}{" "}
+                              <span className="pf-u-color-200">
+                                (→ {target})
+                              </span>
+                            </strong>
                           </Tooltip>
                         );
                       }
                       return <strong>{current}</strong>;
                     })()}
                     <Tooltip content="Scale up">
-                      <Button variant="plain" onClick={() => onScale(s, +1)} aria-label="Scale up">
+                      <Button
+                        variant="plain"
+                        onClick={() => onScale(s, +1)}
+                        aria-label="Scale up"
+                      >
                         <ArrowUpIcon />
                       </Button>
                     </Tooltip>
@@ -98,10 +135,18 @@ export function SessionsTable({ loading, rows, pendingTargets = {}, onScale, onD
                 <Td dataLabel="Actions" modifier="fitContent">
                   <div style={{ display: "inline-flex", gap: 8 }}>
                     <Tooltip content="Open">
-                      <Button variant="secondary" icon={<ExternalLinkAltIcon />} onClick={() => onOpen(s)} />
+                      <Button
+                        variant="secondary"
+                        icon={<ExternalLinkAltIcon />}
+                        onClick={() => onOpen(s)}
+                      />
                     </Tooltip>
                     <Tooltip content="Delete">
-                      <Button variant="danger" icon={<TrashIcon />} onClick={() => onDelete(s)} />
+                      <Button
+                        variant="danger"
+                        icon={<TrashIcon />}
+                        onClick={() => onDelete(s)}
+                      />
                     </Tooltip>
                   </div>
                 </Td>

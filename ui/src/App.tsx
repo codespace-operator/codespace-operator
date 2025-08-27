@@ -1,161 +1,269 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  PageSidebar,
   Nav,
   NavList,
   NavItem,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
-  TextInput,
+  NavGroup,
   Alert,
   AlertGroup,
   AlertActionCloseButton,
-  Button,
-  Card,
-  CardBody,
 } from "@patternfly/react-core";
-import { PlusCircleIcon } from "@patternfly/react-icons";
 import { Header } from "./components/Header";
-import { SessionsTable } from "./components/SessionsTable";
-import { CreateSessionModal } from "./components/CreateSessionModal";
-import { useAlerts, useFilteredSessions, useSessions } from "./hooks/useSessions";
-import type { Session } from "./types";
 import { InfoPage } from "./pages/InfoPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UserInfoPage } from "./pages/UserInfo";
+import { SessionsPage, SessionsPageRef } from "./pages/SessionsPage";
+import { useAlerts } from "./hooks/useAlerts";
 import { useAuth } from "./hooks/useAuth";
-import { useNamespaces } from "./hooks/useNamespaces";
-import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
+import { useIntrospection } from "./hooks/useIntrospection";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  Link,
+  Outlet,
+} from "react-router-dom";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-
-  if (isLoading) {
-    return <div style={{ padding: 24 }}>Loading...</div>;
-  }
-  if (!isAuthenticated) {
+  if (isLoading) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (!isAuthenticated)
     return <Navigate to="/login" state={{ from: location }} replace />;
-  }
   return <>{children}</>;
 }
 
 // Full-screen login layout without sidebars
 function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor:
+          "var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {children}
     </div>
   );
 }
 
+/**
+ * AppChrome: header + (auth-gated) sidebar + alert area + <Outlet />
+ * This renders only for "app" routes, not for /login (which uses LoginLayout).
+ */
+function AppChrome({
+  namespace,
+  setNamespace,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  onRefresh,
+  alerts,
+}: {
+  namespace: string;
+  setNamespace: (ns: string) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (v: boolean) => void;
+  onRefresh: () => void;
+  alerts: ReturnType<typeof useAlerts>;
+}) {
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        backgroundColor: "var(--pf-c-page--BackgroundColor, #151515)",
+      }}
+    >
+      <Header
+        namespace={namespace}
+        onNamespace={setNamespace}
+        onRefresh={onRefresh}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        user={user}
+      />
+
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Sidebar only when authenticated */}
+        {isAuthenticated && (
+          <div
+            style={{
+              width: isSidebarOpen ? "300px" : "0px",
+              backgroundColor: "#0f0f0f",
+              transition: "width 0.3s ease-in-out",
+              overflow: "hidden",
+              borderRight: isSidebarOpen
+                ? "1px solid rgba(255,255,255,0.1)"
+                : "none",
+              flexShrink: 0,
+            }}
+          >
+            <Nav
+              aria-label="Primary navigation"
+              style={{ padding: "1rem 0", width: "300px" }}
+            >
+              <NavList>
+                <NavGroup title="Workloads">
+                  <NavItem
+                    itemId="/sessions"
+                    isActive={location.pathname.startsWith("/sessions")}
+                  >
+                    <Link
+                      to="/sessions"
+                      style={{
+                        display: "block",
+                        color: "inherit",
+                        textDecoration: "none",
+                        padding: "0.5rem 1rem",
+                      }}
+                    >
+                      Sessions
+                    </Link>
+                  </NavItem>
+                </NavGroup>
+
+                <NavGroup title="Administration">
+                  <NavItem
+                    itemId="/user-info"
+                    isActive={location.pathname.startsWith("/user-info")}
+                  >
+                    <Link
+                      to="/user-info"
+                      style={{
+                        display: "block",
+                        color: "inherit",
+                        textDecoration: "none",
+                        padding: "0.5rem 1rem",
+                      }}
+                    >
+                      User Management
+                    </Link>
+                  </NavItem>
+                  <NavItem
+                    itemId="/info"
+                    isActive={location.pathname.startsWith("/info")}
+                  >
+                    <Link
+                      to="/info"
+                      style={{
+                        display: "block",
+                        color: "inherit",
+                        textDecoration: "none",
+                        padding: "0.5rem 1rem",
+                      }}
+                    >
+                      Cluster Settings
+                    </Link>
+                  </NavItem>
+                </NavGroup>
+              </NavList>
+            </Nav>
+          </div>
+        )}
+
+        {/* Main content */}
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            backgroundColor: "var(--pf-c-page--BackgroundColor, #151515)",
+            padding: 0,
+          }}
+        >
+          <AlertGroup isToast isLiveRegion>
+            {alerts.list.map((a) => (
+              <Alert
+                key={a.key}
+                title={a.title}
+                variant={a.variant}
+                timeout={6000}
+                actionClose={
+                  <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
+                }
+              />
+            ))}
+          </AlertGroup>
+
+          {/* Child route outlet */}
+          <Outlet />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const ixEnabled = isAuthenticated && !isLoading;
+
+  const { data: ix, error: ixError } = useIntrospection({
+    discover: true,
+    enabled: ixEnabled,
+  });
+
   const alerts = useAlerts();
+
+  useEffect(() => {
+    // toast errors once we *expect* introspection to work
+    if (ixError && ixEnabled) alerts.push(ixError, "danger");
+  }, [ixError, ixEnabled]);
+
   const location = useLocation();
   const navigate = useNavigate();
+  const sessionsPageRef = useRef<SessionsPageRef>(null);
 
   const [namespace, setNamespace] = useState<string>(
-    localStorage.getItem("co_ns") || "All"
+    localStorage.getItem("co_ns") || "All",
   );
-  const [query, setQuery] = useState("");
-  const [isNavOpen, setNavOpen] = useState(true);
-  const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const { rows, loading, refresh, create, remove, scale, pendingTargets } = useSessions(
-    namespace,
-    (msg) => alerts.push(msg, "danger")
-  );
-  const filtered = useFilteredSessions(rows, query);
-  const { writableNamespaces, sessionNamespaces, loading: nsLoading, error: nsError } = useNamespaces();
-  useEffect(() => { if (nsError) alerts.push(nsError, "danger"); }, [nsError]);
-  useEffect(() => localStorage.setItem("co_ns", namespace), [namespace]);
+  // Button gating: hide "All" if user can't watch across "*"
+  const allowAll = !!ix?.domains?.["*"]?.session?.watch;
 
-  const openURL = (s: Session) => {
-    const url =
-      s.status?.url ||
-      (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
-    if (!url) return alerts.push("No URL yet", "info");
-    window.open(url, "_blank");
-  };
+  // Derive creatable namespaces for fallback logic
+  const creatableNamespaces = useMemo(() => {
+    if (!ix) return [];
+    return Object.entries(ix.domains || {})
+      .filter(([ns, perms]) => ns !== "*" && perms?.session?.create)
+      .map(([ns]) => ns)
+      .sort();
+  }, [ix]);
 
-  const doDelete = async (s: Session) => {
-    if (!confirm(`Delete ${s.metadata.name}?`)) return;
-    try {
-      await remove(s.metadata.namespace, s.metadata.name);
-      alerts.push("Deleted", "success");
-      refresh();
-    } catch (e: any) {
-      alerts.push(e?.message || "Delete failed", "danger");
+  // Persist namespace selection
+  useEffect(() => {
+    if (namespace === "All" && !allowAll) {
+      const fallback =
+        creatableNamespaces[0] || ix?.namespaces?.userAllowed?.[0] || "default";
+      setNamespace(fallback);
+      return;
+    }
+    localStorage.setItem("co_ns", namespace);
+  }, [namespace, allowAll, creatableNamespaces, ix?.namespaces?.userAllowed]);
+
+  useEffect(() => {
+    if (ixError) alerts.push(ixError, "danger");
+  }, [ixError]);
+
+  const handleRefresh = () => {
+    if (location.pathname.startsWith("/sessions")) {
+      sessionsPageRef.current?.refresh();
     }
   };
 
-  // Navigation items - only show when authenticated
-  const getNavItems = () => {
-    if (!isAuthenticated) return [];
-
-    return [
-      {
-        id: "workloads",
-        title: "Workloads",
-        children: [
-          { id: "sessions", title: "Sessions", to: "/sessions" }
-        ]
-      },
-      {
-        id: "administration",
-        title: "Administration",
-        children: [
-          { id: "user-info", title: "User Management", to: "/user-info" },
-          { id: "cluster-info", title: "Cluster Settings", to: "/info" }
-        ]
-      }
-    ];
-  };
-
-  // IMPORTANT: In PF v6, use the `nav` prop (not `sidebarContent`)
-  const Sidebar = (
-    <PageSidebar
-      isSidebarOpen={isNavOpen}
-      nav={
-        <Nav aria-label="Primary nav" theme="dark">
-          <NavList>
-            {getNavItems().map((section) => (
-              <React.Fragment key={section.id}>
-                <NavItem className="pf-c-nav__section-title">
-                  {section.title}
-                </NavItem>
-                {section.children.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    isActive={location.pathname.startsWith(item.to)}
-                    className="pf-m-indent"
-                  >
-                    <Link className="pf-c-nav__link" to={item.to}>
-                      {item.title}
-                    </Link>
-                  </NavItem>
-                ))}
-              </React.Fragment>
-            ))}
-          </NavList>
-        </Nav>
-      }
-    />
-  );
-
-  // If on login page, show full-screen login layout
-  if (location.pathname === "/login") {
+  // Helper component so we can keep Login fullscreen + alerts + navigate-after-login.
+  const LoginRoute = () => {
+    const loc = useLocation();
+    const nav = useNavigate();
     return (
       <LoginLayout>
         <AlertGroup isToast isLiveRegion>
@@ -165,151 +273,64 @@ export default function App() {
               title={a.title}
               variant={a.variant}
               timeout={6000}
-              actionClose={<AlertActionCloseButton onClose={() => alerts.close(a.key)} />}
+              actionClose={
+                <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
+              }
             />
           ))}
         </AlertGroup>
 
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <LoginPage
-                onLoggedIn={() => {
-                  const from = (location.state as any)?.from?.pathname || "/sessions";
-                  navigate(from, { replace: true });
-                }}
-              />
-            }
-          />
-        </Routes>
+        <LoginPage
+          onLoggedIn={() => {
+            const from = (loc.state as any)?.from?.pathname || "/sessions";
+            nav(from, { replace: true });
+          }}
+        />
       </LoginLayout>
     );
-  }
+  };
 
-  // Main application layout with sidebar
   return (
-    <Page
-      masthead={
-        <Header
-          namespace={namespace}
-          onNamespace={setNamespace}
-          onRefresh={refresh}
-          onToggleSidebar={() => setNavOpen((v) => !v)}
-          user={user}
-        />
-      }
-      sidebar={isAuthenticated ? Sidebar : undefined}
-      isManagedSidebar
-    >
-      <AlertGroup isToast isLiveRegion>
-        {alerts.list.map((a) => (
-          <Alert
-            key={a.key}
-            title={a.title}
-            variant={a.variant}
-            timeout={6000}
-            actionClose={<AlertActionCloseButton onClose={() => alerts.close(a.key)} />}
-          />
-        ))}
-      </AlertGroup>
+    <Routes>
+      {/* Public, full-screen login */}
+      <Route path="/login" element={<LoginRoute />} />
 
-      <Routes>
+      {/* App chrome wraps protected routes */}
+      <Route
+        path="/"
+        element={
+          <AppChrome
+            namespace={namespace}
+            setNamespace={setNamespace}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            onRefresh={handleRefresh}
+            alerts={alerts}
+          />
+        }
+      >
         <Route
-          path="/sessions"
+          path="sessions"
           element={
             <RequireAuth>
-              <>
-                <PageSection variant={PageSectionVariants.light} isWidthLimited>
-                  <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center">
-                    <div>
-                      <h1 className="pf-c-title pf-m-2xl">Sessions</h1>
-                      <p className="pf-u-color-200">
-                        Manage your development environments and IDE sessions
-                      </p>
-                    </div>
-                  </div>
-                  <Toolbar>
-                    <ToolbarContent>
-                      <ToolbarItem>
-                        <TextInput
-                          aria-label="Search sessions"
-                          value={query}
-                          onChange={(_, v) => setQuery(v)}
-                          placeholder="Filter by name, image, or host..."
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<PlusCircleIcon />}
-                          variant="primary"
-                          onClick={() => setCreateOpen(true)}
-                        >
-                          Create Session
-                        </Button>
-                      </ToolbarItem>
-                    </ToolbarContent>
-                  </Toolbar>
-                </PageSection>
-
-                <PageSection isFilled isWidthLimited>
-                  <Card>
-                    <CardBody>
-                      <SessionsTable
-                        loading={loading}
-                        rows={filtered}
-                        pendingTargets={pendingTargets}
-                        onScale={async (s, d) => {
-                          const current =
-                            typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
-                          const next = Math.max(0, current + d);
-                          try {
-                            await scale(s.metadata.namespace, s.metadata.name, next);
-                            alerts.push(`Scaled to ${next}`, "success");
-                            refresh();
-                          } catch (e: any) {
-                            alerts.push(e?.message || "Scale failed", "danger");
-                          }
-                        }}
-                        onDelete={doDelete}
-                        onOpen={openURL}
-                      />
-                    </CardBody>
-                  </Card>
-
-                  <CreateSessionModal
-                    isOpen={isCreateOpen}
-                    namespace={namespace}
-                    writableNamespaces={writableNamespaces}
-                    onClose={() => setCreateOpen(false)}
-                    onCreate={async (body) =>{
-                      try {
-                        await create(body);
-                        alerts.push(`Session ${body?.metadata?.name} created`, "success");
-                        setCreateOpen(false);
-                        refresh();
-                      } catch (e: any) {
-                        alerts.push(e?.message || "Create failed", "danger");
-                      }
-                    }}
-                  />
-                </PageSection>
-              </>
+              <SessionsPage
+                ref={sessionsPageRef}
+                namespace={namespace}
+                onAlert={(message, variant) => alerts.push(message, variant)}
+              />
             </RequireAuth>
           }
         />
-
         <Route
-          path="/user-info"
+          path="user-info"
           element={
             <RequireAuth>
               <UserInfoPage />
             </RequireAuth>
           }
         />
-
         <Route
-          path="/info"
+          path="info"
           element={
             <RequireAuth>
               <InfoPage />
@@ -317,9 +338,12 @@ export default function App() {
           }
         />
 
-        <Route path="/" element={<Navigate to="/sessions" replace />} />
-        <Route path="*" element={<Navigate to="/sessions" replace />} />
-      </Routes>
-    </Page>
+        {/* Default “home” → sessions */}
+        <Route index element={<Navigate to="/sessions" replace />} />
+      </Route>
+
+      {/* Fallbacks */}
+      <Route path="*" element={<Navigate to="/sessions" replace />} />
+    </Routes>
   );
 }

@@ -1,22 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Session, SessionEvent } from "../types";
+import { useIx } from "../context/IntrospectionContext";
+import { can as canDo } from "../lib/cap";
 
-export function useAlerts(max = 5) {
-  const [alerts, setAlerts] = useState<{ key: string; title: string; variant: any }[]>([]);
-  return {
-    push: (title: string, variant: any = "info") =>
-      setAlerts((a) => [{ key: Math.random().toString(36).slice(2), title, variant }, ...a].slice(0, max)),
-    close: (key: string) => setAlerts((s) => s.filter((x) => x.key !== key)),
-    list: alerts,
-  };
-}
+export function useSessions(
+  namespace: string,
+  onError?: (msg: string) => void,
+  enabled = true,
+) {
+  const { data: ix } = useIx();
 
-export function useSessions(namespace: string, onError?: (msg: string) => void, enabled = true) {
+  // If namespace is "All" but user can't watch "*", fallback to first allowed namespace or "default"
+  const effectiveNs = useMemo(() => {
+    if (namespace !== "All") return namespace;
+    const ok = canDo(ix!, "*", "watch");
+    if (ok) return "All";
+    // fallback: prefer one where list is allowed
+    const allowed = Object.entries(ix?.domains || {}).find(
+      ([ns, v]) => ns !== "*" && v.session?.list,
+    );
+    return allowed?.[0] || "default";
+  }, [namespace, ix]);
+
   const [rows, setRows] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-  const [pendingTargets, setPendingTargets] = useState<Record<string, number>>({});
+  const [pendingTargets, setPendingTargets] = useState<Record<string, number>>(
+    {},
+  );
+
   // Initial list
   useEffect(() => {
     if (!enabled) return;
@@ -24,7 +37,12 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
     (async () => {
       setLoading(true);
       try {
-        const data = await api.list(namespace);
+        if (effectiveNs === "All" && !canDo(ix!, "*", "list")) {
+          throw new Error(
+            "You do not have list permissions across all namespaces.",
+          );
+        }
+        const data = await api.list(effectiveNs);
         if (!cancelled) setRows(data);
       } catch (e: any) {
         onError?.(e?.message || "Failed to load sessions");
@@ -32,23 +50,31 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-  }, [namespace, enabled]);
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveNs, enabled, ix]);
 
   // Live updates via SSE
   useEffect(() => {
     if (!enabled) return;
     if (esRef.current) esRef.current.close();
-    const es = api.watch(namespace, (m) => {
+    const es = api.watch(effectiveNs, (m) => {
       try {
         const ev = JSON.parse(m.data) as SessionEvent;
         setRows((list) => {
-          if (ev.type === "DELETED") return list.filter((x) => x.metadata.name !== ev.object.metadata.name);
-          const ix = list.findIndex((x) => x.metadata.name === ev.object.metadata.name);
+          if (ev.type === "DELETED")
+            return list.filter(
+              (x) => x.metadata.name !== ev.object.metadata.name,
+            );
+          const ix = list.findIndex(
+            (x) => x.metadata.name === ev.object.metadata.name,
+          );
           if (ix === -1) return [ev.object, ...list];
-          const next = [...list]; next[ix] = ev.object; return next;
+          const next = [...list];
+          next[ix] = ev.object;
+          return next;
         });
-        // any event touching an object is a good moment to clear optimistic target
         setPendingTargets((p) => {
           const k = `${ev.object.metadata.namespace}/${ev.object.metadata.name}`;
           if (!(k in p)) return p;
@@ -60,23 +86,45 @@ export function useSessions(namespace: string, onError?: (msg: string) => void, 
     es.onerror = () => {};
     esRef.current = es;
     return () => es.close();
-  }, [namespace, enabled]);
+  }, [effectiveNs, enabled]);
 
+  // Guarded actions using RBAC
   const actions = {
     refresh: async () => {
       if (!enabled) return;
       setLoading(true);
-      try { setRows(await api.list(namespace)); }
-      finally { setLoading(false); }
+      try {
+        setRows(await api.list(effectiveNs));
+      } finally {
+        setLoading(false);
+      }
     },
-    create: (body: Partial<Session>) => api.create(body),
-    remove: (ns: string, name: string) => api.remove(ns, name),
+    create: async (body: Partial<Session>) => {
+      const ns = body?.metadata?.namespace || effectiveNs;
+      if (!canDo(ix!, ns, "create"))
+        throw new Error(`Not allowed to create in ${ns}`);
+      return api.create(body);
+    },
+    remove: async (ns: string, name: string) => {
+      if (!canDo(ix!, ns, "delete"))
+        throw new Error(`Not allowed to delete in ${ns}`);
+      return api.remove(ns, name);
+    },
     scale: async (ns: string, name: string, replicas: number) => {
+      if (!canDo(ix!, ns, "scale"))
+        throw new Error(`Not allowed to scale in ${ns}`);
       const key = `${ns}/${name}`;
       setPendingTargets((p) => ({ ...p, [key]: replicas }));
-      const res = await api.scale(ns, name, replicas);
-      return res;
+      return api.scale(ns, name, replicas);
     },
+    can: {
+      list: (ns = effectiveNs) => canDo(ix!, ns, "list"),
+      watch: (ns = effectiveNs) => canDo(ix!, ns === "All" ? "*" : ns, "watch"),
+      create: (ns = effectiveNs) => canDo(ix!, ns, "create"),
+      delete: (ns = effectiveNs) => canDo(ix!, ns, "delete"),
+      scale: (ns = effectiveNs) => canDo(ix!, ns, "scale"),
+    },
+    effectiveNamespace: effectiveNs,
   };
 
   return { rows, loading, pendingTargets, ...actions };

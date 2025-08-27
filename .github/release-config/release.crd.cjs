@@ -11,7 +11,7 @@ module.exports = {
         { type: 'fix',    scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
         { type: 'perf',   scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
         { type: 'revert', scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
-        { scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|repo|ci)(?=,|\s|$)/, release: false },
+        { scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|repo|ci|ui)(?=,|\s|$)/, release: false },
         { type: /^(docs|chore|build|ci|test|refactor)$/,                            release: false }
       ]
     }],

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -44,6 +45,7 @@ func main() {
 	}
 
 	// Add flags
+	rootCmd.Flags().String("config", "", "Path to config file or directory (highest precedence)")
 	rootCmd.Flags().String("metrics-bind-address", "0",
 		"The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable.")
 	rootCmd.Flags().String("health-probe-bind-address", ":8081",
@@ -71,7 +73,7 @@ func main() {
 	rootCmd.Flags().String("field-owner", "codespace-operator",
 		"Field manager name for server-side apply operations")
 	rootCmd.Flags().Bool("debug", false, "Enable debug logging")
-
+	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	// Add zap flags to a separate FlagSet that we can bind
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 	opts := zap.Options{Development: true}
@@ -90,7 +92,17 @@ func main() {
 
 func runController(cmd *cobra.Command, args []string) {
 	// Load configuration
+	// Highest precedence: --config (file or dir)
+	if cmd.Flags().Changed("config") {
+		p, _ := cmd.Flags().GetString("config")
+		if strings.TrimSpace(p) != "" {
+			// make it visible to config.LoadControllerConfig/setupViper
+			_ = os.Setenv("CODESPACE_CONTROLLER_CONFIG_DEFAULT_PATH", p)
+		}
+	}
+
 	cfg, err := config.LoadControllerConfig()
+
 	if err != nil {
 		setupLog.Error(err, "Failed to load configuration")
 		os.Exit(1)
