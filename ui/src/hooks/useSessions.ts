@@ -11,11 +11,14 @@ export function useSessions(
 ) {
   const { data: ix } = useIx();
 
-  // If namespace is "All" but user can't watch "*", fallback to first allowed namespace or "default"
+  // If namespace is "All" (from UI), translate to "*" for backend, but user can't watch "*", fallback to first allowed namespace
   const effectiveNs = useMemo(() => {
     if (namespace !== "All") return namespace;
+
+    // Check if user can watch "*" (cluster-wide)
     const ok = canDo(ix!, "*", "watch");
-    if (ok) return "All";
+    if (ok) return "All"; // Keep "All" for UI, will be translated to "*" in API calls
+
     // fallback: prefer one where list is allowed
     const allowed = Object.entries(ix?.domains || {}).find(
       ([ns, v]) => ns !== "*" && v.session?.list,

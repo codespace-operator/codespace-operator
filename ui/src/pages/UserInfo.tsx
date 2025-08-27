@@ -1,6 +1,5 @@
-// Updated ui/src/pages/UserInfo.tsx
-
-import { useEffect, useMemo, useState } from "react";
+// ui/src/pages/UserInfo.tsx
+import React, { useMemo } from "react";
 import {
   PageSection,
   Card,
@@ -14,11 +13,12 @@ import {
   Button,
   Grid,
   GridItem,
+  List,
+  ListItem,
   Spinner,
   EmptyState,
   EmptyStateBody,
   Tooltip,
-  Alert,
 } from "@patternfly/react-core";
 import {
   UserIcon,
@@ -38,13 +38,13 @@ import {
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
 
-  // Use the new split hooks
+  // ---- New split hooks (use new API, old layout) ----
   const {
     data: userInfo,
     loading: userLoading,
     error: userError,
   } = useUserIntrospection({
-    namespaces: ["default", "*"], // Small set for display
+    namespaces: ["default", "*"], // keep the small display set
     enabled: !!user,
   });
 
@@ -53,11 +53,11 @@ export function UserInfoPage() {
     loading: serverLoading,
     error: serverError,
   } = useServerIntrospection({
-    discover: false, // Don't need full discovery for user info page
+    discover: false, // no full discovery for this page
     enabled: !!user,
   });
 
-  // Decode JWT (if you still show it)
+  // ---- JWT decode (unchanged) ----
   const decodeJWTPayload = (t?: string | null) => {
     if (!t) return null;
     try {
@@ -82,7 +82,11 @@ export function UserInfoPage() {
     : false;
 
   const renderBool = (v: boolean) =>
-    v ? <CheckCircleIcon color="green" /> : <TimesCircleIcon color="red" />;
+    v ? (
+      <CheckCircleIcon className="pf-u-color-success-400" />
+    ) : (
+      <TimesCircleIcon className="pf-u-color-danger-400" />
+    );
 
   // Ordered list of actions for namespace permissions table
   const actionOrder = [
@@ -95,123 +99,96 @@ export function UserInfoPage() {
     "scale",
   ] as const;
 
+  const loading = userLoading || serverLoading;
+  const fatalError = userError && !userInfo ? userError : null; // user info is the core; server can be missing
+
   return (
-    <PageSection>
-      <Title headingLevel="h1" size="2xl">
-        <UserIcon /> User Information
-      </Title>
+    <PageSection className="user-info-page">
+      <div className="user-info-header">
+        <Title headingLevel="h1" size="2xl">
+          Account
+        </Title>
+      </div>
 
-      <Grid hasGutter>
+      <Grid hasGutter className="user-info-grid">
         {/* Account Card */}
-        <GridItem span={12} md={6}>
-          <Card>
+        <GridItem lg={4}>
+          <Card className="user-info-card">
             <CardBody>
-              <Title headingLevel="h2" size="lg">
+              <div className="card-header">
                 <UserIcon />
-                Account
-              </Title>
+                <Title headingLevel="h3" size="lg">
+                  Profile
+                </Title>
+              </div>
 
-              {userLoading ? (
-                <Spinner size="md" />
-              ) : userError ? (
-                <Alert variant="danger" title="Failed to load user information">
-                  {userError}
-                </Alert>
-              ) : userInfo ? (
-                <>
-                  <DescriptionList>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>User</DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {userInfo.user.username || user || "Not authenticated"}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
+              <DescriptionList isCompact className="user-profile-list">
+                <DescriptionListGroup>
+                  <DescriptionListTerm>User</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <strong>
+                      {userInfo?.user?.username || user || "Not authenticated"}
+                    </strong>
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
 
-                    {userInfo.user.subject && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Subject</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {userInfo.user.subject}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
+                {userInfo?.user?.provider && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Provider</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {userInfo.user.provider}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
 
-                    {userInfo.user.provider && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Provider</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {userInfo.user.provider}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
+                {userInfo?.user?.email && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Email</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {userInfo.user.email}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
 
-                    {userInfo.user.email && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Email</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {userInfo.user.email}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
+                {userInfo?.user?.roles?.length ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Roles</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <div className="role-tags">
+                        {userInfo.user.roles.map((r: string) => (
+                          <Label key={r} color="blue" isCompact>
+                            {r}
+                          </Label>
+                        ))}
+                      </div>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
+              </DescriptionList>
 
-                    {userInfo.user.roles?.length ? (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Roles</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          <div>
-                            {userInfo.user.roles.map((r) => (
-                              <Label key={r} color="blue">
-                                {r}
-                              </Label>
-                            ))}
-                          </div>
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    ) : null}
-
-                    {userInfo.user.implicitRoles?.length ? (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>
-                          <Tooltip content="Roles inherited through RBAC group membership">
-                            <span>Inherited Roles</span>
-                          </Tooltip>
-                        </DescriptionListTerm>
-                        <DescriptionListDescription>
-                          <div>
-                            {userInfo.user.implicitRoles.map((r) => (
-                              <Label key={r} color="purple">
-                                {r}
-                              </Label>
-                            ))}
-                          </div>
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    ) : null}
-                  </DescriptionList>
-
-                  <Button variant="secondary" onClick={logout}>
-                    Sign out
-                  </Button>
-                </>
-              ) : null}
+              <Button variant="link" onClick={logout} className="logout-button">
+                Sign out
+              </Button>
             </CardBody>
           </Card>
         </GridItem>
 
         {/* Token Card */}
-        <GridItem span={12} md={6}>
-          <Card>
+        <GridItem lg={4}>
+          <Card className="user-info-card">
             <CardBody>
-              <Title headingLevel="h2" size="lg">
+              <div className="card-header">
                 <KeyIcon />
-                Session Token
-              </Title>
+                <Title headingLevel="h3" size="lg">
+                  Token
+                </Title>
+              </div>
 
-              <DescriptionList>
+              <DescriptionList isCompact>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Status</DescriptionListTerm>
                   <DescriptionListDescription>
-                    <Label color={isExpired ? "red" : "green"}>
+                    <Label color={isExpired ? "red" : "green"} isCompact>
                       {isExpired ? "Expired" : "Active"}
                     </Label>
                   </DescriptionListDescription>
@@ -236,8 +213,8 @@ export function UserInfoPage() {
                 )}
               </DescriptionList>
 
-              <div>
-                <code style={{ fontSize: "12px" }}>
+              <div className="token-preview">
+                <code>
                   {token ? `${token.substring(0, 40)}...` : "No token"}
                 </code>
               </div>
@@ -245,162 +222,83 @@ export function UserInfoPage() {
           </Card>
         </GridItem>
 
-        {/* User Permissions Card */}
-        <GridItem span={12}>
-          <Card>
+        {/* Permissions Card */}
+        <GridItem lg={4}>
+          <Card className="user-info-card">
             <CardBody>
-              <Title headingLevel="h2" size="lg">
+              <div className="card-header">
                 <ShieldAltIcon />
-                Your Permissions
-              </Title>
+                <Title headingLevel="h3" size="lg">
+                  Permissions
+                </Title>
+              </div>
 
-              {userLoading ? (
-                <EmptyState>
+              {loading ? (
+                <div className="loading-state">
                   <Spinner size="lg" />
+                </div>
+              ) : fatalError ? (
+                <EmptyState isSmall>
+                  <EmptyStateBody>
+                    <ExclamationTriangleIcon className="error-icon" />
+                    <div>{fatalError}</div>
+                  </EmptyStateBody>
                 </EmptyState>
-              ) : userError ? (
-                <Alert variant="danger" title="Permission Error">
-                  <EmptyStateBody>{userError}</EmptyStateBody>
-                </Alert>
               ) : userInfo ? (
-                <>
-                  {/* Capabilities Summary */}
-                  <Grid hasGutter style={{ marginBottom: "1rem" }}>
-                    <GridItem span={6} md={3}>
-                      <div>
-                        <strong>Cluster Access</strong>
-                        {renderBool(userInfo.capabilities.clusterScope)}
-                      </div>
-                    </GridItem>
-                    <GridItem span={6} md={3}>
-                      <div>
-                        <strong>Admin Access</strong>
-                        {renderBool(userInfo.capabilities.adminAccess)}
-                      </div>
-                    </GridItem>
-                    <GridItem span={12} md={6}>
-                      <div>
-                        <strong>Accessible Namespaces</strong>
-                        <span>
-                          {" "}
-                          ({userInfo.capabilities.namespaceScope.length})
-                        </span>
-                      </div>
-                    </GridItem>
-                  </Grid>
-
-                  {/* Namespace permissions */}
-                  <Title headingLevel="h3" size="md">
-                    Session Permissions by Namespace
-                  </Title>
-                  {Object.keys(userInfo.domains).length === 0 ? (
-                    <EmptyStateBody>No permissions found</EmptyStateBody>
-                  ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      {Object.entries(userInfo.domains).map(([ns, obj]) => (
-                        <div key={ns} style={{ marginBottom: "1rem" }}>
-                          <div>
-                            <strong>
-                              {ns === "*" ? "All Namespaces" : ns}
-                            </strong>
-                          </div>
-                          <div>
-                            {actionOrder.map((act) => (
-                              <span key={act} style={{ marginRight: "1rem" }}>
-                                <strong>{act}</strong>
-                                {renderBool(!!obj.session?.[act])}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                <div className="permissions-content">
+                  {/* Cluster permissions (from server introspection) */}
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>namespaces.list</span>
+                      <Tooltip content="Required for 'All namespaces' discovery">
+                        <InfoCircleIcon />
+                      </Tooltip>
                     </div>
-                  )}
-                </>
+                    {serverInfo ? (
+                      renderBool(
+                        !!serverInfo?.cluster?.casbin?.namespaces?.list,
+                      )
+                    ) : (
+                      <Tooltip content={serverError || "Unavailable"}>
+                        <InfoCircleIcon />
+                      </Tooltip>
+                    )}
+                  </div>
+
+                  {/* Namespace permissions (from user introspection) */}
+                  <div className="namespace-permissions">
+                    <Title headingLevel="h4" size="md" className="pf-u-mb-sm">
+                      Namespaces
+                    </Title>
+                    {Object.keys(userInfo?.domains ?? {}).length === 0 ? (
+                      <span className="no-namespaces">None</span>
+                    ) : (
+                      <div className="namespace-list">
+                        {Object.entries(userInfo.domains).map(([ns, obj]) => (
+                          <div key={ns} className="namespace-item">
+                            <div className="namespace-header">
+                              <Label color="blue" isCompact>
+                                {ns === "*" ? "All" : ns}
+                              </Label>
+                            </div>
+                            <div className="namespace-actions">
+                              {actionOrder.map((act) => (
+                                <div key={act} className="action-item">
+                                  <span>{act}</span>
+                                  {renderBool(!!(obj as any)?.session?.[act])}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : null}
             </CardBody>
           </Card>
         </GridItem>
-
-        {/* Server Information Card (if available) */}
-        {serverInfo && (
-          <GridItem span={12}>
-            <Card>
-              <CardBody>
-                <Title headingLevel="h2" size="lg">
-                  <InfoCircleIcon />
-                  Cluster Information
-                </Title>
-
-                {serverLoading ? (
-                  <Spinner size="md" />
-                ) : serverError ? (
-                  <Alert variant="info" title="Server Information Unavailable">
-                    {serverError ===
-                    "Insufficient permissions to view server information"
-                      ? "You don't have permissions to view cluster-level information."
-                      : serverError}
-                  </Alert>
-                ) : (
-                  <DescriptionList>
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>
-                        Server Can List Namespaces
-                      </DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {renderBool(
-                          !!serverInfo.cluster?.casbin?.namespaces?.list,
-                        )}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-
-                    {serverInfo.namespaces?.all?.length && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>
-                          Total Namespaces
-                        </DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {serverInfo.namespaces.all.length}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
-
-                    {serverInfo.namespaces?.withSessions?.length && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>
-                          Namespaces with Sessions
-                        </DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {serverInfo.namespaces.withSessions.length}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
-
-                    <DescriptionListGroup>
-                      <DescriptionListTerm>
-                        Multi-Tenant Setup
-                      </DescriptionListTerm>
-                      <DescriptionListDescription>
-                        {renderBool(serverInfo.capabilities.multiTenant)}
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-
-                    {serverInfo.version && (
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>
-                          Server Version
-                        </DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {serverInfo.version.version || "Unknown"}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    )}
-                  </DescriptionList>
-                )}
-              </CardBody>
-            </Card>
-          </GridItem>
-        )}
       </Grid>
     </PageSection>
   );

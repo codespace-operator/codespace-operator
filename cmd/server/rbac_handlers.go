@@ -108,7 +108,7 @@ func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
 		ctx := r.Context()
 
 		// Parse query parameters
-		namespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
+		requestedNamespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
 		actions := splitCSVQuery(r.URL.Query().Get("actions"))
 
 		// Default actions if not specified
@@ -132,15 +132,33 @@ func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
 		}
 
 		// Check cluster-level permissions for user
+		hasClusterList, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+		hasClusterWatch, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "watch", "*")
 		nsListAllowed, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
-		nsWatchAllowed, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "watch", "*")
 
 		// Determine target namespaces for permission checking
-		targetNamespaces := namespaces
-		if len(targetNamespaces) == 0 {
-			// Default set for user introspection
-			targetNamespaces = []string{"default", "kube-system", "*"}
+		var targetNamespaces []string
+
+		if len(requestedNamespaces) > 0 {
+			// Use requested namespaces
+			targetNamespaces = requestedNamespaces
+		} else {
+			// Discover all available namespaces for this user
+			discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
+			if err != nil {
+				logger.Warn("Failed to discover allowed namespaces for user", "user", cl.Sub, "err", err)
+				// Fallback to common namespaces
+				targetNamespaces = []string{"default", "kube-system", "kube-public"}
+			} else {
+				targetNamespaces = discoveredNamespaces
+			}
+
+			// Always include "*" for cluster-wide permissions check
+			targetNamespaces = append(targetNamespaces, "*")
 		}
+
+		// Remove duplicates and sort
+		targetNamespaces = uniqueNamespaces(targetNamespaces)
 
 		// Build domain permissions for user
 		domains := make(map[string]DomainPermissions)
@@ -202,8 +220,15 @@ func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
 		// Build user-specific capabilities
 		capabilities := UserCapabilities{
 			NamespaceScope: userAllowed,
-			ClusterScope:   domains["*"].Session["list"] || domains["*"].Session["watch"] || nsListAllowed,
-			AdminAccess:    domains["*"].Session["create"] && domains["*"].Session["delete"], // Can create/delete anywhere
+			ClusterScope:   hasClusterList || hasClusterWatch || nsListAllowed,
+			AdminAccess:    hasClusterList && hasClusterWatch, // Basic admin check
+		}
+
+		// Enhanced admin access check - user who can create/delete anywhere
+		if starDomain, exists := domains["*"]; exists {
+			if starDomain.Session["create"] && starDomain.Session["delete"] {
+				capabilities.AdminAccess = true
+			}
 		}
 
 		// Build user response
@@ -214,7 +239,7 @@ func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
 			Capabilities: capabilities,
 		}
 
-		logger.Debug("User introspection completed", "user", cl.Sub, "namespaces", len(targetNamespaces))
+		logger.Debug("User introspection completed", "user", cl.Sub, "namespaces", len(targetNamespaces), "allowed", len(userAllowed))
 		writeJSON(w, response)
 	}
 }
@@ -228,16 +253,13 @@ func handleServerIntrospect(deps *serverDeps) http.HandlerFunc {
 			return
 		}
 
-		// Require at least some level of admin access to see server info
-		// Users with cluster-wide list permissions can see server capabilities
+		// Require at least some level of cluster access to see server info
 		hasClusterAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
-		if !hasClusterAccess {
-			// Alternatively, allow if user has admin role or can list sessions across namespaces
-			hasAdminAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
-			if !hasAdminAccess {
-				http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
-				return
-			}
+		hasSessionAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+
+		if !hasClusterAccess && !hasSessionAccess {
+			http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
+			return
 		}
 
 		ctx := r.Context()
@@ -259,12 +281,22 @@ func handleServerIntrospect(deps *serverDeps) http.HandlerFunc {
 		// Server namespace info
 		serverNamespaceInfo := ServerNamespaceInfo{}
 
-		// Discover namespaces if requested and server has permissions
-		if discover && serverCapabilities.Namespaces.List {
+		// Discover namespaces if requested and either user or server has permissions
+		if discover {
 			allNs, sessNs, err := discoverNamespaces(ctx, deps)
 			if err != nil {
 				logger.Warn("Failed to discover namespaces", "err", err, "user", cl.Sub)
 			} else {
+				// Filter namespaces based on user permissions if user doesn't have cluster access
+				if !hasClusterAccess {
+					// Filter to only namespaces the user can access
+					userAllowedNs, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
+					if err == nil {
+						allNs = filterNamespaces(allNs, userAllowedNs)
+						sessNs = filterNamespaces(sessNs, userAllowedNs)
+					}
+				}
+
 				serverNamespaceInfo.All = allNs
 				serverNamespaceInfo.WithSessions = sessNs
 			}
@@ -272,12 +304,12 @@ func handleServerIntrospect(deps *serverDeps) http.HandlerFunc {
 
 		// Build system capabilities
 		systemCapabilities := SystemCapabilities{
-			MultiTenant: len(serverNamespaceInfo.All) > 3, // Heuristic for multi-tenancy
+			MultiTenant: len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
 		}
 
 		// Version info (could be populated from build-time variables)
 		versionInfo := ServerVersionInfo{
-			Version: "1.0.0", // TODO: populate from build
+			Version: "1.0.0", // TODO: stamp to a variable during build
 		}
 
 		// Build server response
@@ -315,12 +347,12 @@ func handleIntrospect(deps *serverDeps) http.HandlerFunc {
 		}
 
 		// Legacy behavior: return combined response but log deprecation warning
-		logger.Warn("Using deprecated combined introspect endpoint", "user", cl.Sub, "recommendation", "Use ?type=user or ?type=server")
+		logger.Warn("Using deprecated combined introspect endpoint", "user", cl.Sub, "recommendation", "Use /api/v1/introspect/user or /api/v1/introspect/server")
 
 		// For backward compatibility, provide a combined response
 		// Get user info
 		userReq := r.Clone(r.Context())
-		userReq.URL.RawQuery = r.URL.Query().Encode() + "&type=user"
+		userReq.URL.RawQuery = r.URL.Query().Encode()
 		userRec := httptest.NewRecorder()
 		handleUserIntrospect(deps)(userRec, userReq)
 
@@ -337,7 +369,7 @@ func handleIntrospect(deps *serverDeps) http.HandlerFunc {
 
 		// Try to get server info (may fail due to permissions)
 		serverReq := r.Clone(r.Context())
-		serverReq.URL.RawQuery = r.URL.Query().Encode() + "&type=server"
+		serverReq.URL.RawQuery = r.URL.Query().Encode()
 		serverRec := httptest.NewRecorder()
 		handleServerIntrospect(deps)(serverRec, serverReq)
 
@@ -431,8 +463,16 @@ func handleUserPermissions(deps *serverDeps) http.HandlerFunc {
 			actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
 		}
 
+		// If no namespaces specified, discover user's allowed namespaces
 		if len(namespaces) == 0 {
-			namespaces = []string{"default", "*"}
+			ctx := r.Context()
+			discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
+			if err != nil {
+				logger.Warn("Failed to discover namespaces for user permissions", "user", cl.Sub, "err", err)
+				namespaces = []string{"default", "*"} // fallback
+			} else {
+				namespaces = append(discoveredNamespaces, "*") // always include cluster-wide
+			}
 		}
 
 		// Get comprehensive user permissions
