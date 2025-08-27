@@ -133,7 +133,7 @@ export function CreateSessionModal({
             id="name"
             value={cName}
             onChange={(_, v) => setCName(v)}
-            placeholder="Enter session name"
+            placeholder="Session name"
           />
         </FormGroup>
 
@@ -210,8 +210,9 @@ export function CreateSessionModal({
         }}
       >
         <Button
-          variant="primary"
+          type="button"
           onClick={submit}
+          variant="primary"
           isDisabled={!cName || !cNamespace || writableNamespaces.length === 0}
           style={{
             backgroundColor: "#0066cc",

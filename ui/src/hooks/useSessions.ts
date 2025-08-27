@@ -125,7 +125,11 @@ export function useSessions(
         }
         body = {
           ...body,
-          metadata: { ...(body?.metadata || {}), namespace: candidate },
+          metadata: {
+            ...(body?.metadata || {}),
+            namespace: candidate,
+            name: body?.metadata?.name, // Explicitly preserve name
+          },
         } as Partial<Session>;
       }
       return api.create(body);
