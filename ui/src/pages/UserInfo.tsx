@@ -38,13 +38,13 @@ import {
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
 
-  // ---- New split hooks (use new API, old layout) ----
+  // New split hooks (API)
   const {
     data: userInfo,
     loading: userLoading,
     error: userError,
   } = useUserIntrospection({
-    namespaces: ["default", "*"], // keep the small display set
+    namespaces: ["default", "*"],
     enabled: !!user,
   });
 
@@ -53,11 +53,11 @@ export function UserInfoPage() {
     loading: serverLoading,
     error: serverError,
   } = useServerIntrospection({
-    discover: false, // no full discovery for this page
+    discover: false,
     enabled: !!user,
   });
 
-  // ---- JWT decode (unchanged) ----
+  // JWT decode (unchanged)
   const decodeJWTPayload = (t?: string | null) => {
     if (!t) return null;
     try {
@@ -88,7 +88,7 @@ export function UserInfoPage() {
       <TimesCircleIcon className="pf-u-color-danger-400" />
     );
 
-  // Ordered list of actions for namespace permissions table
+  // Ordered list of actions for per-namespace table
   const actionOrder = [
     "get",
     "list",
@@ -100,7 +100,24 @@ export function UserInfoPage() {
   ] as const;
 
   const loading = userLoading || serverLoading;
-  const fatalError = userError && !userInfo ? userError : null; // user info is the core; server can be missing
+  const fatalError = userError && !userInfo ? userError : null;
+
+  // Helper to render an action bag with existing classes only
+  const renderActionBag = (
+    bag?: Partial<Record<(typeof actionOrder)[number], boolean>> | null,
+  ) => {
+    if (!bag) return null;
+    return (
+      <div className="namespace-actions">
+        {actionOrder.map((act) => (
+          <div key={act} className="action-item">
+            <span>{act}</span>
+            {renderBool(!!bag[act])}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <PageSection className="user-info-page">
@@ -132,6 +149,15 @@ export function UserInfoPage() {
                   </DescriptionListDescription>
                 </DescriptionListGroup>
 
+                {userInfo?.user?.subject && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Subject</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {userInfo.user.subject}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+
                 {userInfo?.user?.provider && (
                   <DescriptionListGroup>
                     <DescriptionListTerm>Provider</DescriptionListTerm>
@@ -157,6 +183,25 @@ export function UserInfoPage() {
                       <div className="role-tags">
                         {userInfo.user.roles.map((r: string) => (
                           <Label key={r} color="blue" isCompact>
+                            {r}
+                          </Label>
+                        ))}
+                      </div>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                ) : null}
+
+                {userInfo?.user?.implicitRoles?.length ? (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>
+                      <Tooltip content="Roles inherited through RBAC group membership">
+                        <span>Inherited Roles</span>
+                      </Tooltip>
+                    </DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <div className="role-tags">
+                        {userInfo.user.implicitRoles.map((r: string) => (
+                          <Label key={r} color="purple" isCompact>
                             {r}
                           </Label>
                         ))}
@@ -246,7 +291,33 @@ export function UserInfoPage() {
                 </EmptyState>
               ) : userInfo ? (
                 <div className="permissions-content">
-                  {/* Cluster permissions (from server introspection) */}
+                  {/* Capabilities summary (no new classes) */}
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>Cluster Access</span>
+                    </div>
+                    {renderBool(!!userInfo.capabilities?.clusterScope)}
+                  </div>
+
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>Admin Access</span>
+                    </div>
+                    {renderBool(!!userInfo.capabilities?.adminAccess)}
+                  </div>
+
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>Accessible Namespaces</span>
+                    </div>
+                    <span>
+                      {Array.isArray(userInfo.capabilities?.namespaceScope)
+                        ? userInfo.capabilities.namespaceScope.length
+                        : 0}
+                    </span>
+                  </div>
+
+                  {/* Cluster-level bit from server introspection */}
                   <div className="permission-section">
                     <div className="permission-header">
                       <span>namespaces.list</span>
@@ -265,32 +336,56 @@ export function UserInfoPage() {
                     )}
                   </div>
 
-                  {/* Namespace permissions (from user introspection) */}
+                  {/* Per-namespace permissions */}
                   <div className="namespace-permissions">
                     <Title headingLevel="h4" size="md" className="pf-u-mb-sm">
                       Namespaces
                     </Title>
+
                     {Object.keys(userInfo?.domains ?? {}).length === 0 ? (
                       <span className="no-namespaces">None</span>
                     ) : (
                       <div className="namespace-list">
-                        {Object.entries(userInfo.domains).map(([ns, obj]) => (
-                          <div key={ns} className="namespace-item">
-                            <div className="namespace-header">
-                              <Label color="blue" isCompact>
-                                {ns === "*" ? "All" : ns}
-                              </Label>
+                        {Object.entries(userInfo.domains).map(([ns, obj]) => {
+                          const domain = obj as any;
+                          const sessionBag =
+                            (domain?.session as Partial<
+                              Record<(typeof actionOrder)[number], boolean>
+                            >) || null;
+
+                          // Optional extra bag if your API provides it (rbac/granted/static)
+                          const nonSessionBag =
+                            (domain?.rbac ||
+                              domain?.granted ||
+                              domain?.static) ??
+                            null;
+
+                          return (
+                            <div key={ns} className="namespace-item">
+                              <div className="namespace-header">
+                                <Label color="blue" isCompact>
+                                  {ns === "*" ? "All" : ns}
+                                </Label>
+                              </div>
+
+                              {/* Session permissions */}
+                              {sessionBag ? (
+                                <>
+                                  <div>Session</div>
+                                  {renderActionBag(sessionBag)}
+                                </>
+                              ) : null}
+
+                              {/* Optional: RBAC / Static */}
+                              {nonSessionBag ? (
+                                <>
+                                  <div>RBAC / Static</div>
+                                  {renderActionBag(nonSessionBag)}
+                                </>
+                              ) : null}
                             </div>
-                            <div className="namespace-actions">
-                              {actionOrder.map((act) => (
-                                <div key={act} className="action-item">
-                                  <span>{act}</span>
-                                  {renderBool(!!(obj as any)?.session?.[act])}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
