@@ -18,7 +18,6 @@ WORKDIR /
 COPY --from=builder /workspace/session-controller /session-controller
 USER 65532:65532
 
-# Environment variables with defaults
 ENV CODESPACE_CONTROLLER_METRICS_ADDR="0"
 ENV CODESPACE_CONTROLLER_PROBE_ADDR=":8081"
 ENV CODESPACE_CONTROLLER_ENABLE_LEADER_ELECTION="false"

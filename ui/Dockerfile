@@ -1,4 +1,3 @@
-# ui/Dockerfile
 # 1) Build the SPA
 FROM node:20-alpine AS ui
 WORKDIR /src/ui
