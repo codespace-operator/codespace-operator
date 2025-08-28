@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "postbuild": "rm -rf ../cmd/server/static && mkdir -p ../cmd/server/static && cp -r dist/* ../cmd/server/static/",
-    "codegen": "openapi-typescript ${OPENAPI_SRC:-../docs/api/openapi.json} --output src/types/api.gen.ts --export-type --immutable --path-params-as-types",
-    "predev": "npm run -s codegen",
+    "codegen": "HERE=${pwd} && cd .. && make -s api && cd $HERE",
     "prebuild": "npm run -s codegen",
     "preview": "vite preview --host --port 5173"
   },

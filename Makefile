@@ -64,7 +64,7 @@ endif
 # scaffolded by default. However, you might want to replace it to use other
 # tools. (i.e. podman)
 CONTAINER_TOOL ?= docker
-SWAG ?= swag
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -233,16 +233,52 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 
+# --- tools ---
+SWAG ?= swag
+SWAG_FLAGS ?= -g cmd/server/codespace_server.go -o docs/api --parseDependency --parseInternal -ot json,yaml
+
+OAPI_JSON ?= docs/api/openapi.json
+SWAGGER_YAML ?= docs/api/swagger.yaml
+TS_TYPES ?= ui/src/types/api.gen.ts
+
+# Generate Swagger 2.0 (yaml/json) from comments
 .PHONY: swagger
 swagger:
-	@which ${SWAG} > /dev/null || go install github.com/swaggo/swag/cmd/swag@latest
-	@$(SWAG) init -g cmd/server/codespace_server.go \
-	  -o docs/api \
-	  --parseDependency --parseInternal \
-	  -ot json,yaml
-	@npx --yes swagger2openapi -o docs/api/openapi.json docs/api/swagger.yaml
-	@npx --yes openapi-typescript docs/api/openapi.json --output ui/src/types/api.d.ts
+	@which $(SWAG) >/dev/null || go install github.com/swaggo/swag/cmd/swag@latest
+	@$(SWAG) init $(SWAG_FLAGS)
 
+# Convert to OpenAPI 3
+.PHONY: openapi
+openapi: swagger
+	npx --yes swagger2openapi -o $(OAPI_JSON) $(SWAGGER_YAML)
+
+# Generate TS types for the UI
+.PHONY: api-types
+api-types: openapi
+	npx --yes openapi-typescript $(OAPI_JSON) --output $(TS_TYPES)
+
+# One-stop target used by CI and the UI
+.PHONY: api
+api: api-types
+
+# Optional cleanup
+.PHONY: clean-api
+clean-api:
+	rm -f $(OAPI_JSON) $(TS_TYPES) docs/api/swagger.json $(SWAGGER_YAML)
+
+# Fix build-server to honor tags (so you can ship docs only when desired)
+.PHONY: build-server
+build-server:
+	cd ui && npm run build
+	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
+	cp -r ./ui/dist/* cmd/server/static/
+	touch ./cmd/server/static/.gitkeep
+	go build -ldflags "-X main.Version=$(VERSION)" \
+	  -o ./bin/codespace-server ./cmd/server
+
+.PHONY: build-server-docs
+build-server-docs:
+	$(MAKE) build-server GO_BUILD_TAGS=docs
 
 
 .PHONY: undeploy

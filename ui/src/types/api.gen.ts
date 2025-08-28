@@ -3,1142 +3,1140 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = {
-  readonly "/api/v1/admin/rbac/reload": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+export interface paths {
+  "/api/v1/admin/rbac/reload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    readonly get?: never;
-    readonly put?: never;
+    get?: never;
+    put?: never;
     /**
      * Reload RBAC (Admin)
      * @description Force reload of RBAC policies (requires admin privileges)
      */
-    readonly post: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": {
-              readonly [key: string]: string;
+            "application/json": {
+              [key: string]: string;
             };
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
         /** @description Forbidden */
-        readonly 403: {
+        403: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/admin/system/info": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/admin/system/info": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * System Info
      * @description Check system information (requires admin privileges)
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": {
-              readonly [key: string]: unknown;
+            "application/json": {
+              [key: string]: unknown;
             };
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/admin/users": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/admin/users": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * List users (Admin)
      * @description Get list of users in the system (requires admin privileges)
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description User list with admin info */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": {
-              readonly [key: string]: unknown;
+            "application/json": {
+              [key: string]: unknown;
             };
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
         /** @description Forbidden */
-        readonly 403: {
+        403: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/introspect": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/introspect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Introspect (legacy combined)
      * @deprecated
      * @description Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description Combined user+server info */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": {
-              readonly [key: string]: unknown;
+            "application/json": {
+              [key: string]: unknown;
             };
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/introspect/server": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/introspect/server": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Server introspection
      * @description Get server and cluster information
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Whether to discover namespaces (0 or 1) */
-          readonly discover?: string;
+          discover?: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ServerIntrospectionResponse"];
+            "application/json": components["schemas"]["cmd_server.ServerIntrospectionResponse"];
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
         /** @description Forbidden */
-        readonly 403: {
+        403: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/introspect/user": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/introspect/user": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * User introspection
      * @description Get user-specific permissions and capabilities
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Comma-separated list of namespaces to check */
-          readonly namespaces?: string;
+          namespaces?: string;
           /** @description Comma-separated list of actions to check */
-          readonly actions?: string;
+          actions?: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.UserIntrospectionResponse"];
+            "application/json": components["schemas"]["cmd_server.UserIntrospectionResponse"];
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/me": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Get current user
      * @description Get information about the current authenticated user
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.UserInfo"];
+            "application/json": components["schemas"]["cmd_server.UserInfo"];
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/server/sessions": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/server/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * List sessions
      * @description Get a list of codespace sessions, optionally across all namespaces
      */
-    readonly get: operations["listSessions"];
-    readonly put?: never;
+    get: operations["listSessions"];
+    put?: never;
     /**
      * Create session
      * @description Create a new codespace session
      */
-    readonly post: operations["createSession"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    post: operations["createSession"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly [path: `/api/v1/server/sessions/${string}/${string}`]: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/server/sessions/{namespace}/{name}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Get session
      * @description Get details of a specific session
      */
-    readonly get: operations["getSession"];
+    get: operations["getSession"];
     /**
      * Update session
      * @description Update a session (full replacement)
      */
-    readonly put: operations["updateSession"];
-    readonly post?: never;
+    put: operations["updateSession"];
+    post?: never;
     /**
      * Delete session
      * @description Delete a codespace session
      */
-    readonly delete: operations["deleteSession"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    delete: operations["deleteSession"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly [path: `/api/v1/server/sessions/${string}/${string}/scale`]: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/server/sessions/{namespace}/{name}/scale": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    readonly get?: never;
-    readonly put?: never;
+    get?: never;
+    put?: never;
     /**
      * Scale session
      * @description Scale the number of replicas for a session
      */
-    readonly post: operations["scaleSession"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    post: operations["scaleSession"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/stream/sessions": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/stream/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Stream sessions
      * @description Stream real-time session updates via Server-Sent Events
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Target namespace */
-          readonly namespace?: string;
+          namespace?: string;
           /** @description Stream sessions from all namespaces */
-          readonly all?: boolean;
+          all?: boolean;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description SSE stream */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/event-stream": string;
+            "text/event-stream": string;
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
+            "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
         /** @description Forbidden */
-        readonly 403: {
+        403: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
+            "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/api/v1/user/permissions": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/api/v1/user/permissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * User permissions
      * @description Get detailed user permissions
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Comma-separated list of namespaces */
-          readonly namespaces?: string;
+          namespaces?: string;
           /** @description Comma-separated list of actions */
-          readonly actions?: string;
+          actions?: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.UserPermissions"];
+            "application/json": components["schemas"]["cmd_server.UserPermissions"];
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/auth/features": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/auth/features": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Get authentication features
      * @description Get available authentication methods and endpoints
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.AuthFeatures"];
+            "application/json": components["schemas"]["cmd_server.AuthFeatures"];
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/auth/local/login": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/auth/local/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    readonly get?: never;
-    readonly put?: never;
+    get?: never;
+    put?: never;
     /**
      * Local login
      * @description Authenticate using username and password
      */
-    readonly post: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
       /** @description Login credentials */
-      readonly requestBody: {
-        readonly content: {
-          readonly "application/json": components["schemas"]["cmd_server.LocalLoginRequest"];
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["cmd_server.LocalLoginRequest"];
         };
       };
-      readonly responses: {
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.LoginResponse"];
+            "application/json": components["schemas"]["cmd_server.LoginResponse"];
           };
         };
         /** @description Unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+            "application/json": components["schemas"]["cmd_server.ErrorResponse"];
           };
         };
       };
     };
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/auth/logout": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Logout
      * @description Clears session cookie. If SSO configured, redirects to the provider’s end-session endpoint.
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description OK */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "application/json": {
-              readonly [key: string]: string;
+            "application/json": {
+              [key: string]: string;
             };
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/auth/sso/callback": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/auth/sso/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * OIDC callback
      * @description Handles provider callback, mints session cookie, then redirects.
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query: {
+    get: {
+      parameters: {
+        query: {
           /** @description OIDC state */
-          readonly state: string;
+          state: string;
           /** @description Authorization code */
-          readonly code: string;
+          code: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description Redirect */
-        readonly 302: {
+        302: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "*/*": string;
+            "*/*": string;
           };
         };
         /** @description unauthorized */
-        readonly 401: {
+        401: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "*/*": string;
+            "*/*": string;
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/auth/sso/login": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/auth/sso/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * OIDC start
      * @description Redirect to OIDC provider with PKCE/state. Optional `next` query to return to path.
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Relative path to return to after login */
-          readonly next?: string;
+          next?: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description Redirect */
-        readonly 302: {
+        302: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "*/*": string;
+            "*/*": string;
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/healthz": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/healthz": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Health check
      * @description Check if the service is healthy
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: never;
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description ok */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/plain": string;
+            "text/plain": string;
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-  readonly "/readyz": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  "/readyz": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /**
      * Readiness check
      * @description Check if the service is ready to accept traffic
      */
-    readonly get: {
-      readonly parameters: {
-        readonly query?: {
+    get: {
+      parameters: {
+        query?: {
           /** @description Namespace to test connectivity */
-          readonly namespace?: string;
+          namespace?: string;
         };
-        readonly header?: never;
-        readonly path?: never;
-        readonly cookie?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
       };
-      readonly requestBody?: never;
-      readonly responses: {
+      requestBody?: never;
+      responses: {
         /** @description ready */
-        readonly 200: {
+        200: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/plain": string;
+            "text/plain": string;
           };
         };
         /** @description not ready */
-        readonly 503: {
+        503: {
           headers: {
-            readonly [name: string]: unknown;
+            [name: string]: unknown;
           };
           content: {
-            readonly "text/plain": string;
+            "text/plain": string;
           };
         };
       };
     };
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
-};
+}
 export type webhooks = Record<string, never>;
-export type components = {
+export interface components {
   schemas: {
     /** @description Available authentication features and endpoints */
-    readonly "cmd_server.AuthFeatures": {
+    "cmd_server.AuthFeatures": {
       /** @example false */
-      readonly localLoginEnabled?: boolean;
+      localLoginEnabled?: boolean;
       /** @example /auth/local/login */
-      readonly localLoginPath?: string;
+      localLoginPath?: string;
       /** @example true */
-      readonly ssoEnabled?: boolean;
+      ssoEnabled?: boolean;
       /** @example /auth/sso/login */
-      readonly ssoLoginPath?: string;
+      ssoLoginPath?: string;
     };
-    readonly "cmd_server.CasbinPermissions": {
-      readonly namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
+    "cmd_server.CasbinPermissions": {
+      namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
     };
-    readonly "cmd_server.ClusterInfo": {
-      readonly casbin?: components["schemas"]["cmd_server.CasbinPermissions"];
-      readonly serverServiceAccount?: components["schemas"]["cmd_server.ServiceAccountInfo"];
+    "cmd_server.ClusterInfo": {
+      casbin?: components["schemas"]["cmd_server.CasbinPermissions"];
+      serverServiceAccount?: components["schemas"]["cmd_server.ServiceAccountInfo"];
     };
-    readonly "cmd_server.DomainPermissions": {
-      readonly session?: {
-        readonly [key: string]: boolean;
+    "cmd_server.DomainPermissions": {
+      session?: {
+        [key: string]: boolean;
       };
     };
-    readonly "cmd_server.ErrorResponse": {
+    "cmd_server.ErrorResponse": {
       /** @example Invalid request */
-      readonly error?: string;
+      error?: string;
     };
     /** @description Local login credentials */
-    readonly "cmd_server.LocalLoginRequest": {
+    "cmd_server.LocalLoginRequest": {
       /** @example secretpassword */
-      readonly password: string;
+      password: string;
       /** @example alice */
-      readonly username: string;
+      username: string;
     };
     /** @description Successful authentication response */
-    readonly "cmd_server.LoginResponse": {
+    "cmd_server.LoginResponse": {
       /** @example [
        *       "editor",
        *       "viewer"
        *     ] */
-      readonly roles?: readonly string[];
-      readonly token?: string;
+      roles?: string[];
+      token?: string;
       /** @example alice */
-      readonly user?: string;
+      user?: string;
     };
-    readonly "cmd_server.NamespaceInfo": {
+    "cmd_server.NamespaceInfo": {
       /** @description Namespaces user can access */
-      readonly userAllowed?: readonly string[];
+      userAllowed?: string[];
       /** @description Namespaces user can create sessions in */
-      readonly userCreatable?: readonly string[];
+      userCreatable?: string[];
       /** @description Namespaces user can delete sessions from */
-      readonly userDeletable?: readonly string[];
+      userDeletable?: string[];
     };
-    readonly "cmd_server.NamespacePermissions": {
-      readonly list?: boolean;
-      readonly watch?: boolean;
+    "cmd_server.NamespacePermissions": {
+      list?: boolean;
+      watch?: boolean;
     };
-    readonly "cmd_server.PermissionCheck": {
-      readonly action?: string;
-      readonly allowed?: boolean;
-      readonly namespace?: string;
-      readonly resource?: string;
+    "cmd_server.PermissionCheck": {
+      action?: string;
+      allowed?: boolean;
+      namespace?: string;
+      resource?: string;
     };
-    readonly "cmd_server.ServerIntrospectionResponse": {
-      readonly capabilities?: components["schemas"]["cmd_server.SystemCapabilities"];
-      readonly cluster?: components["schemas"]["cmd_server.ClusterInfo"];
-      readonly namespaces?: components["schemas"]["cmd_server.ServerNamespaceInfo"];
-      readonly version?: components["schemas"]["cmd_server.ServerVersionInfo"];
+    "cmd_server.ServerIntrospectionResponse": {
+      capabilities?: components["schemas"]["cmd_server.SystemCapabilities"];
+      cluster?: components["schemas"]["cmd_server.ClusterInfo"];
+      namespaces?: components["schemas"]["cmd_server.ServerNamespaceInfo"];
+      version?: components["schemas"]["cmd_server.ServerVersionInfo"];
     };
-    readonly "cmd_server.ServerNamespaceInfo": {
+    "cmd_server.ServerNamespaceInfo": {
       /** @description All namespaces (if discoverable) */
-      readonly all?: readonly string[];
+      all?: string[];
       /** @description Namespaces containing sessions */
-      readonly withSessions?: readonly string[];
+      withSessions?: string[];
     };
-    readonly "cmd_server.ServerVersionInfo": {
-      readonly buildDate?: string;
-      readonly gitCommit?: string;
-      readonly version?: string;
+    "cmd_server.ServerVersionInfo": {
+      buildDate?: string;
+      gitCommit?: string;
+      version?: string;
     };
-    readonly "cmd_server.ServiceAccountInfo": {
-      readonly namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
-      readonly session?: {
-        readonly [key: string]: boolean;
+    "cmd_server.ServiceAccountInfo": {
+      namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
+      session?: {
+        [key: string]: boolean;
       };
     };
     /** @description Request body for creating a new codespace session */
-    readonly "cmd_server.SessionCreateRequest": {
-      readonly auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
-      readonly home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+    "cmd_server.SessionCreateRequest": {
+      auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
+      home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
       /** @example my-session */
-      readonly name: string;
+      name: string;
       /** @example default */
-      readonly namespace?: string;
-      readonly networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
-      readonly profile: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
+      namespace?: string;
+      networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
+      profile: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
       /** @example 1 */
-      readonly replicas?: number;
-      readonly scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+      replicas?: number;
+      scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
     };
     /** @description Response containing list of sessions with metadata */
-    readonly "cmd_server.SessionListResponse": {
-      readonly filtered?: boolean;
-      readonly items?: readonly components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"][];
+    "cmd_server.SessionListResponse": {
+      filtered?: boolean;
+      items?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"][];
       /** @example [
        *       "default",
        *       "kube-system"
        *     ] */
-      readonly namespaces?: readonly string[];
+      namespaces?: string[];
       /** @example 5 */
-      readonly total?: number;
+      total?: number;
     };
     /** @description Request body for scaling a session */
-    readonly "cmd_server.SessionScaleRequest": {
+    "cmd_server.SessionScaleRequest": {
       /** @example 2 */
-      readonly replicas?: number;
+      replicas?: number;
     };
-    readonly "cmd_server.SystemCapabilities": {
+    "cmd_server.SystemCapabilities": {
       /** @description Whether system supports multiple tenants */
-      readonly multiTenant?: boolean;
+      multiTenant?: boolean;
     };
-    readonly "cmd_server.UserCapabilities": {
+    "cmd_server.UserCapabilities": {
       /** @description Whether user has admin privileges */
-      readonly adminAccess?: boolean;
+      adminAccess?: boolean;
       /** @description Whether user has any cluster-level access */
-      readonly clusterScope?: boolean;
+      clusterScope?: boolean;
       /** @description Effective namespace scope for user */
-      readonly namespaceScope?: readonly string[];
+      namespaceScope?: string[];
     };
     /** @description Current authenticated user information */
-    readonly "cmd_server.UserInfo": {
+    "cmd_server.UserInfo": {
       /** @example alice@company.com */
-      readonly email?: string;
+      email?: string;
       /** @example 1641081600 */
-      readonly exp?: number;
+      exp?: number;
       /** @example 1640995200 */
-      readonly iat?: number;
+      iat?: number;
       /** @example [
        *       "inherited-role"
        *     ] */
-      readonly implicitRoles?: readonly string[];
+      implicitRoles?: string[];
       /** @example oidc */
-      readonly provider?: string;
+      provider?: string;
       /** @example [
        *       "editor",
        *       "viewer"
        *     ] */
-      readonly roles?: readonly string[];
+      roles?: string[];
       /** @example alice@company.com */
-      readonly subject?: string;
+      subject?: string;
       /** @example alice */
-      readonly username?: string;
+      username?: string;
     };
-    readonly "cmd_server.UserIntrospectionResponse": {
-      readonly capabilities?: components["schemas"]["cmd_server.UserCapabilities"];
-      readonly domains?: {
-        readonly [
-          key: string
-        ]: components["schemas"]["cmd_server.DomainPermissions"];
+    "cmd_server.UserIntrospectionResponse": {
+      capabilities?: components["schemas"]["cmd_server.UserCapabilities"];
+      domains?: {
+        [key: string]: components["schemas"]["cmd_server.DomainPermissions"];
       };
-      readonly namespaces?: components["schemas"]["cmd_server.NamespaceInfo"];
-      readonly user?: components["schemas"]["cmd_server.UserInfo"];
+      namespaces?: components["schemas"]["cmd_server.NamespaceInfo"];
+      user?: components["schemas"]["cmd_server.UserInfo"];
     };
-    readonly "cmd_server.UserPermissions": {
+    "cmd_server.UserPermissions": {
       /** @description namespace -> allowed actions */
-      readonly namespaces?: {
-        readonly [key: string]: readonly string[];
+      namespaces?: {
+        [key: string]: string[];
       };
-      readonly permissions?: readonly components["schemas"]["cmd_server.PermissionCheck"][];
-      readonly roles?: readonly string[];
-      readonly subject?: string;
+      permissions?: components["schemas"]["cmd_server.PermissionCheck"][];
+      roles?: string[];
+      subject?: string;
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
+    "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
       /** @description +kubebuilder:validation:Enum=oauth2proxy;none
        *     +kubebuilder:default=none */
-      readonly mode?: string;
-      readonly oidc?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.OIDCRef"];
+      mode?: string;
+      oidc?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.OIDCRef"];
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.NetSpec": {
-      readonly annotations?: {
-        readonly [key: string]: string;
+    "github_com_codespace-operator_codespace-operator_api_v1.NetSpec": {
+      annotations?: {
+        [key: string]: string;
       };
-      readonly host?: string;
-      readonly tlsSecretName?: string;
+      host?: string;
+      tlsSecretName?: string;
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.OIDCRef": {
-      readonly clientIDSecret?: string;
-      readonly clientSecretRef?: string;
+    "github_com_codespace-operator_codespace-operator_api_v1.OIDCRef": {
+      clientIDSecret?: string;
+      clientSecretRef?: string;
       /** @description +kubebuilder:validation:Pattern=`^https?://` */
-      readonly issuerURL?: string;
+      issuerURL?: string;
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.PVCSpec": {
+    "github_com_codespace-operator_codespace-operator_api_v1.PVCSpec": {
       /** @description +kubebuilder:validation:MinLength=1 */
-      readonly mountPath?: string;
+      mountPath?: string;
       /** @description +kubebuilder:validation:Pattern=`^\d+(Gi|Mi)$` */
-      readonly size?: string;
-      readonly storageClassName?: string;
+      size?: string;
+      storageClassName?: string;
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec": {
-      readonly cmd?: readonly string[];
+    "github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec": {
+      cmd?: string[];
       /** @description +kubebuilder:validation:Enum=jupyterlab;vscode;rstudio;custom */
-      readonly ide?: string;
+      ide?: string;
       /** @description +kubebuilder:validation:MinLength=1 */
-      readonly image?: string;
+      image?: string;
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.Session": {
+    "github_com_codespace-operator_codespace-operator_api_v1.Session": {
       /** @description APIVersion defines the versioned schema of this representation of an object.
        *     Servers should convert recognized schemas to the latest internal value, and
        *     may reject unrecognized values.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
        *     +optional */
-      readonly apiVersion?: string;
+      apiVersion?: string;
       /** @description Kind is a string value representing the REST resource this object represents.
        *     Servers may infer this from the endpoint the client submits requests to.
        *     Cannot be updated.
        *     In CamelCase.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
        *     +optional */
-      readonly kind?: string;
-      readonly metadata?: components["schemas"]["v1.ObjectMeta"];
-      readonly spec?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.SessionSpec"];
-      readonly status?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.SessionStatus"];
+      kind?: string;
+      metadata?: components["schemas"]["v1.ObjectMeta"];
+      spec?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.SessionSpec"];
+      status?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.SessionStatus"];
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.SessionSpec": {
-      readonly auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
-      readonly home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
-      readonly networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
-      readonly profile?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
-      readonly replicas?: number;
-      readonly scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+    "github_com_codespace-operator_codespace-operator_api_v1.SessionSpec": {
+      auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
+      home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+      networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
+      profile?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
+      replicas?: number;
+      scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
     };
-    readonly "github_com_codespace-operator_codespace-operator_api_v1.SessionStatus": {
+    "github_com_codespace-operator_codespace-operator_api_v1.SessionStatus": {
       /** @description Pending | Ready | Error */
-      readonly phase?: string;
-      readonly reason?: string;
-      readonly url?: string;
+      phase?: string;
+      reason?: string;
+      url?: string;
     };
-    readonly "v1.FieldsV1": Record<string, never>;
-    readonly "v1.ManagedFieldsEntry": {
+    "v1.FieldsV1": Record<string, never>;
+    "v1.ManagedFieldsEntry": {
       /** @description APIVersion defines the version of this resource that this field set
        *     applies to. The format is "group/version" just like the top-level
        *     APIVersion field. It is necessary to track the version of a field
        *     set because it cannot be automatically converted. */
-      readonly apiVersion?: string;
+      apiVersion?: string;
       /** @description FieldsType is the discriminator for the different fields format and version.
        *     There is currently only one possible value: "FieldsV1" */
-      readonly fieldsType?: string;
+      fieldsType?: string;
       /** @description FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
        *     +optional */
-      readonly fieldsV1?: components["schemas"]["v1.FieldsV1"];
+      fieldsV1?: components["schemas"]["v1.FieldsV1"];
       /** @description Manager is an identifier of the workflow managing these fields. */
-      readonly manager?: string;
+      manager?: string;
       /** @description Operation is the type of operation which lead to this ManagedFieldsEntry being created.
        *     The only valid values for this field are 'Apply' and 'Update'. */
-      readonly operation?: components["schemas"]["v1.ManagedFieldsOperationType"];
+      operation?: components["schemas"]["v1.ManagedFieldsOperationType"];
       /** @description Subresource is the name of the subresource used to update that object, or
        *     empty string if the object was updated through the main resource. The
        *     value of this field is used to distinguish between managers, even if they
@@ -1146,25 +1144,25 @@ export type components = {
        *     regular update using the same manager name.
        *     Note that the APIVersion field is not related to the Subresource field and
        *     it always corresponds to the version of the main resource. */
-      readonly subresource?: string;
+      subresource?: string;
       /** @description Time is the timestamp of when the ManagedFields entry was added. The
        *     timestamp will also be updated if a field is added, the manager
        *     changes any of the owned fields value or removes a field. The
        *     timestamp does not update when a field is removed from the entry
        *     because another manager took it over.
        *     +optional */
-      readonly time?: string;
+      time?: string;
     };
     /** @enum {string} */
-    readonly "v1.ManagedFieldsOperationType": "Apply" | "Update";
-    readonly "v1.ObjectMeta": {
+    "v1.ManagedFieldsOperationType": "Apply" | "Update";
+    "v1.ObjectMeta": {
       /** @description Annotations is an unstructured key value map stored with a resource that may be
        *     set by external tools to store and retrieve arbitrary metadata. They are not
        *     queryable and should be preserved when modifying objects.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
        *     +optional */
-      readonly annotations?: {
-        readonly [key: string]: string;
+      annotations?: {
+        [key: string]: string;
       };
       /** @description CreationTimestamp is a timestamp representing the server time when this object was
        *     created. It is not guaranteed to be set in happens-before order across separate operations.
@@ -1175,13 +1173,13 @@ export type components = {
        *     Null for lists.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
        *     +optional */
-      readonly creationTimestamp?: string;
+      creationTimestamp?: string;
       /** @description Number of seconds allowed for this object to gracefully terminate before
        *     it will be removed from the system. Only set when deletionTimestamp is also set.
        *     May only be shortened.
        *     Read-only.
        *     +optional */
-      readonly deletionGracePeriodSeconds?: number;
+      deletionGracePeriodSeconds?: number;
       /** @description DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
        *     field is set by the server when a graceful deletion is requested by the user, and is not
        *     directly settable by a client. The resource is expected to be deleted (no longer visible
@@ -1201,7 +1199,7 @@ export type components = {
        *     Read-only.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
        *     +optional */
-      readonly deletionTimestamp?: string;
+      deletionTimestamp?: string;
       /** @description Must be empty before the object is deleted from the registry. Each entry
        *     is an identifier for the responsible component that will remove the entry
        *     from the list. If the deletionTimestamp of the object is non-nil, entries
@@ -1218,7 +1216,7 @@ export type components = {
        *     +optional
        *     +patchStrategy=merge
        *     +listType=set */
-      readonly finalizers?: readonly string[];
+      finalizers?: string[];
       /** @description GenerateName is an optional prefix, used by the server, to generate a unique
        *     name ONLY IF the Name field has not been provided.
        *     If this field is used, the name returned to the client will be different
@@ -1232,18 +1230,18 @@ export type components = {
        *     Applied only if Name is not specified.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency
        *     +optional */
-      readonly generateName?: string;
+      generateName?: string;
       /** @description A sequence number representing a specific generation of the desired state.
        *     Populated by the system. Read-only.
        *     +optional */
-      readonly generation?: number;
+      generation?: number;
       /** @description Map of string keys and values that can be used to organize and categorize
        *     (scope and select) objects. May match selectors of replication controllers
        *     and services.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
        *     +optional */
-      readonly labels?: {
-        readonly [key: string]: string;
+      labels?: {
+        [key: string]: string;
       };
       /** @description ManagedFields maps workflow-id and version to the set of fields
        *     that are managed by that workflow. This is mostly for internal
@@ -1255,7 +1253,7 @@ export type components = {
        *
        *     +optional
        *     +listType=atomic */
-      readonly managedFields?: readonly components["schemas"]["v1.ManagedFieldsEntry"][];
+      managedFields?: components["schemas"]["v1.ManagedFieldsEntry"][];
       /** @description Name must be unique within a namespace. Is required when creating resources, although
        *     some resources may allow a client to request the generation of an appropriate name
        *     automatically. Name is primarily intended for creation idempotence and configuration
@@ -1263,7 +1261,7 @@ export type components = {
        *     Cannot be updated.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
        *     +optional */
-      readonly name?: string;
+      name?: string;
       /** @description Namespace defines the space within which each name must be unique. An empty namespace is
        *     equivalent to the "default" namespace, but "default" is the canonical representation.
        *     Not all objects are required to be scoped to a namespace - the value of this field for
@@ -1273,7 +1271,7 @@ export type components = {
        *     Cannot be updated.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
        *     +optional */
-      readonly namespace?: string;
+      namespace?: string;
       /** @description List of objects depended by this object. If ALL objects in the list have
        *     been deleted, this object will be garbage collected. If this object is managed by a controller,
        *     then an entry in this list will point to this controller, with the controller field set to true.
@@ -1283,7 +1281,7 @@ export type components = {
        *     +patchStrategy=merge
        *     +listType=map
        *     +listMapKey=uid */
-      readonly ownerReferences?: readonly components["schemas"]["v1.OwnerReference"][];
+      ownerReferences?: components["schemas"]["v1.OwnerReference"][];
       /** @description An opaque value that represents the internal version of this object that can
        *     be used by clients to determine when objects have changed. May be used for optimistic
        *     concurrency, change detection, and the watch operation on a resource or set of resources.
@@ -1295,10 +1293,10 @@ export type components = {
        *     Value must be treated as opaque by clients and .
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
        *     +optional */
-      readonly resourceVersion?: string;
+      resourceVersion?: string;
       /** @description Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.
        *     +optional */
-      readonly selfLink?: string;
+      selfLink?: string;
       /** @description UID is the unique in time and space value for this object. It is typically generated by
        *     the server on successful creation of a resource and is not allowed to change on PUT
        *     operations.
@@ -1307,11 +1305,11 @@ export type components = {
        *     Read-only.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
        *     +optional */
-      readonly uid?: string;
+      uid?: string;
     };
-    readonly "v1.OwnerReference": {
+    "v1.OwnerReference": {
       /** @description API version of the referent. */
-      readonly apiVersion?: string;
+      apiVersion?: string;
       /** @description If true, AND if the owner has the "foregroundDeletion" finalizer, then
        *     the owner cannot be deleted from the key-value store until this
        *     reference is removed.
@@ -1321,19 +1319,19 @@ export type components = {
        *     To set this field, a user needs "delete" permission of the owner,
        *     otherwise 422 (Unprocessable Entity) will be returned.
        *     +optional */
-      readonly blockOwnerDeletion?: boolean;
+      blockOwnerDeletion?: boolean;
       /** @description If true, this reference points to the managing controller.
        *     +optional */
-      readonly controller?: boolean;
+      controller?: boolean;
       /** @description Kind of the referent.
        *     More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds */
-      readonly kind?: string;
+      kind?: string;
       /** @description Name of the referent.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names */
-      readonly name?: string;
+      name?: string;
       /** @description UID of the referent.
        *     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids */
-      readonly uid?: string;
+      uid?: string;
     };
   };
   responses: never;
@@ -1341,338 +1339,338 @@ export type components = {
   requestBodies: never;
   headers: never;
   pathItems: never;
-};
+}
 export type $defs = Record<string, never>;
 export interface operations {
-  readonly listSessions: {
-    readonly parameters: {
-      readonly query?: {
+  listSessions: {
+    parameters: {
+      query?: {
         /** @description Target namespace */
-        readonly namespace?: string;
+        namespace?: string;
         /** @description List sessions across all namespaces */
-        readonly all?: boolean;
+        all?: boolean;
       };
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    readonly requestBody?: never;
-    readonly responses: {
+    requestBody?: never;
+    responses: {
       /** @description OK */
-      readonly 200: {
+      200: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.SessionListResponse"];
+          "application/json": components["schemas"]["cmd_server.SessionListResponse"];
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };
   };
-  readonly createSession: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
+  createSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
     /** @description Session creation request */
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
       };
     };
-    readonly responses: {
+    responses: {
       /** @description Created */
-      readonly 201: {
+      201: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+          "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
         };
       };
       /** @description Bad Request */
-      readonly 400: {
+      400: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };
   };
-  readonly getSession: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path: {
+  getSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
         /** @description Namespace */
-        readonly namespace: string;
+        namespace: string;
         /** @description Session name */
-        readonly name: string;
+        name: string;
       };
-      readonly cookie?: never;
+      cookie?: never;
     };
-    readonly requestBody?: never;
-    readonly responses: {
+    requestBody?: never;
+    responses: {
       /** @description OK */
-      readonly 200: {
+      200: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+          "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Not Found */
-      readonly 404: {
+      404: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };
   };
-  readonly updateSession: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path: {
+  updateSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
         /** @description Namespace */
-        readonly namespace: string;
+        namespace: string;
         /** @description Session name */
-        readonly name: string;
+        name: string;
       };
-      readonly cookie?: never;
+      cookie?: never;
     };
     /** @description Session update request */
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
       };
     };
-    readonly responses: {
+    responses: {
       /** @description OK */
-      readonly 200: {
+      200: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+          "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
         };
       };
       /** @description Bad Request */
-      readonly 400: {
+      400: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Not Found */
-      readonly 404: {
+      404: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };
   };
-  readonly deleteSession: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path: {
+  deleteSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
         /** @description Namespace */
-        readonly namespace: string;
+        namespace: string;
         /** @description Session name */
-        readonly name: string;
+        name: string;
       };
-      readonly cookie?: never;
+      cookie?: never;
     };
-    readonly requestBody?: never;
-    readonly responses: {
+    requestBody?: never;
+    responses: {
       /** @description OK */
-      readonly 200: {
+      200: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": {
-            readonly [key: string]: string;
+          "application/json": {
+            [key: string]: string;
           };
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Not Found */
-      readonly 404: {
+      404: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };
   };
-  readonly scaleSession: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path: {
+  scaleSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
         /** @description Namespace */
-        readonly namespace: string;
+        namespace: string;
         /** @description Session name */
-        readonly name: string;
+        name: string;
       };
-      readonly cookie?: never;
+      cookie?: never;
     };
     /** @description Scale request */
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["cmd_server.SessionScaleRequest"];
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["cmd_server.SessionScaleRequest"];
       };
     };
-    readonly responses: {
+    responses: {
       /** @description OK */
-      readonly 200: {
+      200: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+          "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
         };
       };
       /** @description Bad Request */
-      readonly 400: {
+      400: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Unauthorized */
-      readonly 401: {
+      401: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Forbidden */
-      readonly 403: {
+      403: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
       /** @description Not Found */
-      readonly 404: {
+      404: {
         headers: {
-          readonly [name: string]: unknown;
+          [name: string]: unknown;
         };
         content: {
-          readonly "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+          "application/json": components["schemas"]["cmd_server.ErrorResponse"];
         };
       };
     };

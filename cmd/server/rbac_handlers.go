@@ -360,10 +360,10 @@ func (h *handlers) handleIntrospect(w http.ResponseWriter, r *http.Request) {
 
 	switch infoType {
 	case "user":
-		h.userIntrospect(w, r)
+		h.handleUserIntrospect(w, r)
 		return
 	case "server":
-		h.serverIntrospect(w, r)
+		h.handleServerIntrospect(w, r)
 		return
 	}
 
@@ -375,7 +375,7 @@ func (h *handlers) handleIntrospect(w http.ResponseWriter, r *http.Request) {
 	userReq := r.Clone(r.Context())
 	userReq.URL.RawQuery = r.URL.Query().Encode()
 	userRec := httptest.NewRecorder()
-	h.userIntrospect(userRec, userReq)
+	h.handleUserIntrospect(userRec, userReq)
 
 	if userRec.Code != 200 {
 		http.Error(w, "failed to get user info", userRec.Code)
@@ -392,7 +392,7 @@ func (h *handlers) handleIntrospect(w http.ResponseWriter, r *http.Request) {
 	serverReq := r.Clone(r.Context())
 	serverReq.URL.RawQuery = r.URL.Query().Encode()
 	serverRec := httptest.NewRecorder()
-	h.serverIntrospect(serverRec, serverReq)
+	h.handleServerIntrospect(serverRec, serverReq)
 
 	var serverResp ServerIntrospectionResponse
 	if serverRec.Code == 200 {
