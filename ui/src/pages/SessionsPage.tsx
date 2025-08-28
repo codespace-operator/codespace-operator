@@ -1,7 +1,6 @@
 import { useState, useMemo, useImperativeHandle, forwardRef } from "react";
 import {
   PageSection,
-  PageSectionVariants,
   TextInput,
   Button,
   Card,
@@ -12,8 +11,13 @@ import { PlusCircleIcon } from "@patternfly/react-icons";
 import { SessionsTable } from "../components/SessionsTable";
 import { CreateSessionModal } from "../components/CreateSessionModal";
 import { useFilteredSessions, useSessions } from "../hooks/useSessions";
+import type { components } from "../types/api.gen";
+
 import { useIntrospection } from "../hooks/useIntrospection";
-import type { Session } from "../types";
+import type { UISession } from "../types";
+
+type SessionCreateRequest =
+  components["schemas"]["cmd_server.SessionCreateRequest"];
 
 type Props = {
   namespace: string;
@@ -73,7 +77,7 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
       [refresh],
     );
 
-    const openURL = (s: Session) => {
+    const openURL = (s: UISession) => {
       const url =
         s.status?.url ||
         (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
@@ -81,7 +85,7 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
       window.open(url, "_blank");
     };
 
-    const doDelete = async (s: Session) => {
+    const doDelete = async (s: UISession) => {
       if (!confirm(`Delete ${s.metadata.name}?`)) return;
       try {
         await remove(s.metadata.namespace, s.metadata.name);
@@ -92,7 +96,7 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
       }
     };
 
-    const handleScale = async (s: Session, delta: number) => {
+    const handleScale = async (s: UISession, delta: number) => {
       const current = typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
       const next = Math.max(0, current + delta);
       try {
@@ -104,10 +108,10 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
       }
     };
 
-    const handleCreate = async (body: Partial<Session>) => {
+    const handleCreate = async (body: SessionCreateRequest) => {
       try {
         await create(body);
-        onAlert(`Session ${body?.metadata?.name || ""} created`, "success");
+        onAlert(`Session ${body.name} created`, "success");
         setCreateOpen(false);
         refresh();
       } catch (e: any) {
@@ -117,10 +121,7 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
 
     return (
       <>
-        <PageSection
-          variant={PageSectionVariants.light}
-          className="sessions-header"
-        >
+        <PageSection className="sessions-header">
           <div className="sessions-header-content">
             <Title headingLevel="h1" size="2xl">
               Sessions

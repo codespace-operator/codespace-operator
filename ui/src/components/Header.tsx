@@ -45,10 +45,18 @@ export function Header({
   const [isUserMenuOpen, setUserMenuOpen] = React.useState(false);
 
   // Only show namespaces that actually have Session CRs (plus "All")
-  const { sessionNamespaces, loading: nsLoading } = useNamespaces();
+  const {
+    sessionNamespaces,
+    loading: nsLoading,
+    canPerformAction,
+  } = useNamespaces();
+  const allowAll = React.useMemo(
+    () => canPerformAction("watch", "*"),
+    [canPerformAction],
+  );
   const listOptions = React.useMemo(
-    () => ["All", ...sessionNamespaces],
-    [sessionNamespaces],
+    () => (allowAll ? ["All", ...sessionNamespaces] : [...sessionNamespaces]),
+    [sessionNamespaces, allowAll],
   );
 
   const handleLogout = () => {

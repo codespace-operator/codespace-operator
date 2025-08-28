@@ -1,14 +1,17 @@
-import type {
-  Session,
-  SessionListResponse,
-  SessionCreateRequest,
-  SessionDeleteResponse,
-  UserIntrospectionResponse,
-  ServerIntrospectionResponse,
-  LegacyIntrospectionResponse,
-  AuthFeatures,
-  UserInfo,
-} from "../api-types";
+import type { components } from "../types/api.gen";
+import type { UISession, SessionDeleteResponse, Introspection } from "../types";
+
+// OpenAPI-generated types (API wire format)
+type APISession =
+  components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+type SessionCreateRequest =
+  components["schemas"]["cmd_server.SessionCreateRequest"];
+type UserIntrospectionResponse =
+  components["schemas"]["cmd_server.UserIntrospectionResponse"];
+type ServerIntrospectionResponse =
+  components["schemas"]["cmd_server.ServerIntrospectionResponse"];
+type AuthFeatures = components["schemas"]["cmd_server.AuthFeatures"];
+type UserInfo = components["schemas"]["cmd_server.UserInfo"];
 
 const base = import.meta.env.VITE_API_BASE || "";
 const TOKEN_KEY = "co_token";
@@ -72,7 +75,7 @@ function normalizeObject<T = unknown>(x: any): T {
 }
 
 export const api = {
-  async list(ns: string): Promise<Session[]> {
+  async list(ns: string): Promise<UISession[]> {
     // For the UI's "All", ask the server for everything
     const url =
       ns === "All"
@@ -83,30 +86,39 @@ export const api = {
 
     // Handle both direct arrays and wrapped responses
     if (data.items) {
-      return data.items as Session[];
+      return data.items as UISession[];
     }
-    return normalizeList<Session>(data);
+    return normalizeList<UISession>(data);
   },
 
-  async create(body: Partial<Session>): Promise<Session> {
-    // Convert your existing Session format to the API request format
-    const createRequest: SessionCreateRequest = {
-      name: body.metadata?.name || "",
-      namespace: body.metadata?.namespace || "default",
-      profile: body.spec?.profile || { ide: "vscode", image: "" },
-      auth: body.spec?.auth,
-      home: body.spec?.home,
-      scratch: body.spec?.scratch,
-      networking: body.spec?.networking,
-      replicas: body.spec?.replicas,
-    };
+  async create(
+    body: SessionCreateRequest | Partial<APISession> | Partial<UISession>,
+  ): Promise<UISession> {
+    // If caller already gave us the generated request, use it as-is.
+    let createRequest: SessionCreateRequest;
+    if ("name" in body && !("metadata" in body)) {
+      createRequest = body as SessionCreateRequest;
+    } else {
+      // Convert UI/APISession shape to the generated request shape
+      const b = body as Partial<APISession> & Partial<UISession>;
+      createRequest = {
+        name: b.metadata?.name || "",
+        namespace: b.metadata?.namespace || "default",
+        profile: (b.spec as any)?.profile || { ide: "vscode", image: "" },
+        auth: (b as any).spec?.auth,
+        home: (b as any).spec?.home,
+        scratch: (b as any).spec?.scratch,
+        networking: (b.spec as any)?.networking,
+        replicas: (b.spec as any)?.replicas,
+      };
+    }
 
     const r = await apiFetch(`/api/v1/server/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(createRequest),
     });
-    return normalizeObject<Session>(await r.json());
+    return normalizeObject<APISession>(await r.json()) as unknown as UISession;
   },
 
   async remove(ns: string, name: string): Promise<SessionDeleteResponse> {
@@ -124,7 +136,7 @@ export const api = {
     return await r.json();
   },
 
-  async scale(ns: string, name: string, replicas: number): Promise<Session> {
+  async scale(ns: string, name: string, replicas: number): Promise<UISession> {
     const r = await apiFetch(
       `/api/v1/server/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/scale`,
       {
@@ -133,7 +145,7 @@ export const api = {
         body: JSON.stringify({ replicas }),
       },
     );
-    return normalizeObject<Session>(await r.json());
+    return normalizeObject<APISession>(await r.json()) as unknown as UISession;
   },
 
   // Server-Sent Events stream of Session updates - keep existing logic
@@ -184,7 +196,7 @@ export const authApi = {
 
   async logout(): Promise<void> {
     await fetch(`${base}/auth/logout`, {
-      method: "POST",
+      method: "GET",
       credentials: "include",
     });
   },
@@ -206,7 +218,7 @@ export const introspectApi = {
     namespaces?: string[];
     roles?: string[];
     actions?: string[];
-  }): Promise<LegacyIntrospectionResponse> => {
+  }): Promise<Introspection> => {
     const p = new URLSearchParams();
     if (opts?.discover) p.set("discover", "1");
     if (opts?.namespaces?.length)

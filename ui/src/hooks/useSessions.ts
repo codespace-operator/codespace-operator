@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
-import type { Session, SessionEvent } from "../types";
 import { useIx } from "../context/IntrospectionContext";
 import { can as canDo } from "../lib/cap";
+import type { components } from "../types/api.gen";
+import type { UISession, SessionEvent } from "../types";
+
+type SessionCreateRequest =
+  components["schemas"]["cmd_server.SessionCreateRequest"];
 
 export function useSessions(
   namespace: string,
@@ -26,7 +30,7 @@ export function useSessions(
     return allowed?.[0] || "default";
   }, [namespace, ix]);
 
-  const [rows, setRows] = useState<Session[]>([]);
+  const [rows, setRows] = useState<UISession[]>([]);
   const [loading, setLoading] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const [pendingTargets, setPendingTargets] = useState<Record<string, number>>(
@@ -97,16 +101,15 @@ export function useSessions(
       if (!enabled) return;
       setLoading(true);
       try {
-        setRows((await api.list(effectiveNs)) as Session[]);
+        setRows((await api.list(effectiveNs)) as UISession[]);
       } finally {
         setLoading(false);
       }
     },
-    create: async (body: Partial<Session>) => {
-      // Resolve namespace
+    create: async (req: Partial<SessionCreateRequest>) => {
+      // Resolve namespace for the generated request shape
       const candidate =
-        body?.metadata?.namespace ??
-        (effectiveNs !== "All" ? effectiveNs : undefined);
+        req.namespace ?? (effectiveNs !== "All" ? effectiveNs : undefined);
 
       if (!candidate) {
         // either ask the user to pick, or choose a sensible default
@@ -114,25 +117,20 @@ export function useSessions(
         if (!firstCreatable) {
           throw new Error("Pick a namespace to create the session in.");
         }
-        body = {
-          ...body,
-          metadata: { ...(body?.metadata || {}), namespace: firstCreatable },
-        } as Partial<Session>;
+        req = { ...req, namespace: firstCreatable };
       } else {
         // enforce guard on the resolved ns
         if (!canDo(ix!, candidate, "create")) {
           throw new Error(`Not allowed to create in ${candidate}`);
         }
-        body = {
-          ...body,
-          metadata: {
-            ...(body?.metadata || {}),
-            namespace: candidate,
-            name: body?.metadata?.name, // Explicitly preserve name
-          },
-        } as Partial<Session>;
+        req = { ...req, namespace: candidate };
       }
-      return api.create(body);
+      // Minimal validation of required fields for the generated type
+      if (!req.name) throw new Error("Name is required.");
+      if (!req.profile?.ide || !req.profile.image) {
+        throw new Error("Profile (ide, image) is required.");
+      }
+      return api.create(req as SessionCreateRequest);
     },
     remove: async (ns: string, name: string) => {
       if (!canDo(ix!, ns, "delete"))
@@ -161,7 +159,7 @@ export function useSessions(
   return { rows, loading, pendingTargets, ...actions };
 }
 
-export function useFilteredSessions(rows: Session[], query: string) {
+export function useFilteredSessions(rows: UISession[], query: string) {
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;

@@ -1,4 +1,3 @@
-import React from "react";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { Button, Label, Tooltip, Spinner } from "@patternfly/react-core";
 import {
@@ -7,7 +6,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
 } from "@patternfly/react-icons";
-import type { Session } from "../types";
+import type { UISession } from "../types";
 
 function PhaseLabel({ phase }: { phase?: string }) {
   const intent: Record<
@@ -25,11 +24,11 @@ function PhaseLabel({ phase }: { phase?: string }) {
 
 type Props = {
   loading: boolean;
-  rows: Session[];
+  rows: UISession[];
   pendingTargets?: Record<string, number>;
-  onScale: (s: Session, delta: number) => void;
-  onDelete: (s: Session) => void;
-  onOpen: (s: Session) => void;
+  onScale: (s: UISession, delta: number) => void;
+  onDelete: (s: UISession) => void;
+  onOpen: (s: UISession) => void;
 };
 
 export function SessionsTable({

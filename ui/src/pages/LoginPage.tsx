@@ -13,8 +13,10 @@ import {
 } from "@patternfly/react-core";
 import { useAuth } from "../hooks/useAuth";
 import { authApi } from "../api/client";
-import type { AuthFeatures } from "../api-types";
+import type { components } from "../types/api.gen";
 import logoUrl from "../assets/codespace-operator.svg?url";
+
+type AuthFeatures = components["schemas"]["cmd_server.AuthFeatures"];
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   const { loginLocal, loginSSO } = useAuth();

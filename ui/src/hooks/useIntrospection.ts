@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { introspectApi } from "../api/client";
-import type {
-  UserIntrospectionResponse,
-  ServerIntrospectionResponse,
-  LegacyIntrospectionResponse,
-} from "../api-types";
+import type { components } from "../types/api.gen";
+import type { Introspection } from "../types";
 
+type UserIntrospectionResponse =
+  components["schemas"]["cmd_server.UserIntrospectionResponse"];
+type ServerIntrospectionResponse =
+  components["schemas"]["cmd_server.ServerIntrospectionResponse"];
 // Hook for user-specific introspection
 export function useUserIntrospection({
   namespaces,
@@ -115,7 +116,7 @@ export function useIntrospection({
   roles?: string[];
   enabled?: boolean;
 } = {}) {
-  const [data, setData] = useState<LegacyIntrospectionResponse | null>(null);
+  const [data, setData] = useState<Introspection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

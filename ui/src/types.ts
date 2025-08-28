@@ -1,5 +1,27 @@
+/**
+ * UI VIEW-MODEL TYPES
+ * -----------------------------------------------------------------------------
+ * These are *UI-only* shapes (what components/hooks need to render).
+ * @deprecated Do NOT mirror API contracts here. For API types, import from
+ * ./types/api.gen.ts (or temporarily via ./api-types shim).
+ * Over time, keep this file limited strictly to UI view models.
+ */
+
+// ---- Loose server delete response (server returns generic map) ---------------
+/**
+ * The DELETE /server/sessions/{ns}/{name} endpoint may return a generic map.
+ * Keep a narrow, UI-friendly shape for callers that rely on it.
+ */
+export interface SessionDeleteResponse {
+  status: string;
+  name: string;
+  namespace: string;
+}
+
 // Shared types that mirror the Session CRD (fields the UI needs)
-export type Session = {
+export type UISession = {
+  kind: "Session";
+  apiVersion: "codespaceoperator.dev/v1";
   metadata: { name: string; namespace: string };
   spec: {
     profile: {
@@ -13,7 +35,7 @@ export type Session = {
   status?: { phase?: string; url?: string; reason?: string };
 };
 
-export type SessionEvent = { type: string; object: Session };
+export type SessionEvent = { type: string; object: UISession };
 
 // User-specific introspection response
 export type UserIntrospection = {
