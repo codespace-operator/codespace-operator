@@ -12,16 +12,9 @@ import {
   Brand,
 } from "@patternfly/react-core";
 import { useAuth } from "../hooks/useAuth";
+import { authApi } from "../api/client";
+import type { AuthFeatures } from "../api-types";
 import logoUrl from "../assets/codespace-operator.svg?url";
-
-const base = import.meta.env.VITE_API_BASE || "";
-
-interface AuthFeatures {
-  ssoEnabled: boolean;
-  localLoginEnabled: boolean;
-  ssoLoginPath: string;
-  localLoginPath: string;
-}
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   const { loginLocal, loginSSO } = useAuth();
@@ -34,16 +27,12 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Load authentication features
+  // Load authentication features using the new API
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${base}/auth/features`, {
-          credentials: "include",
-        });
-        if (r.ok) {
-          setFeatures(await r.json());
-        }
+        const featuresData = await authApi.getFeatures();
+        setFeatures(featuresData);
       } catch {
         setFeatures(null);
       }
@@ -67,7 +56,6 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
   const onSSOClick = () => {
     loginSSO(next);
   };
-
   // Show loading state while features are being fetched
   if (!features) {
     return (

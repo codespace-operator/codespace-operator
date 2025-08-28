@@ -1,4 +1,3 @@
-// ui/src/pages/UserInfo.tsx
 import React, { useMemo } from "react";
 import {
   PageSection,

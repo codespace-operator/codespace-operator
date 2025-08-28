@@ -1,4 +1,3 @@
-// ui/src/hooks/useNamespaces.ts - Fixed namespace logic
 import { useEffect, useState, useMemo } from "react";
 import { introspectApi } from "../api/client";
 import { useUserIntrospection } from "./useIntrospection";

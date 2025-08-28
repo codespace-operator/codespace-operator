@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { introspectApi } from "../api/client";
 import type {
-  UserIntrospection,
-  ServerIntrospection,
-  Introspection,
-} from "../types";
+  UserIntrospectionResponse,
+  ServerIntrospectionResponse,
+  LegacyIntrospectionResponse,
+} from "../api-types";
 
 // Hook for user-specific introspection
 export function useUserIntrospection({
@@ -12,7 +12,7 @@ export function useUserIntrospection({
   discover,
   enabled = true,
 }: { namespaces?: string[]; discover?: boolean; enabled?: boolean } = {}) {
-  const [data, setData] = useState<UserIntrospection | null>(null);
+  const [data, setData] = useState<UserIntrospectionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +59,7 @@ export function useServerIntrospection({
   discover?: boolean;
   enabled?: boolean;
 } = {}) {
-  const [data, setData] = useState<ServerIntrospection | null>(null);
+  const [data, setData] = useState<ServerIntrospectionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +115,7 @@ export function useIntrospection({
   roles?: string[];
   enabled?: boolean;
 } = {}) {
-  const [data, setData] = useState<Introspection | null>(null);
+  const [data, setData] = useState<LegacyIntrospectionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,53 +131,10 @@ export function useIntrospection({
     (async () => {
       try {
         setLoading(true);
-        // Use the new split endpoints internally
-        const [userRes, serverRes] = await Promise.allSettled([
-          introspectApi.getUser({ namespaces, discover }),
-          introspectApi.getServer({ discover }),
-        ]);
-
+        // Keep using the legacy endpoint for backward compatibility
+        const res = await introspectApi.get({ discover, namespaces, roles });
         if (!cancelled) {
-          let combinedData: Introspection | null = null;
-
-          if (userRes.status === "fulfilled") {
-            const user = userRes.value;
-            combinedData = {
-              user: user.user,
-              domains: user.domains,
-              namespaces: {
-                userAllowed: user.namespaces.userAllowed,
-                userCreatable: user.namespaces.userCreatable,
-                userDeletable: user.namespaces.userDeletable,
-              },
-              capabilities: {
-                namespaceScope: user.capabilities.namespaceScope,
-                clusterScope: user.capabilities.clusterScope,
-                adminAccess: user.capabilities.adminAccess,
-                multiTenant: false, // Default, will be overridden if server data available
-              },
-            };
-
-            // Add server data if available
-            if (serverRes.status === "fulfilled") {
-              const server = serverRes.value;
-              combinedData.cluster = server.cluster;
-              combinedData.namespaces.all = server.namespaces.all;
-              combinedData.namespaces.withSessions =
-                server.namespaces.withSessions;
-              combinedData.capabilities.multiTenant =
-                server.capabilities.multiTenant;
-            }
-          } else {
-            // If user request failed, we can't provide meaningful data
-            setError(
-              userRes.reason?.message || "Failed to get user information",
-            );
-            setData(null);
-            return;
-          }
-
-          setData(combinedData);
+          setData(res);
           setError(null);
         }
       } catch (e: any) {

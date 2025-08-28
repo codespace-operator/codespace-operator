@@ -1,4 +1,14 @@
-import type { Session } from "../types";
+import type {
+  Session,
+  SessionListResponse,
+  SessionCreateRequest,
+  SessionDeleteResponse,
+  UserIntrospectionResponse,
+  ServerIntrospectionResponse,
+  LegacyIntrospectionResponse,
+  AuthFeatures,
+  UserInfo,
+} from "../api-types";
 
 const base = import.meta.env.VITE_API_BASE || "";
 const TOKEN_KEY = "co_token";
@@ -46,6 +56,7 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res;
 }
 
+// Helper functions - keep your existing logic
 function normalizeList<T = unknown>(x: any): T[] {
   if (!x) return [];
   if (Array.isArray(x)) return x as T[];
@@ -68,25 +79,49 @@ export const api = {
         ? `/api/v1/server/sessions?all=true`
         : `/api/v1/server/sessions?namespace=${encodeURIComponent(ns)}`;
     const r = await apiFetch(url);
-    return normalizeList<Session>(await r.json());
+    const data = await r.json();
+
+    // Handle both direct arrays and wrapped responses
+    if (data.items) {
+      return data.items as Session[];
+    }
+    return normalizeList<Session>(data);
   },
 
   async create(body: Partial<Session>): Promise<Session> {
+    // Convert your existing Session format to the API request format
+    const createRequest: SessionCreateRequest = {
+      name: body.metadata?.name || "",
+      namespace: body.metadata?.namespace || "default",
+      profile: body.spec?.profile || { ide: "vscode", image: "" },
+      auth: body.spec?.auth,
+      home: body.spec?.home,
+      scratch: body.spec?.scratch,
+      networking: body.spec?.networking,
+      replicas: body.spec?.replicas,
+    };
+
     const r = await apiFetch(`/api/v1/server/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(createRequest),
     });
     return normalizeObject<Session>(await r.json());
   },
 
-  async remove(ns: string, name: string): Promise<void> {
-    await apiFetch(
+  async remove(ns: string, name: string): Promise<SessionDeleteResponse> {
+    const r = await apiFetch(
       `/api/v1/server/sessions/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
       {
         method: "DELETE",
       },
     );
+
+    // Handle both void and response body
+    if (r.headers.get("content-length") === "0" || r.status === 204) {
+      return { status: "deleted", name, namespace: ns };
+    }
+    return await r.json();
   },
 
   async scale(ns: string, name: string, replicas: number): Promise<Session> {
@@ -101,7 +136,7 @@ export const api = {
     return normalizeObject<Session>(await r.json());
   },
 
-  // Server-Sent Events stream of Session updates
+  // Server-Sent Events stream of Session updates - keep existing logic
   watch(ns: string, onEvent: (ev: MessageEvent) => void): EventSource {
     const token = getToken();
 
@@ -123,6 +158,45 @@ export const api = {
   },
 };
 
+export const authApi = {
+  async getFeatures(): Promise<AuthFeatures> {
+    const r = await fetch(`${base}/auth/features`, { credentials: "include" });
+    if (!r.ok) throw new Error(`Failed to get auth features: ${r.status}`);
+    return r.json();
+  },
+
+  async localLogin(
+    username: string,
+    password: string,
+  ): Promise<{ token: string; user: string; roles: string[] }> {
+    const r = await fetch(`${base}/auth/local/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+      credentials: "include",
+    });
+    if (!r.ok) {
+      const error = await r.text();
+      throw new Error(error || "Login failed");
+    }
+    return r.json();
+  },
+
+  async logout(): Promise<void> {
+    await fetch(`${base}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  },
+};
+
+export const userApi = {
+  async getCurrentUser(): Promise<UserInfo> {
+    const r = await apiFetch("/api/v1/me");
+    return r.json();
+  },
+};
+
 export const introspectApi = {
   /**
    * Legacy combined endpoint (kept for back-compat with useIntrospection)
@@ -132,7 +206,7 @@ export const introspectApi = {
     namespaces?: string[];
     roles?: string[];
     actions?: string[];
-  }) => {
+  }): Promise<LegacyIntrospectionResponse> => {
     const p = new URLSearchParams();
     if (opts?.discover) p.set("discover", "1");
     if (opts?.namespaces?.length)
@@ -153,7 +227,7 @@ export const introspectApi = {
     namespaces?: string[];
     actions?: string[];
     discover?: boolean;
-  }) => {
+  }): Promise<UserIntrospectionResponse> => {
     const p = new URLSearchParams();
     if (opts?.namespaces?.length)
       p.set("namespaces", opts.namespaces.join(","));
@@ -169,7 +243,9 @@ export const introspectApi = {
   /**
    * Server/cluster-scoped introspection (may require elevated permissions)
    */
-  getServer: async (opts?: { discover?: boolean }) => {
+  getServer: async (opts?: {
+    discover?: boolean;
+  }): Promise<ServerIntrospectionResponse> => {
     const p = new URLSearchParams();
     if (opts?.discover) p.set("discover", "1");
 
