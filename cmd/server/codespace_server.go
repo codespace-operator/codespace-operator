@@ -186,7 +186,7 @@ func runServer(cmd *cobra.Command, args []string) {
 
 	// Build middleware chain: security → CORS → logging → auth → handlers
 	var handler http.Handler = mux
-	handler = withCORS(cfg.AllowOrigin, handler)
+	handler = corsMiddleware(cfg.AllowOrigin)(handler)
 	handler = logRequests(handler)
 	handler = authGate(&authConfigLike{
 		JWTSecret:         cfg.JWTSecret,

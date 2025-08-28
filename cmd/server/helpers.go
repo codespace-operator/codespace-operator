@@ -20,11 +20,7 @@ import (
 	"strings"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
@@ -80,23 +76,6 @@ func writeSSE(w http.ResponseWriter, event string, v any) {
 func errJSON(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-}
-
-func withCORS(allowOrigin string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if allowOrigin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-		w.Header().Set("Vary", "Origin")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func fsSub(fsys embed.FS, dir string) (http.FileSystem, error) {
@@ -283,31 +262,15 @@ func discoverNamespaces(ctx context.Context, deps *serverDeps) ([]string, error)
 
 // discoverNamespacesWithSessions finds namespaces with sessions
 func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]string, error) {
-	// Find namespaces with sessions - try cluster-wide list first
-	var allNamespaces []string
-	if canListNamespaces(ctx, deps) {
-		var nsList corev1.NamespaceList
-		if err := deps.client.List(ctx, &nsList); err == nil {
-			allNamespaces = make([]string, 0, len(nsList.Items))
-			for _, ns := range nsList.Items {
-				allNamespaces = append(allNamespaces, ns.Name)
-			}
-			sort.Strings(allNamespaces)
-		} else {
-			logger.Warn("Failed to list namespaces despite permission check", "err", err)
-		}
-	}
 	var sessionNamespaces []string
 	var sl codespacev1.SessionList
 	opts := []client.ListOption{}
 	if !deps.config.ClusterScope {
 		opts = append(opts, client.MatchingLabels{InstanceIDLabel: deps.instanceID})
 	}
-	if err := deps.client.List(
-		ctx,
-		&sl,
-		opts...,
-	); err == nil {
+
+	// Try cluster-wide list of sessions first
+	if err := deps.client.List(ctx, &sl, opts...); err == nil {
 		nsSet := map[string]struct{}{}
 		for _, s := range sl.Items {
 			nsSet[s.Namespace] = struct{}{}
@@ -317,30 +280,38 @@ func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]st
 		}
 		sort.Strings(sessionNamespaces)
 	} else {
-		// fallback: try per-namespace (only if we discovered them)
-		nsSet := map[string]struct{}{}
-		for _, ns := range allNamespaces {
-			var one codespacev1.SessionList
-			opts := []client.ListOption{
-				client.InNamespace(ns),
-				client.Limit(1),
-			}
-			if !deps.config.ClusterScope {
-				opts = append(opts, client.MatchingLabels{InstanceIDLabel: deps.instanceID})
-			}
-			if err := deps.client.List(ctx, &one, opts...); err == nil && len(one.Items) > 0 {
-				nsSet[ns] = struct{}{}
+		// Fallback: try per-namespace only if we can discover namespaces
+		if canListNamespaces(ctx, deps) {
+			var nsList corev1.NamespaceList
+			if err := deps.client.List(ctx, &nsList); err == nil {
+				nsSet := map[string]struct{}{}
+				for _, ns := range nsList.Items {
+					var one codespacev1.SessionList
+					opts := []client.ListOption{
+						client.InNamespace(ns.Name),
+						client.Limit(1),
+					}
+					if !deps.config.ClusterScope {
+						opts = append(opts, client.MatchingLabels{InstanceIDLabel: deps.instanceID})
+					}
+					if err := deps.client.List(ctx, &one, opts...); err == nil && len(one.Items) > 0 {
+						nsSet[ns.Name] = struct{}{}
+					}
+				}
+				for ns := range nsSet {
+					sessionNamespaces = append(sessionNamespaces, ns)
+				}
+				sort.Strings(sessionNamespaces)
 			}
 		}
-		for ns := range nsSet {
-			sessionNamespaces = append(sessionNamespaces, ns)
-		}
-		sort.Strings(sessionNamespaces)
 	}
 
+	// Only add default fallback if we truly found no namespaces with sessions
+	// Remove this if you want an empty list when no sessions exist
 	if len(sessionNamespaces) == 0 {
-		sessionNamespaces = []string{"default"}
+		sessionNamespaces = []string{""}
 	}
+
 	return sessionNamespaces, nil
 }
 
@@ -443,105 +414,12 @@ func inClusterNamespace() string {
 	return "default"
 }
 
-// Try to resolve a stable owner (Deployment > StatefulSet > ReplicaSet > Pod).
-func owningControllerAnchor(ctx context.Context, cl client.Client) (kind, name, uid string) {
-	ns := inClusterNamespace()
-	podName := os.Getenv("POD_NAME")
-	if podName == "" {
-		podName, _ = os.Hostname() // usually equals pod name in k8s
-	}
-	var pod corev1.Pod
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, &pod); err != nil {
-		return "Pod", podName, "" // fallback: still deterministic-ish
-	}
-	// default to the pod itself
-	kind, name, uid = "Pod", pod.Name, string(pod.UID)
-	for _, or := range pod.OwnerReferences {
-		if or.Controller == nil || !*or.Controller {
-			continue
-		}
-		switch or.Kind {
-		case "ReplicaSet":
-			var rs appsv1.ReplicaSet
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: or.Name}, &rs); err == nil {
-				// prefer Deployment if present
-				for _, rsor := range rs.OwnerReferences {
-					if rsor.Controller != nil && *rsor.Controller && rsor.Kind == "Deployment" {
-						var dep appsv1.Deployment
-						if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: rsor.Name}, &dep); err == nil {
-							return "Deployment", dep.Name, string(dep.UID)
-						}
-					}
-				}
-				return "ReplicaSet", rs.Name, string(rs.UID)
-			}
-		case "StatefulSet":
-			var sts appsv1.StatefulSet
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: or.Name}, &sts); err == nil {
-				return "StatefulSet", sts.Name, string(sts.UID)
-			}
-		}
-	}
-	return kind, name, uid
-}
 func k8sHexHash(s string, bytes int) string {
 	if bytes <= 0 || bytes > 32 {
 		bytes = 10 // 10 bytes -> 20 hex chars
 	}
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:bytes]) // lowercase [0-9a-f]
-}
-
-// ensureInstallationID creates/gets a per-instance ConfigMap and returns a stable id.
-func ensureInstallationID(ctx context.Context, cl client.Client) (string, error) {
-	ns := inClusterNamespace()
-	kind, name, uid := owningControllerAnchor(ctx, cl)
-
-	anchorParts := []string{ns, "server", kind}
-	if uid != "" {
-		anchorParts = append(anchorParts, uid)
-	} else {
-		anchorParts = append(anchorParts, name)
-	}
-	anchor := strings.Join(anchorParts, ":")
-
-	// IMPORTANT: use lowercase, RFC1123-safe hash here
-	cmName := fmt.Sprintf("%s-%s", cmPrefixName, k8sHexHash(anchor, 10))
-
-	cm := &corev1.ConfigMap{}
-	key := client.ObjectKey{Namespace: ns, Name: cmName}
-	if err := cl.Get(ctx, key, cm); err == nil {
-		if id := cm.Data["id"]; id != "" {
-			return id, nil
-		}
-	} else if !apierrors.IsNotFound(err) {
-		return "", err
-	}
-
-	id := randB64(18) // value only; can include '-','_' — fine for data, not names/labels
-	cm = &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cmName,
-			Namespace: ns,
-			Labels: map[string]string{
-				"app.kubernetes.io/part-of":    "codespace-operator",
-				"app.kubernetes.io/component":  "server",
-				"app.kubernetes.io/managed-by": "codespace-operator",
-				"codespace.dev/owner-kind":     kind,
-				"codespace.dev/owner-name":     strings.ToLower(name),
-			},
-		},
-		Data: map[string]string{"id": id},
-	}
-	if err := cl.Create(ctx, cm); err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			if err := cl.Get(ctx, key, cm); err == nil && cm.Data["id"] != "" {
-				return cm.Data["id"], nil
-			}
-		}
-		return "", err
-	}
-	return id, nil
 }
 
 // SubjectToLabelID returns a stable, label-safe ID for a user/subject.
