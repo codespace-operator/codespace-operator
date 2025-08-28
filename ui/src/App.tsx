@@ -9,9 +9,9 @@ import {
   AlertActionCloseButton,
 } from "@patternfly/react-core";
 import { Header } from "./components/Header";
-import { InfoPage } from "./pages/InfoPage";
+import { ClusterSettingsPage } from "./pages/ClusterSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
-import { UserInfoPage } from "./pages/UserInfo";
+import { UserInfoPage } from "./pages/UserInfoPage";
 import { SessionsPage, SessionsPageRef } from "./pages/SessionsPage";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAuth } from "./hooks/useAuth";
@@ -68,7 +68,8 @@ function AppChrome({
 }) {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
-
+  // Namespace selection is allowed on pages
+  const ALLOW_NS_ON = [/^\/sessions(\/|$)/, /^\/workloads(\/|$)/];
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <Header
@@ -77,6 +78,9 @@ function AppChrome({
         onRefresh={onRefresh}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         user={user}
+        showNamespaceSelect={ALLOW_NS_ON.some((pattern) =>
+          pattern.test(location.pathname),
+        )}
       />
 
       <div style={{ flex: 1, display: "flex" }}>
@@ -300,7 +304,7 @@ export default function App() {
           }
         />
         <Route path="user-info" element={<UserInfoPage />} />
-        <Route path="info" element={<InfoPage />} />
+        <Route path="info" element={<ClusterSettingsPage />} />
 
         {/* Default "home" → sessions */}
         <Route index element={<Navigate to="/sessions" replace />} />

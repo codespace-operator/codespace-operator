@@ -1,142 +1,112 @@
 import { useEffect, useState, useMemo } from "react";
-import { introspectApi } from "../api/client";
-import { useUserIntrospection } from "./useIntrospection";
+import {
+  useUserIntrospection,
+  useServerIntrospection,
+} from "./useIntrospection";
 
 export function useNamespaces() {
-  const [sessionNamespaces, setSessionNamespaces] = useState<string[]>([]);
-  const [allNamespaces, setAllNamespaces] = useState<string[]>([]);
+  const [sessionNamespaces, setSessionNamespaces] = useState<string[]>([]); // Namespaces containing sessions
+  const [allNamespaces, setAllNamespaces] = useState<string[]>([]); // All accessible namespaces
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get user permissions to filter available namespaces
+  // Get user permissions using new split API
   const { data: userInfo, loading: userLoading } = useUserIntrospection({
+    discover: true, // Enable namespace discovery
     enabled: true,
   });
 
+  // Get server capabilities using new split API
+  const { data: serverInfo, loading: serverLoading } = useServerIntrospection({
+    discover: true, // Enable namespace discovery
+    enabled: true, // Always try, will gracefully handle permission errors
+  });
+
   useEffect(() => {
-    let cancelled = false;
-
-    const loadNamespaces = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Try to get server introspection data (may fail due to permissions)
-        let serverData = null;
-        try {
-          serverData = await introspectApi.getServer({ discover: true });
-        } catch (err) {
-          // User might not have permissions to see server data, that's okay
-          console.debug("Cannot access server introspection:", err);
-        }
-
-        if (cancelled) return;
-
-        // Extract namespaces from server data if available
-        let discoveredSessionNamespaces: string[] = [];
-        let discoveredAllNamespaces: string[] = [];
-
-        if (serverData?.namespaces) {
-          discoveredSessionNamespaces =
-            serverData.namespaces.withSessions || [];
-          discoveredAllNamespaces = serverData.namespaces.all || [];
-        }
-
-        // If server data is empty, provide fallback namespaces
-        if (discoveredSessionNamespaces.length === 0) {
-          discoveredSessionNamespaces = ["default"];
-        }
-        if (discoveredAllNamespaces.length === 0) {
-          discoveredAllNamespaces = ["default"];
-        }
-
-        // Filter namespaces based on user permissions if user data is available
-        if (userInfo && userInfo.namespaces?.userAllowed) {
-          const userAllowedSet = new Set(userInfo.namespaces.userAllowed);
-
-          // Filter session namespaces to only those user can access
-          discoveredSessionNamespaces = discoveredSessionNamespaces.filter(
-            (ns) => userAllowedSet.has(ns),
-          );
-
-          // Filter all namespaces to only those user can access
-          discoveredAllNamespaces = discoveredAllNamespaces.filter((ns) =>
-            userAllowedSet.has(ns),
-          );
-
-          // Also add user's allowed namespaces that might not be in the discovered lists
-          const additionalNamespaces = userInfo.namespaces.userAllowed.filter(
-            (ns) =>
-              !discoveredSessionNamespaces.includes(ns) &&
-              !discoveredAllNamespaces.includes(ns),
-          );
-
-          discoveredAllNamespaces.push(...additionalNamespaces);
-        }
-
-        // Remove duplicates and sort
-        const uniqueSessionNs = Array.from(
-          new Set(discoveredSessionNamespaces),
-        ).sort();
-        const uniqueAllNs = Array.from(new Set(discoveredAllNamespaces)).sort();
-
-        // Ensure we always have at least default namespace
-        if (uniqueSessionNs.length === 0) {
-          uniqueSessionNs.push("default");
-        }
-        if (uniqueAllNs.length === 0) {
-          uniqueAllNs.push("default");
-        }
-
-        if (!cancelled) {
-          setSessionNamespaces(uniqueSessionNs);
-          setAllNamespaces(uniqueAllNs);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          console.error("Failed to load namespaces:", err);
-          setError(err?.message || "Failed to load namespaces");
-
-          // Provide fallback based on user permissions if available
-          if (userInfo?.namespaces?.userAllowed) {
-            setSessionNamespaces(userInfo.namespaces.userAllowed.sort());
-            setAllNamespaces(userInfo.namespaces.userAllowed.sort());
-          } else {
-            // Final fallback
-            setSessionNamespaces(["default"]);
-            setAllNamespaces(["default"]);
-          }
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    // Wait for user info to load before loading namespaces
-    if (!userLoading) {
-      loadNamespaces();
+    if (userLoading || serverLoading) {
+      setLoading(true);
+      return;
     }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [userInfo, userLoading]);
+    try {
+      setError(null);
+
+      // Start with user's accessible namespaces
+      let userAccessible: string[] = [];
+      let serverDiscovered: string[] = [];
+      let sessionsDiscovered: string[] = [];
+
+      // Extract user-accessible namespaces
+      if (userInfo?.namespaces?.userAllowed) {
+        userAccessible = [...userInfo.namespaces.userAllowed];
+      }
+
+      // Extract server-discovered namespaces (if available)
+      if (serverInfo?.namespaces) {
+        serverDiscovered = [...(serverInfo.namespaces.all || [])];
+        sessionsDiscovered = [...(serverInfo.namespaces.withSessions || [])];
+      }
+
+      // Merge and filter namespaces based on user permissions
+      let finalAllNamespaces: string[];
+      let finalSessionNamespaces: string[];
+
+      if (userInfo?.capabilities?.clusterScope) {
+        // User has cluster access - include all discovered namespaces
+        const combined = new Set([...userAccessible, ...serverDiscovered]);
+        finalAllNamespaces = Array.from(combined).sort();
+
+        // For session namespaces, prefer server data if available, otherwise user data
+        finalSessionNamespaces =
+          sessionsDiscovered.length > 0
+            ? sessionsDiscovered.sort()
+            : userAccessible.sort();
+      } else {
+        // User has limited access - only show namespaces they can access
+        finalAllNamespaces = userAccessible.sort();
+
+        // Filter session namespaces to only those user can access
+        const userAllowedSet = new Set(userAccessible);
+        finalSessionNamespaces = sessionsDiscovered
+          .filter((ns) => userAllowedSet.has(ns))
+          .sort();
+
+        // If no session namespaces after filtering, use user accessible
+        if (finalSessionNamespaces.length === 0) {
+          finalSessionNamespaces = userAccessible.sort();
+        }
+      }
+
+      // Ensure we always have at least default
+      if (finalAllNamespaces.length === 0) {
+        finalAllNamespaces = ["default"];
+      }
+      if (finalSessionNamespaces.length === 0) {
+        finalSessionNamespaces = ["default"];
+      }
+
+      setAllNamespaces(finalAllNamespaces);
+      setSessionNamespaces(finalSessionNamespaces);
+    } catch (err: any) {
+      console.error("Failed to process namespaces:", err);
+      setError(err?.message || "Failed to load namespaces");
+
+      // Fallback to user data or default
+      const fallback = userInfo?.namespaces?.userAllowed?.sort() || ["default"];
+      setAllNamespaces(fallback);
+      setSessionNamespaces(fallback);
+    } finally {
+      setLoading(false);
+    }
+  }, [userInfo, serverInfo, userLoading, serverLoading]);
 
   // Computed properties based on user permissions
   const writableNamespaces = useMemo(() => {
-    if (!userInfo?.namespaces?.userCreatable) {
-      return [];
-    }
-    return userInfo.namespaces.userCreatable.sort();
+    return userInfo?.namespaces?.userCreatable?.sort() || [];
   }, [userInfo]);
 
   const deletableNamespaces = useMemo(() => {
-    if (!userInfo?.namespaces?.userDeletable) {
-      return [];
-    }
-    return userInfo.namespaces.userDeletable.sort();
+    return userInfo?.namespaces?.userDeletable?.sort() || [];
   }, [userInfo]);
 
   // Helper to check if user can perform action in namespace
@@ -158,7 +128,7 @@ export function useNamespaces() {
       const nsPerms = userInfo.domains[namespace];
       if (nsPerms?.session?.[action]) return true;
 
-      // Check cluster-wide permissions (translated from "*" to "All")
+      // Check cluster-wide permissions
       const clusterPerms = userInfo.domains["*"];
       if (clusterPerms?.session?.[action]) return true;
 
@@ -167,11 +137,11 @@ export function useNamespaces() {
   }, [userInfo]);
 
   return {
-    sessionNamespaces,
-    allNamespaces,
-    writableNamespaces,
-    deletableNamespaces,
-    loading: loading || userLoading,
+    sessionNamespaces, // Namespaces containing sessions
+    allNamespaces, // All accessible namespaces
+    writableNamespaces, // Namespaces user can create in
+    deletableNamespaces, // Namespaces user can delete from
+    loading,
     error,
     canPerformAction,
   };

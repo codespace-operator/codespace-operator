@@ -1,3 +1,4 @@
+// ui/src/components/Header.tsx
 import React from "react";
 import {
   Masthead,
@@ -31,6 +32,7 @@ type Props = {
   onRefresh: () => void;
   onToggleSidebar: () => void;
   user?: string | null;
+  showNamespaceSelect?: boolean;
 };
 
 export function Header({
@@ -39,14 +41,16 @@ export function Header({
   onRefresh,
   onToggleSidebar,
   user,
+  showNamespaceSelect = true,
 }: Props) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [isUserMenuOpen, setUserMenuOpen] = React.useState(false);
 
-  // Only show namespaces that actually have Session CRs (plus "All")
+  // Namespaces: show ALL, but grey out the empty ones. Include "All" if user can watch "*".
   const {
     sessionNamespaces,
+    allNamespaces,
     loading: nsLoading,
     canPerformAction,
   } = useNamespaces();
@@ -54,9 +58,14 @@ export function Header({
     () => canPerformAction("watch", "*"),
     [canPerformAction],
   );
-  const listOptions = React.useMemo(
-    () => (allowAll ? ["All", ...sessionNamespaces] : [...sessionNamespaces]),
-    [sessionNamespaces, allowAll],
+  const emptySet = React.useMemo(
+    () =>
+      new Set(allNamespaces.filter((ns) => !sessionNamespaces.includes(ns))),
+    [allNamespaces, sessionNamespaces],
+  );
+  const selectOptions = React.useMemo(
+    () => (allowAll ? ["All", ...allNamespaces] : [...allNamespaces]),
+    [allNamespaces, allowAll],
   );
 
   const handleLogout = () => {
@@ -137,36 +146,48 @@ export function Header({
       <MastheadContent>
         <Toolbar isFullHeight isStatic>
           <ToolbarContent>
-            {/* Left side - Namespace selector */}
-            <ToolbarItem>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    color: "var(--pf-global--Color--light-200)",
-                    fontSize: "0.875rem",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Namespace:
-                </span>
-
-                <FormSelect
-                  value={namespace}
-                  onChange={(_, v) => onNamespace(v)}
-                  aria-label="Select namespace"
-                  style={{ minWidth: 200 }}
-                  isDisabled={nsLoading}
-                >
-                  {listOptions.map((ns) => (
-                    <FormSelectOption
-                      key={ns}
-                      value={ns}
-                      label={ns === "All" ? "All Namespaces" : ns}
-                    />
-                  ))}
-                </FormSelect>
-              </div>
-            </ToolbarItem>
+            {/* Namespace selector only when allowed */}
+            {showNamespaceSelect && (
+              <ToolbarItem>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      color: "var(--pf-global--Color--light-200)",
+                      fontSize: "0.875rem",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Namespace:
+                  </span>
+                  <FormSelect
+                    value={namespace}
+                    onChange={(_, v) => onNamespace(v)}
+                    aria-label="Select namespace"
+                    style={{ minWidth: 200 }}
+                    isDisabled={nsLoading}
+                  >
+                    {selectOptions.map((ns) => {
+                      const isAll = ns === "All";
+                      const isEmpty = !isAll && emptySet.has(ns);
+                      const isDisabled = !isAll && ns !== namespace && isEmpty;
+                      const label = isAll
+                        ? "All Namespaces"
+                        : isEmpty
+                          ? `${ns} (empty)`
+                          : ns;
+                      return (
+                        <FormSelectOption
+                          key={ns}
+                          value={ns}
+                          label={label}
+                          isDisabled={isDisabled}
+                        />
+                      );
+                    })}
+                  </FormSelect>
+                </div>
+              </ToolbarItem>
+            )}
 
             {/* Right side - User controls grouped together */}
             <ToolbarGroup align={{ default: "alignEnd" }}>

@@ -19,14 +19,14 @@ definitions:
   cmd_server.CasbinPermissions:
     properties:
       namespaces:
-        $ref: "#/definitions/cmd_server.NamespacePermissions"
+        $ref: '#/definitions/cmd_server.NamespacePermissions'
     type: object
   cmd_server.ClusterInfo:
     properties:
       casbin:
-        $ref: "#/definitions/cmd_server.CasbinPermissions"
+        $ref: '#/definitions/cmd_server.CasbinPermissions'
       serverServiceAccount:
-        $ref: "#/definitions/cmd_server.ServiceAccountInfo"
+        $ref: '#/definitions/cmd_server.ServiceAccountInfo'
     type: object
   cmd_server.DomainPermissions:
     properties:
@@ -51,16 +51,16 @@ definitions:
         example: alice
         type: string
     required:
-      - password
-      - username
+    - password
+    - username
     type: object
   cmd_server.LoginResponse:
     description: Successful authentication response
     properties:
       roles:
         example:
-          - editor
-          - viewer
+        - editor
+        - viewer
         items:
           type: string
         type: array
@@ -109,13 +109,13 @@ definitions:
   cmd_server.ServerIntrospectionResponse:
     properties:
       capabilities:
-        $ref: "#/definitions/cmd_server.SystemCapabilities"
+        $ref: '#/definitions/cmd_server.SystemCapabilities'
       cluster:
-        $ref: "#/definitions/cmd_server.ClusterInfo"
+        $ref: '#/definitions/cmd_server.ClusterInfo'
       namespaces:
-        $ref: "#/definitions/cmd_server.ServerNamespaceInfo"
+        $ref: '#/definitions/cmd_server.ServerNamespaceInfo'
       version:
-        $ref: "#/definitions/cmd_server.ServerVersionInfo"
+        $ref: '#/definitions/cmd_server.ServerVersionInfo'
     type: object
   cmd_server.ServerNamespaceInfo:
     properties:
@@ -142,7 +142,7 @@ definitions:
   cmd_server.ServiceAccountInfo:
     properties:
       namespaces:
-        $ref: "#/definitions/cmd_server.NamespacePermissions"
+        $ref: '#/definitions/cmd_server.NamespacePermissions'
       session:
         additionalProperties:
           type: boolean
@@ -152,9 +152,9 @@ definitions:
     description: Request body for creating a new codespace session
     properties:
       auth:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
       home:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
       name:
         example: my-session
         type: string
@@ -162,17 +162,17 @@ definitions:
         example: default
         type: string
       networking:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
       profile:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
       replicas:
         example: 1
         type: integer
       scratch:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
     required:
-      - name
-      - profile
+    - name
+    - profile
     type: object
   cmd_server.SessionListResponse:
     description: Response containing list of sessions with metadata
@@ -181,12 +181,12 @@ definitions:
         type: boolean
       items:
         items:
-          $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+          $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
         type: array
       namespaces:
         example:
-          - default
-          - kube-system
+        - default
+        - kube-system
         items:
           type: string
         type: array
@@ -205,7 +205,7 @@ definitions:
   cmd_server.SystemCapabilities:
     properties:
       clusterScope:
-        description: "Displays cluster_scope: true or false"
+        description: 'Displays cluster_scope: true or false'
         type: boolean
       multiTenant:
         description: Whether system supports multiple tenants
@@ -239,7 +239,7 @@ definitions:
         type: integer
       implicitRoles:
         example:
-          - inherited-role
+        - inherited-role
         items:
           type: string
         type: array
@@ -248,8 +248,8 @@ definitions:
         type: string
       roles:
         example:
-          - editor
-          - viewer
+        - editor
+        - viewer
         items:
           type: string
         type: array
@@ -263,15 +263,15 @@ definitions:
   cmd_server.UserIntrospectionResponse:
     properties:
       capabilities:
-        $ref: "#/definitions/cmd_server.UserCapabilities"
+        $ref: '#/definitions/cmd_server.UserCapabilities'
       domains:
         additionalProperties:
-          $ref: "#/definitions/cmd_server.DomainPermissions"
+          $ref: '#/definitions/cmd_server.DomainPermissions'
         type: object
       namespaces:
-        $ref: "#/definitions/cmd_server.NamespaceInfo"
+        $ref: '#/definitions/cmd_server.NamespaceInfo'
       user:
-        $ref: "#/definitions/cmd_server.UserInfo"
+        $ref: '#/definitions/cmd_server.UserInfo'
     type: object
   cmd_server.UserPermissions:
     properties:
@@ -284,7 +284,7 @@ definitions:
         type: object
       permissions:
         items:
-          $ref: "#/definitions/cmd_server.PermissionCheck"
+          $ref: '#/definitions/cmd_server.PermissionCheck'
         type: array
       roles:
         items:
@@ -301,7 +301,7 @@ definitions:
           +kubebuilder:default=none
         type: string
       oidc:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.OIDCRef"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.OIDCRef'
     type: object
   github_com_codespace-operator_codespace-operator_api_v1.NetSpec:
     properties:
@@ -368,26 +368,26 @@ definitions:
           +optional
         type: string
       metadata:
-        $ref: "#/definitions/v1.ObjectMeta"
+        $ref: '#/definitions/v1.ObjectMeta'
       spec:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionSpec'
       status:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionStatus"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionStatus'
     type: object
   github_com_codespace-operator_codespace-operator_api_v1.SessionSpec:
     properties:
       auth:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
       home:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
       networking:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
       profile:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
       replicas:
         type: integer
       scratch:
-        $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
     type: object
   github_com_codespace-operator_codespace-operator_api_v1.SessionStatus:
     properties:
@@ -417,7 +417,7 @@ definitions:
         type: string
       fieldsV1:
         allOf:
-          - $ref: "#/definitions/v1.FieldsV1"
+        - $ref: '#/definitions/v1.FieldsV1'
         description: |-
           FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
           +optional
@@ -426,7 +426,7 @@ definitions:
         type: string
       operation:
         allOf:
-          - $ref: "#/definitions/v1.ManagedFieldsOperationType"
+        - $ref: '#/definitions/v1.ManagedFieldsOperationType'
         description: |-
           Operation is the type of operation which lead to this ManagedFieldsEntry being created.
           The only valid values for this field are 'Apply' and 'Update'.
@@ -452,12 +452,12 @@ definitions:
     type: object
   v1.ManagedFieldsOperationType:
     enum:
-      - Apply
-      - Update
+    - Apply
+    - Update
     type: string
     x-enum-varnames:
-      - ManagedFieldsOperationApply
-      - ManagedFieldsOperationUpdate
+    - ManagedFieldsOperationApply
+    - ManagedFieldsOperationUpdate
   v1.ObjectMeta:
     properties:
       annotations:
@@ -578,7 +578,7 @@ definitions:
           +optional
           +listType=atomic
         items:
-          $ref: "#/definitions/v1.ManagedFieldsEntry"
+          $ref: '#/definitions/v1.ManagedFieldsEntry'
         type: array
       name:
         description: |-
@@ -614,7 +614,7 @@ definitions:
           +listType=map
           +listMapKey=uid
         items:
-          $ref: "#/definitions/v1.OwnerReference"
+          $ref: '#/definitions/v1.OwnerReference'
         type: array
       resourceVersion:
         description: |-
@@ -702,10 +702,10 @@ paths:
   /api/v1/admin/rbac/reload:
     post:
       consumes:
-        - application/json
+      - application/json
       description: Force reload of RBAC policies (requires admin privileges)
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
@@ -716,25 +716,25 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Reload RBAC (Admin)
       tags:
-        - admin
+      - admin
   /api/v1/admin/system/info:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Check system information (requires admin privileges)
       produces:
-        - application/json
-        - application/json
+      - application/json
+      - application/json
       responses:
         "200":
           description: OK
@@ -742,18 +742,18 @@ paths:
             additionalProperties: true
             type: object
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: System Info
       tags:
-        - admin
+      - admin
   /api/v1/admin/users:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get list of users in the system (requires admin privileges)
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: User list with admin info
@@ -763,25 +763,25 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: List users (Admin)
       tags:
-        - admin
+      - admin
   /api/v1/introspect:
     get:
       consumes:
-        - application/json
+      - application/json
       deprecated: true
-      description: "Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server"
+      description: 'Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: Combined user+server info
@@ -791,190 +791,190 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Introspect (legacy combined)
       tags:
-        - user
+      - user
   /api/v1/introspect/server:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get server and cluster information
       parameters:
-        - description: Whether to discover namespaces (0 or 1)
-          in: query
-          name: discover
-          type: string
+      - description: Whether to discover namespaces (0 or 1)
+        in: query
+        name: discover
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.ServerIntrospectionResponse"
+            $ref: '#/definitions/cmd_server.ServerIntrospectionResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Server introspection
       tags:
-        - user
+      - user
   /api/v1/introspect/user:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get user-specific permissions and capabilities
       parameters:
-        - description: Comma-separated list of namespaces to check
-          in: query
-          name: namespaces
-          type: string
-        - description: Comma-separated list of actions to check
-          in: query
-          name: actions
-          type: string
+      - description: Comma-separated list of namespaces to check
+        in: query
+        name: namespaces
+        type: string
+      - description: Comma-separated list of actions to check
+        in: query
+        name: actions
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.UserIntrospectionResponse"
+            $ref: '#/definitions/cmd_server.UserIntrospectionResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: User introspection
       tags:
-        - user
+      - user
   /api/v1/me:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get information about the current authenticated user
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.UserInfo"
+            $ref: '#/definitions/cmd_server.UserInfo'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Get current user
       tags:
-        - user
+      - user
   /api/v1/server/sessions:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get a list of codespace sessions, optionally across all namespaces
       operationId: listSessions
       parameters:
-        - default: default
-          description: Target namespace
-          in: query
-          name: namespace
-          type: string
-        - description: List sessions across all namespaces
-          in: query
-          name: all
-          type: boolean
+      - default: default
+        description: Target namespace
+        in: query
+        name: namespace
+        type: string
+      - description: List sessions across all namespaces
+        in: query
+        name: all
+        type: boolean
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.SessionListResponse"
+            $ref: '#/definitions/cmd_server.SessionListResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: List sessions
       tags:
-        - sessions
+      - sessions
     post:
       consumes:
-        - application/json
+      - application/json
       description: Create a new codespace session
       operationId: createSession
       parameters:
-        - description: Session creation request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/cmd_server.SessionCreateRequest"
+      - description: Session creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cmd_server.SessionCreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Create session
       tags:
-        - sessions
+      - sessions
   /api/v1/server/sessions/{namespace}/{name}:
     delete:
       consumes:
-        - application/json
+      - application/json
       description: Delete a codespace session
       operationId: deleteSession
       parameters:
-        - description: Namespace
-          in: path
-          name: namespace
-          required: true
-          type: string
-        - description: Session name
-          in: path
-          name: name
-          required: true
-          type: string
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
@@ -985,180 +985,180 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Delete session
       tags:
-        - sessions
+      - sessions
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get details of a specific session
       operationId: getSession
       parameters:
-        - description: Namespace
-          in: path
-          name: namespace
-          required: true
-          type: string
-        - description: Session name
-          in: path
-          name: name
-          required: true
-          type: string
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Get session
       tags:
-        - sessions
+      - sessions
     put:
       consumes:
-        - application/json
+      - application/json
       description: Update a session (full replacement)
       operationId: updateSession
       parameters:
-        - description: Namespace
-          in: path
-          name: namespace
-          required: true
-          type: string
-        - description: Session name
-          in: path
-          name: name
-          required: true
-          type: string
-        - description: Session update request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/cmd_server.SessionCreateRequest"
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Session update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cmd_server.SessionCreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Update session
       tags:
-        - sessions
+      - sessions
   /api/v1/server/sessions/{namespace}/{name}/scale:
     post:
       consumes:
-        - application/json
+      - application/json
       description: Scale the number of replicas for a session
       operationId: scaleSession
       parameters:
-        - description: Namespace
-          in: path
-          name: namespace
-          required: true
-          type: string
-        - description: Session name
-          in: path
-          name: name
-          required: true
-          type: string
-        - description: Scale request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/cmd_server.SessionScaleRequest"
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Scale request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cmd_server.SessionScaleRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Scale session
       tags:
-        - sessions
+      - sessions
   /api/v1/stream/sessions:
     get:
       description: Stream real-time session updates via Server-Sent Events
       parameters:
-        - default: default
-          description: Target namespace
-          in: query
-          name: namespace
-          type: string
-        - description: Stream sessions from all namespaces
-          in: query
-          name: all
-          type: boolean
+      - default: default
+        description: Target namespace
+        in: query
+        name: namespace
+        type: string
+      - description: Stream sessions from all namespaces
+        in: query
+        name: all
+        type: boolean
       produces:
-        - text/event-stream
+      - text/event-stream
       responses:
         "200":
           description: SSE stream
@@ -1167,96 +1167,95 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Stream sessions
       tags:
-        - sessions
+      - sessions
   /api/v1/user/permissions:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get detailed user permissions
       parameters:
-        - description: Comma-separated list of namespaces
-          in: query
-          name: namespaces
-          type: string
-        - description: Comma-separated list of actions
-          in: query
-          name: actions
-          type: string
+      - description: Comma-separated list of namespaces
+        in: query
+        name: namespaces
+        type: string
+      - description: Comma-separated list of actions
+        in: query
+        name: actions
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.UserPermissions"
+            $ref: '#/definitions/cmd_server.UserPermissions'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       security:
-        - BearerAuth: []
-        - CookieAuth: []
+      - BearerAuth: []
+      - CookieAuth: []
       summary: User permissions
       tags:
-        - user
+      - user
   /auth/features:
     get:
       consumes:
-        - application/json
+      - application/json
       description: Get available authentication methods and endpoints
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.AuthFeatures"
+            $ref: '#/definitions/cmd_server.AuthFeatures'
       summary: Get authentication features
       tags:
-        - authentication
+      - authentication
   /auth/local/login:
     post:
       consumes:
-        - application/json
+      - application/json
       description: Authenticate using username and password
       parameters:
-        - description: Login credentials
-          in: body
-          name: credentials
-          required: true
-          schema:
-            $ref: "#/definitions/cmd_server.LocalLoginRequest"
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/cmd_server.LocalLoginRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/cmd_server.LoginResponse"
+            $ref: '#/definitions/cmd_server.LoginResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/cmd_server.ErrorResponse"
+            $ref: '#/definitions/cmd_server.ErrorResponse'
       summary: Local login
       tags:
-        - authentication
+      - authentication
   /auth/logout:
     get:
-      description:
-        Clears session cookie. If SSO configured, redirects to the provider’s
+      description: Clears session cookie. If SSO configured, redirects to the provider’s
         end-session endpoint.
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
@@ -1266,21 +1265,21 @@ paths:
             type: object
       summary: Logout
       tags:
-        - authentication
+      - authentication
   /auth/sso/callback:
     get:
       description: Handles provider callback, mints session cookie, then redirects.
       parameters:
-        - description: OIDC state
-          in: query
-          name: state
-          required: true
-          type: string
-        - description: Authorization code
-          in: query
-          name: code
-          required: true
-          type: string
+      - description: OIDC state
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Authorization code
+        in: query
+        name: code
+        required: true
+        type: string
       responses:
         "302":
           description: Redirect
@@ -1292,17 +1291,16 @@ paths:
             type: string
       summary: OIDC callback
       tags:
-        - authentication
+      - authentication
   /auth/sso/login:
     get:
-      description:
-        Redirect to OIDC provider with PKCE/state. Optional `next` query
+      description: Redirect to OIDC provider with PKCE/state. Optional `next` query
         to return to path.
       parameters:
-        - description: Relative path to return to after login
-          in: query
-          name: next
-          type: string
+      - description: Relative path to return to after login
+        in: query
+        name: next
+        type: string
       responses:
         "302":
           description: Redirect
@@ -1310,12 +1308,12 @@ paths:
             type: string
       summary: OIDC start
       tags:
-        - authentication
+      - authentication
   /healthz:
     get:
       description: Check if the service is healthy
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: ok
@@ -1323,18 +1321,18 @@ paths:
             type: string
       summary: Health check
       tags:
-        - health
+      - health
   /readyz:
     get:
       description: Check if the service is ready to accept traffic
       parameters:
-        - default: default
-          description: Namespace to test connectivity
-          in: query
-          name: namespace
-          type: string
+      - default: default
+        description: Namespace to test connectivity
+        in: query
+        name: namespace
+        type: string
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: ready
@@ -1346,7 +1344,7 @@ paths:
             type: string
       summary: Readiness check
       tags:
-        - health
+      - health
 securityDefinitions:
   BearerAuth:
     in: header

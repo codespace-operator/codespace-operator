@@ -1,3 +1,4 @@
+// ui/src/pages/UserInfo.tsx
 import React, { useMemo } from "react";
 import {
   PageSection,
@@ -37,15 +38,12 @@ import {
 export function UserInfoPage() {
   const { user, token, logout } = useAuth();
 
-  // New split hooks (API)
+  // New split hooks (API) — discover namespaces so we can render creatable + matrix properly
   const {
     data: userInfo,
     loading: userLoading,
     error: userError,
-  } = useUserIntrospection({
-    namespaces: ["default", "*"],
-    enabled: !!user,
-  });
+  } = useUserIntrospection({ discover: true, enabled: !!user });
 
   const {
     data: serverInfo,
@@ -286,7 +284,7 @@ export function UserInfoPage() {
                 </EmptyState>
               ) : userInfo ? (
                 <div className="permissions-content">
-                  {/* Capabilities summary (no new classes) */}
+                  {/* Capabilities summary */}
                   <div className="permission-section">
                     <div className="permission-header">
                       <span>Cluster Access</span>
@@ -312,6 +310,30 @@ export function UserInfoPage() {
                     </span>
                   </div>
 
+                  {/* Creatable namespaces list */}
+                  <div className="permission-section">
+                    <div className="permission-header">
+                      <span>Creatable Namespaces</span>
+                    </div>
+                    {Array.isArray(userInfo?.namespaces?.userCreatable) &&
+                    userInfo!.namespaces!.userCreatable!.length > 0 ? (
+                      <div
+                        className="role-tags"
+                        style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+                      >
+                        {userInfo!
+                          .namespaces!.userCreatable!.sort()
+                          .map((ns) => (
+                            <Label key={ns} color="blue" isCompact>
+                              {ns}
+                            </Label>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="pf-u-color-200">None</span>
+                    )}
+                  </div>
+
                   {/* Cluster-level bit from server introspection */}
                   <div className="permission-section">
                     <div className="permission-header">
@@ -331,57 +353,67 @@ export function UserInfoPage() {
                     )}
                   </div>
 
-                  {/* Per-namespace permissions */}
+                  {/* Per-namespace permissions matrix (labels like Cluster Settings) */}
                   <div className="namespace-permissions">
                     <Title headingLevel="h4" size="md" className="pf-u-mb-sm">
-                      Namespaces
+                      Namespace Access Matrix
                     </Title>
 
                     {Object.keys(userInfo?.domains ?? {}).length === 0 ? (
-                      <span className="no-namespaces">None</span>
+                      <span className="no-namespaces">No permissions</span>
                     ) : (
-                      <div className="namespace-list">
-                        {Object.entries(userInfo.domains).map(([ns, obj]) => {
-                          const domain = obj as any;
-                          const sessionBag =
-                            (domain?.session as Partial<
-                              Record<(typeof actionOrder)[number], boolean>
-                            >) || null;
+                      <Grid hasGutter>
+                        {Object.entries(userInfo.domains ?? {})
+                          .filter(([ns]) => ns !== "*")
+                          .map(([ns, permissions]) => {
+                            const nsDisplay =
+                              ns === "*" ? "All Namespaces" : ns;
+                            const sessionPerms =
+                              (permissions as any)?.session || {};
+                            const ordered = actionOrder
+                              .filter((a) => a in sessionPerms)
+                              .map((a) => [a, !!sessionPerms[a]] as const);
 
-                          // Optional extra bag if your API provides it (rbac/granted/static)
-                          const nonSessionBag =
-                            (domain?.rbac ||
-                              domain?.granted ||
-                              domain?.static) ??
-                            null;
-
-                          return (
-                            <div key={ns} className="namespace-item">
-                              <div className="namespace-header">
-                                <Label color="blue" isCompact>
-                                  {ns === "*" ? "All" : ns}
-                                </Label>
-                              </div>
-
-                              {/* Session permissions */}
-                              {sessionBag ? (
-                                <>
-                                  <div>Session</div>
-                                  {renderActionBag(sessionBag)}
-                                </>
-                              ) : null}
-
-                              {/* Optional: RBAC / Static */}
-                              {nonSessionBag ? (
-                                <>
-                                  <div>RBAC / Static</div>
-                                  {renderActionBag(nonSessionBag)}
-                                </>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
+                            return (
+                              <GridItem key={ns} md={6} lg={4}>
+                                <Card isCompact>
+                                  <CardBody>
+                                    <Title
+                                      headingLevel="h4"
+                                      size="md"
+                                      className="pf-u-mb-sm"
+                                    >
+                                      {nsDisplay}
+                                    </Title>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 4,
+                                      }}
+                                    >
+                                      {ordered.length ? (
+                                        ordered.map(([action, allowed]) => (
+                                          <Label
+                                            key={action}
+                                            color={allowed ? "green" : "red"}
+                                            isCompact
+                                          >
+                                            {action}
+                                          </Label>
+                                        ))
+                                      ) : (
+                                        <Label color="red" isCompact>
+                                          no-access
+                                        </Label>
+                                      )}
+                                    </div>
+                                  </CardBody>
+                                </Card>
+                              </GridItem>
+                            );
+                          })}
+                      </Grid>
                     )}
                   </div>
                 </div>
