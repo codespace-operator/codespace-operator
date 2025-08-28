@@ -228,7 +228,7 @@ func buildServerCapabilities(ctx context.Context, deps *serverDeps) ServiceAccou
 // canListNamespaces tests if the server can list namespaces
 func canListNamespaces(ctx context.Context, deps *serverDeps) bool {
 	var nsList corev1.NamespaceList
-	if err := deps.typed.List(ctx, &nsList); err != nil {
+	if err := deps.client.List(ctx, &nsList); err != nil {
 		logger.Debug("Server cannot list namespaces", "err", err)
 		return false
 	}
@@ -273,7 +273,7 @@ func discoverNamespaces(ctx context.Context, deps *serverDeps) ([]string, []stri
 
 	if canListNamespaces(ctx, deps) {
 		var nsList corev1.NamespaceList
-		if err := deps.typed.List(ctx, &nsList); err != nil {
+		if err := deps.client.List(ctx, &nsList); err != nil {
 			logger.Warn("Failed to list namespaces despite permission check", "err", err)
 		} else {
 			allNamespaces = make([]string, 0, len(nsList.Items))
@@ -443,4 +443,24 @@ func hostOrHash(issuer string) string {
 	// Fallback: short hash for weird issuers
 	sum := sha256.Sum256([]byte(issuer))
 	return base64.RawURLEncoding.EncodeToString(sum[:])[:16]
+}
+
+// extractNamespaceFromRequest extracts namespace from URL path or query parameters
+func extractNamespaceFromRequest(r *http.Request) string {
+	// Try query parameter first
+	if ns := r.URL.Query().Get("namespace"); ns != "" {
+		return ns
+	}
+
+	// Try to extract from path
+	if strings.Contains(r.URL.Path, "/sessions/") {
+		parts := strings.Split(r.URL.Path, "/")
+		for i, part := range parts {
+			if part == "sessions" && i+1 < len(parts) {
+				return parts[i+1]
+			}
+		}
+	}
+
+	return ""
 }

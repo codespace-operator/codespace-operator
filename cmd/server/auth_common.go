@@ -17,6 +17,11 @@ const (
 	defaultSessionCookie = "codespace_session"
 )
 
+type authConfigLike struct {
+	JWTSecret         string
+	SessionCookieName string
+	AllowTokenParam   bool
+}
 type ctxKey string
 
 const ctxClaimsKey ctxKey = "claims"
@@ -89,7 +94,7 @@ func parseJWT(token string, secret []byte) (*claims, error) {
 
 // === Cookie helpers ========================================================
 
-func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *configLike, token string, ttl time.Duration) {
+func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *authConfigLike, token string, ttl time.Duration) {
 	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 
 	http.SetCookie(w, &http.Cookie{
@@ -103,7 +108,7 @@ func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *configLike, toke
 	})
 }
 
-func clearAuthCookie(w http.ResponseWriter, cfg *configLike) {
+func clearAuthCookie(w http.ResponseWriter, cfg *authConfigLike) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName(cfg),
 		Value:    "",
@@ -115,7 +120,7 @@ func clearAuthCookie(w http.ResponseWriter, cfg *configLike) {
 	})
 }
 
-func cookieName(cfg *configLike) string {
+func cookieName(cfg *authConfigLike) string {
 	if cfg.SessionCookieName != "" {
 		return cfg.SessionCookieName
 	}
@@ -140,13 +145,7 @@ func fromContext(r *http.Request) *claims {
 
 // === Middleware to require session or bearer token =========================
 
-type configLike struct {
-	JWTSecret         string
-	SessionCookieName string
-	AllowTokenParam   bool
-}
-
-func requireAPIToken(cfg *configLike, next http.Handler) http.Handler {
+func requireAPIToken(cfg *authConfigLike, next http.Handler) http.Handler {
 	secret := []byte(cfg.JWTSecret)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -183,4 +182,155 @@ func requireAPIToken(cfg *configLike, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, withClaims(r, c))
 	})
+}
+
+// corsMiddleware adds CORS headers with credentials support
+func corsMiddleware(allowOrigin string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if allowOrigin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
+
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// authGate provides authentication routing
+func authGate(cfg *authConfigLike, next http.Handler) http.Handler {
+	authed := requireAPIToken(cfg, next)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Public endpoints (no auth required)
+		publicPaths := []string{
+			"/healthz",
+			"/readyz",
+			"/",
+		}
+
+		publicPrefixes := []string{
+			"/auth/",
+			"/assets/",
+			"/static/",
+		}
+
+		// Check if this is a public path
+		for _, publicPath := range publicPaths {
+			if path == publicPath {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Check if this is a public prefix
+		for _, prefix := range publicPrefixes {
+			if strings.HasPrefix(path, prefix) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// API endpoints require authentication
+		if strings.HasPrefix(path, "/api/") {
+			authed.ServeHTTP(w, r)
+			return
+		}
+
+		// Default to serving static content (SPA)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// rateLimitMiddleware provides basic rate limiting (placeholder implementation)
+func rateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// TODO: Implement proper rate limiting based on user/IP
+		// For now, just pass through
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeadersMiddleware adds security headers
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// Only add HSTS if we're on HTTPS
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requireAdminAccess middleware that requires admin-level permissions
+func requireAdminAccess(deps *serverDeps, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := mustCan(deps, w, r, "*", "admin", "*"); !ok {
+			return
+		}
+		next(w, r)
+	}
+}
+
+// requireNamespaceAccess middleware that checks namespace-level permissions
+func requireNamespaceAccess(deps *serverDeps, resource, action string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Extract namespace from URL path or query parameters
+		namespace := extractNamespaceFromRequest(r)
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		if _, ok := mustCan(deps, w, r, resource, action, namespace); !ok {
+			return
+		}
+		next(w, r)
+	}
+}
+
+func setTempCookie(w http.ResponseWriter, name, val string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    val,
+		Path:     "/auth",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   300,
+	})
+}
+
+func expireTempCookie(w http.ResponseWriter, name string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/auth",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func shortHash(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:16]
 }

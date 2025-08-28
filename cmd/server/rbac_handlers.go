@@ -68,303 +68,338 @@ type ServerVersionInfo struct {
 	BuildDate string `json:"buildDate,omitempty"`
 }
 
+// UserIntrospectionResponse represents user-specific information only
+type UserIntrospectionResponse struct {
+	User         UserInfo                     `json:"user"`
+	Domains      map[string]DomainPermissions `json:"domains"`
+	Namespaces   NamespaceInfo                `json:"namespaces"`
+	Capabilities UserCapabilities             `json:"capabilities"`
+}
+
+// ServerIntrospectionResponse represents server/cluster information only
+type ServerIntrospectionResponse struct {
+	Cluster      ClusterInfo         `json:"cluster"`
+	Namespaces   ServerNamespaceInfo `json:"namespaces"`
+	Capabilities SystemCapabilities  `json:"capabilities"`
+	Version      ServerVersionInfo   `json:"version,omitempty"`
+}
+
 // handleUserIntrospect provides user-specific RBAC and permission information
-func handleUserIntrospect(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cl := fromContext(r)
-		if cl == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		ctx := r.Context()
-
-		// Parse query parameters
-		requestedNamespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
-		actions := splitCSVQuery(r.URL.Query().Get("actions"))
-
-		// Default actions if not specified
-		if len(actions) == 0 {
-			actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
-		}
-
-		// Get implicit roles from Casbin
-		implicitRoles, _ := deps.rbac.GetRolesForUser(cl.Sub)
-
-		// Build user info
-		userInfo := UserInfo{
-			Subject:       cl.Sub,
-			Username:      cl.Username,
-			Email:         cl.Email,
-			Roles:         cl.Roles,
-			Provider:      cl.Provider,
-			IssuedAt:      cl.IssuedAt,
-			ExpiresAt:     cl.ExpiresAt,
-			ImplicitRoles: implicitRoles,
-		}
-
-		// Check cluster-level permissions for user
-		hasClusterList, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
-		hasClusterWatch, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "watch", "*")
-		nsListAllowed, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
-
-		// Determine target namespaces for permission checking
-		var targetNamespaces []string
-
-		if len(requestedNamespaces) > 0 {
-			// Use requested namespaces
-			targetNamespaces = requestedNamespaces
-		} else {
-			// Discover all available namespaces for this user
-			discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
-			if err != nil {
-				logger.Warn("Failed to discover allowed namespaces for user", "user", cl.Sub, "err", err)
-				// Fallback to common namespaces
-				targetNamespaces = []string{"default", "kube-system", "kube-public"}
-			} else {
-				targetNamespaces = discoveredNamespaces
-			}
-
-			// Always include "*" for cluster-wide permissions check
-			targetNamespaces = append(targetNamespaces, "*")
-		}
-
-		// Remove duplicates and sort
-		targetNamespaces = uniqueNamespaces(targetNamespaces)
-
-		// Build domain permissions for user
-		domains := make(map[string]DomainPermissions)
-		userAllowed := []string{}
-		userCreatable := []string{}
-		userDeletable := []string{}
-
-		for _, ns := range targetNamespaces {
-			sessionPerms := make(map[string]bool)
-			hasAnyPermission := false
-			canCreate := false
-			canDelete := false
-
-			for _, action := range actions {
-				allowed, err := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", action, ns)
-				if err != nil {
-					logger.Warn("RBAC enforcement error", "subject", cl.Sub, "action", action, "namespace", ns, "err", err)
-					allowed = false
-				}
-				sessionPerms[action] = allowed
-
-				if allowed {
-					hasAnyPermission = true
-					if action == "create" {
-						canCreate = true
-					}
-					if action == "delete" {
-						canDelete = true
-					}
-				}
-			}
-
-			domains[ns] = DomainPermissions{
-				Session: sessionPerms,
-			}
-
-			// Track accessible namespaces (excluding "*" from user lists)
-			if hasAnyPermission && ns != "*" {
-				userAllowed = append(userAllowed, ns)
-			}
-			if canCreate && ns != "*" {
-				userCreatable = append(userCreatable, ns)
-			}
-			if canDelete && ns != "*" {
-				userDeletable = append(userDeletable, ns)
-			}
-		}
-
-		sort.Strings(userAllowed)
-		sort.Strings(userCreatable)
-		sort.Strings(userDeletable)
-
-		namespaceInfo := NamespaceInfo{
-			UserAllowed:   userAllowed,
-			UserCreatable: userCreatable,
-			UserDeletable: userDeletable,
-		}
-
-		// Build user-specific capabilities
-		capabilities := UserCapabilities{
-			NamespaceScope: userAllowed,
-			ClusterScope:   hasClusterList || hasClusterWatch || nsListAllowed,
-			AdminAccess:    hasClusterList && hasClusterWatch, // Basic admin check
-		}
-
-		// Enhanced admin access check - user who can create/delete anywhere
-		if starDomain, exists := domains["*"]; exists {
-			if starDomain.Session["create"] && starDomain.Session["delete"] {
-				capabilities.AdminAccess = true
-			}
-		}
-
-		// Build user response
-		response := UserIntrospectionResponse{
-			User:         userInfo,
-			Domains:      domains,
-			Namespaces:   namespaceInfo,
-			Capabilities: capabilities,
-		}
-
-		logger.Debug("User introspection completed", "user", cl.Sub, "namespaces", len(targetNamespaces), "allowed", len(userAllowed))
-		writeJSON(w, response)
+// @Summary User introspection
+// @Description Get user-specific permissions and capabilities
+// @Tags user
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Param namespaces query string false "Comma-separated list of namespaces to check"
+// @Param actions query string false "Comma-separated list of actions to check"
+// @Success 200 {object} UserIntrospectionResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/v1/introspect/user [get]
+func (h *handlers) userIntrospect(w http.ResponseWriter, r *http.Request) {
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+
+	ctx := r.Context()
+
+	// Parse query parameters
+	requestedNamespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
+	actions := splitCSVQuery(r.URL.Query().Get("actions"))
+
+	// Default actions if not specified
+	if len(actions) == 0 {
+		actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
+	}
+
+	// Get implicit roles from Casbin
+	implicitRoles, _ := h.deps.rbac.GetRolesForUser(cl.Sub)
+
+	// Build user info
+	userInfo := UserInfo{
+		Subject:       cl.Sub,
+		Username:      cl.Username,
+		Email:         cl.Email,
+		Roles:         cl.Roles,
+		Provider:      cl.Provider,
+		IssuedAt:      cl.IssuedAt,
+		ExpiresAt:     cl.ExpiresAt,
+		ImplicitRoles: implicitRoles,
+	}
+
+	// Check cluster-level permissions for user
+	hasClusterList, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+	hasClusterWatch, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "watch", "*")
+	nsListAllowed, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
+
+	// Determine target namespaces for permission checking
+	var targetNamespaces []string
+
+	if len(requestedNamespaces) > 0 {
+		// Use requested namespaces
+		targetNamespaces = requestedNamespaces
+	} else {
+		// Discover all available namespaces for this user
+		discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
+		if err != nil {
+			logger.Warn("Failed to discover allowed namespaces for user", "user", cl.Sub, "err", err)
+			// Fallback to common namespaces
+			targetNamespaces = []string{"default", "kube-system", "kube-public"}
+		} else {
+			targetNamespaces = discoveredNamespaces
+		}
+
+		// Always include "*" for cluster-wide permissions check
+		targetNamespaces = append(targetNamespaces, "*")
+	}
+
+	// Remove duplicates and sort
+	targetNamespaces = uniqueNamespaces(targetNamespaces)
+
+	// Build domain permissions for user
+	domains := make(map[string]DomainPermissions)
+	userAllowed := []string{}
+	userCreatable := []string{}
+	userDeletable := []string{}
+
+	for _, ns := range targetNamespaces {
+		sessionPerms := make(map[string]bool)
+		hasAnyPermission := false
+		canCreate := false
+		canDelete := false
+
+		for _, action := range actions {
+			allowed, err := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", action, ns)
+			if err != nil {
+				logger.Warn("RBAC enforcement error", "subject", cl.Sub, "action", action, "namespace", ns, "err", err)
+				allowed = false
+			}
+			sessionPerms[action] = allowed
+
+			if allowed {
+				hasAnyPermission = true
+				if action == "create" {
+					canCreate = true
+				}
+				if action == "delete" {
+					canDelete = true
+				}
+			}
+		}
+
+		domains[ns] = DomainPermissions{
+			Session: sessionPerms,
+		}
+
+		// Track accessible namespaces (excluding "*" from user lists)
+		if hasAnyPermission && ns != "*" {
+			userAllowed = append(userAllowed, ns)
+		}
+		if canCreate && ns != "*" {
+			userCreatable = append(userCreatable, ns)
+		}
+		if canDelete && ns != "*" {
+			userDeletable = append(userDeletable, ns)
+		}
+	}
+
+	sort.Strings(userAllowed)
+	sort.Strings(userCreatable)
+	sort.Strings(userDeletable)
+
+	namespaceInfo := NamespaceInfo{
+		UserAllowed:   userAllowed,
+		UserCreatable: userCreatable,
+		UserDeletable: userDeletable,
+	}
+
+	// Build user-specific capabilities
+	capabilities := UserCapabilities{
+		NamespaceScope: userAllowed,
+		ClusterScope:   hasClusterList || hasClusterWatch || nsListAllowed,
+		AdminAccess:    hasClusterList && hasClusterWatch, // Basic admin check
+	}
+
+	// Enhanced admin access check - user who can create/delete anywhere
+	if starDomain, exists := domains["*"]; exists {
+		if starDomain.Session["create"] && starDomain.Session["delete"] {
+			capabilities.AdminAccess = true
+		}
+	}
+
+	// Build user response
+	response := UserIntrospectionResponse{
+		User:         userInfo,
+		Domains:      domains,
+		Namespaces:   namespaceInfo,
+		Capabilities: capabilities,
+	}
+
+	logger.Debug("User introspection completed", "user", cl.Sub, "namespaces", len(targetNamespaces), "allowed", len(userAllowed))
+	writeJSON(w, response)
 }
 
 // handleServerIntrospect provides server/cluster information (requires appropriate permissions)
-func handleServerIntrospect(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cl := fromContext(r)
-		if cl == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Require at least some level of cluster access to see server info
-		hasClusterAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
-		hasSessionAccess, _ := deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
-
-		if !hasClusterAccess && !hasSessionAccess {
-			http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
-			return
-		}
-
-		ctx := r.Context()
-		discover := r.URL.Query().Get("discover") == "1"
-
-		// Check server service account capabilities
-		serverCapabilities := buildServerCapabilities(ctx, deps)
-
-		clusterInfo := ClusterInfo{
-			Casbin: CasbinPermissions{
-				Namespaces: NamespacePermissions{
-					List:  serverCapabilities.Namespaces.List,
-					Watch: serverCapabilities.Namespaces.List, // Assume watch follows list
-				},
-			},
-			ServerServiceAccount: serverCapabilities,
-		}
-
-		// Server namespace info
-		serverNamespaceInfo := ServerNamespaceInfo{}
-
-		// Discover namespaces if requested and either user or server has permissions
-		if discover {
-			allNs, sessNs, err := discoverNamespaces(ctx, deps)
-			if err != nil {
-				logger.Warn("Failed to discover namespaces", "err", err, "user", cl.Sub)
-			} else {
-				// Filter namespaces based on user permissions if user doesn't have cluster access
-				if !hasClusterAccess {
-					// Filter to only namespaces the user can access
-					userAllowedNs, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
-					if err == nil {
-						allNs = filterNamespaces(allNs, userAllowedNs)
-						sessNs = filterNamespaces(sessNs, userAllowedNs)
-					}
-				}
-
-				serverNamespaceInfo.All = allNs
-				serverNamespaceInfo.WithSessions = sessNs
-			}
-		}
-
-		// Build system capabilities
-		systemCapabilities := SystemCapabilities{
-			MultiTenant: len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
-		}
-
-		// Version info (could be populated from build-time variables)
-		versionInfo := ServerVersionInfo{
-			Version: "1.0.0", // TODO: stamp to a variable during build
-		}
-
-		// Build server response
-		response := ServerIntrospectionResponse{
-			Cluster:      clusterInfo,
-			Namespaces:   serverNamespaceInfo,
-			Capabilities: systemCapabilities,
-			Version:      versionInfo,
-		}
-
-		logger.Debug("Server introspection completed", "user", cl.Sub, "discover", discover)
-		writeJSON(w, response)
+// @Summary Server introspection
+// @Description Get server and cluster information
+// @Tags user
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Param discover query string false "Whether to discover namespaces (0 or 1)"
+// @Success 200 {object} ServerIntrospectionResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Router /api/v1/introspect/server [get]
+func (h *handlers) serverIntrospect(w http.ResponseWriter, r *http.Request) {
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+
+	// Require at least some level of cluster access to see server info
+	hasClusterAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
+	hasSessionAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+
+	if !hasClusterAccess && !hasSessionAccess {
+		http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
+		return
+	}
+
+	ctx := r.Context()
+	discover := r.URL.Query().Get("discover") == "1"
+
+	// Check server service account capabilities
+	serverCapabilities := buildServerCapabilities(ctx, h.deps)
+
+	clusterInfo := ClusterInfo{
+		Casbin: CasbinPermissions{
+			Namespaces: NamespacePermissions{
+				List:  serverCapabilities.Namespaces.List,
+				Watch: serverCapabilities.Namespaces.List, // Assume watch follows list
+			},
+		},
+		ServerServiceAccount: serverCapabilities,
+	}
+
+	// Server namespace info
+	serverNamespaceInfo := ServerNamespaceInfo{}
+
+	// Discover namespaces if requested and either user or server has permissions
+	if discover {
+		allNs, sessNs, err := discoverNamespaces(ctx, h.deps)
+		if err != nil {
+			logger.Warn("Failed to discover namespaces", "err", err, "user", cl.Sub)
+		} else {
+			// Filter namespaces based on user permissions if user doesn't have cluster access
+			if !hasClusterAccess {
+				// Filter to only namespaces the user can access
+				userAllowedNs, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
+				if err == nil {
+					allNs = filterNamespaces(allNs, userAllowedNs)
+					sessNs = filterNamespaces(sessNs, userAllowedNs)
+				}
+			}
+
+			serverNamespaceInfo.All = allNs
+			serverNamespaceInfo.WithSessions = sessNs
+		}
+	}
+
+	// Build system capabilities
+	systemCapabilities := SystemCapabilities{
+		MultiTenant: len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
+	}
+
+	// Version info (could be populated from build-time variables)
+	versionInfo := ServerVersionInfo{
+		Version: "1.0.0", // TODO: stamp to a variable during build
+	}
+
+	// Build server response
+	response := ServerIntrospectionResponse{
+		Cluster:      clusterInfo,
+		Namespaces:   serverNamespaceInfo,
+		Capabilities: systemCapabilities,
+		Version:      versionInfo,
+	}
+
+	logger.Debug("Server introspection completed", "user", cl.Sub, "discover", discover)
+	writeJSON(w, response)
 }
 
 // Legacy handleIntrospect maintains backward compatibility by combining both responses
-func handleIntrospect(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cl := fromContext(r)
-		if cl == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Check if this is a request for user or server info specifically
-		infoType := r.URL.Query().Get("type")
-
-		switch infoType {
-		case "user":
-			handleUserIntrospect(deps)(w, r)
-			return
-		case "server":
-			handleServerIntrospect(deps)(w, r)
-			return
-		}
-
-		// Legacy behavior: return combined response but log deprecation warning
-		logger.Warn("Using deprecated combined introspect endpoint", "user", cl.Sub, "recommendation", "Use /api/v1/introspect/user or /api/v1/introspect/server")
-
-		// For backward compatibility, provide a combined response
-		// Get user info
-		userReq := r.Clone(r.Context())
-		userReq.URL.RawQuery = r.URL.Query().Encode()
-		userRec := httptest.NewRecorder()
-		handleUserIntrospect(deps)(userRec, userReq)
-
-		if userRec.Code != 200 {
-			http.Error(w, "failed to get user info", userRec.Code)
-			return
-		}
-
-		var userResp UserIntrospectionResponse
-		if err := json.NewDecoder(userRec.Body).Decode(&userResp); err != nil {
-			http.Error(w, "failed to parse user info", http.StatusInternalServerError)
-			return
-		}
-
-		// Try to get server info (may fail due to permissions)
-		serverReq := r.Clone(r.Context())
-		serverReq.URL.RawQuery = r.URL.Query().Encode()
-		serverRec := httptest.NewRecorder()
-		handleServerIntrospect(deps)(serverRec, serverReq)
-
-		var serverResp ServerIntrospectionResponse
-		if serverRec.Code == 200 {
-			_ = json.NewDecoder(serverRec.Body).Decode(&serverResp)
-		}
-
-		// Combine into legacy format
-		legacyResponse := map[string]interface{}{
-			"user":         userResp.User,
-			"domains":      userResp.Domains,
-			"namespaces":   combineNamespaceInfo(userResp.Namespaces, serverResp.Namespaces),
-			"capabilities": combineCapabilities(userResp.Capabilities, serverResp.Capabilities),
-		}
-
-		// Add server info if available
-		if serverRec.Code == 200 {
-			legacyResponse["cluster"] = serverResp.Cluster
-		}
-
-		writeJSON(w, legacyResponse)
+func (h *handlers) handleIntrospect(w http.ResponseWriter, r *http.Request) {
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+
+	// Check if this is a request for user or server info specifically
+	infoType := r.URL.Query().Get("type")
+
+	switch infoType {
+	case "user":
+		h.userIntrospect(w, r)
+		return
+	case "server":
+		h.serverIntrospect(w, r)
+		return
+	}
+
+	// Legacy behavior: return combined response but log deprecation warning
+	logger.Warn("Using deprecated combined introspect endpoint", "user", cl.Sub, "recommendation", "Use /api/v1/introspect/user or /api/v1/introspect/server")
+
+	// For backward compatibility, provide a combined response
+	// Get user info
+	userReq := r.Clone(r.Context())
+	userReq.URL.RawQuery = r.URL.Query().Encode()
+	userRec := httptest.NewRecorder()
+	h.userIntrospect(userRec, userReq)
+
+	if userRec.Code != 200 {
+		http.Error(w, "failed to get user info", userRec.Code)
+		return
+	}
+
+	var userResp UserIntrospectionResponse
+	if err := json.NewDecoder(userRec.Body).Decode(&userResp); err != nil {
+		http.Error(w, "failed to parse user info", http.StatusInternalServerError)
+		return
+	}
+
+	// Try to get server info (may fail due to permissions)
+	serverReq := r.Clone(r.Context())
+	serverReq.URL.RawQuery = r.URL.Query().Encode()
+	serverRec := httptest.NewRecorder()
+	h.serverIntrospect(serverRec, serverReq)
+
+	var serverResp ServerIntrospectionResponse
+	if serverRec.Code == 200 {
+		_ = json.NewDecoder(serverRec.Body).Decode(&serverResp)
+	}
+
+	// Combine into legacy format
+	legacyResponse := map[string]interface{}{
+		"user":         userResp.User,
+		"domains":      userResp.Domains,
+		"namespaces":   combineNamespaceInfo(userResp.Namespaces, serverResp.Namespaces),
+		"capabilities": combineCapabilities(userResp.Capabilities, serverResp.Capabilities),
+	}
+
+	// Add server info if available
+	if serverRec.Code == 200 {
+		legacyResponse["cluster"] = serverResp.Cluster
+	}
+
+	writeJSON(w, legacyResponse)
+
 }
 
 // Helper functions for legacy compatibility
@@ -399,62 +434,80 @@ func combineCapabilities(user UserCapabilities, system SystemCapabilities) map[s
 }
 
 // Returns the current subject + roles from the JWT.
-func handleMe() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cl := fromContext(r)
-		if cl == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		writeJSON(w, map[string]any{
-			"sub":      cl.Sub,
-			"username": cl.Username,
-			"email":    cl.Email,
-			"roles":    cl.Roles,
-			"provider": cl.Provider,
-			"exp":      cl.ExpiresAt,
-			"iat":      cl.IssuedAt,
-		})
+// @Summary Get current user
+// @Description Get information about the current authenticated user
+// @Tags user
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} UserInfo
+// @Failure 401 {object} ErrorResponse
+// @Router /api/v1/me [get]
+func (h *handlers) handleMe(w http.ResponseWriter, r *http.Request) {
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+	writeJSON(w, map[string]any{
+		"sub":      cl.Sub,
+		"username": cl.Username,
+		"email":    cl.Email,
+		"roles":    cl.Roles,
+		"provider": cl.Provider,
+		"exp":      cl.ExpiresAt,
+		"iat":      cl.IssuedAt,
+	})
 }
 
 // handleUserPermissions - GET /api/v1/user/permissions (detailed user permission info)
-func handleUserPermissions(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cl := fromContext(r)
-		if cl == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Parse parameters
-		namespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
-		actions := splitCSVQuery(r.URL.Query().Get("actions"))
-
-		if len(actions) == 0 {
-			actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
-		}
-
-		// If no namespaces specified, discover user's allowed namespaces
-		if len(namespaces) == 0 {
-			ctx := r.Context()
-			discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, deps, cl.Sub, cl.Roles)
-			if err != nil {
-				logger.Warn("Failed to discover namespaces for user permissions", "user", cl.Sub, "err", err)
-				namespaces = []string{"default", "*"} // fallback
-			} else {
-				namespaces = append(discoveredNamespaces, "*") // always include cluster-wide
-			}
-		}
-
-		// Get comprehensive user permissions
-		permissions, err := deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, namespaces, actions)
-		if err != nil {
-			logger.Error("Failed to get user permissions", "err", err, "user", cl.Sub)
-			errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
-			return
-		}
-
-		writeJSON(w, permissions)
+// @Summary User permissions
+// @Description Get detailed user permissions
+// @Tags user
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Param namespaces query string false "Comma-separated list of namespaces"
+// @Param actions query string false "Comma-separated list of actions"
+// @Success 200 {object} UserPermissions
+// @Failure 401 {object} ErrorResponse
+// @Router /api/v1/user/permissions [get]
+func (h *handlers) handleUserPermissions(w http.ResponseWriter, r *http.Request) {
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+
+	// Parse parameters
+	namespaces := splitCSVQuery(r.URL.Query().Get("namespaces"))
+	actions := splitCSVQuery(r.URL.Query().Get("actions"))
+
+	if len(actions) == 0 {
+		actions = []string{"get", "list", "watch", "create", "update", "delete", "scale"}
+	}
+
+	// If no namespaces specified, discover user's allowed namespaces
+	if len(namespaces) == 0 {
+		ctx := r.Context()
+		discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
+		if err != nil {
+			logger.Warn("Failed to discover namespaces for user permissions", "user", cl.Sub, "err", err)
+			namespaces = []string{"default", "*"} // fallback
+		} else {
+			namespaces = append(discoveredNamespaces, "*") // always include cluster-wide
+		}
+	}
+
+	// Get comprehensive user permissions
+	permissions, err := h.deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, namespaces, actions)
+	if err != nil {
+		logger.Error("Failed to get user permissions", "err", err, "user", cl.Sub)
+		errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
+		return
+	}
+
+	writeJSON(w, permissions)
 }

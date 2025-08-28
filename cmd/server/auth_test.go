@@ -29,7 +29,7 @@ func TestSessionJWT(t *testing.T) {
 }
 
 func TestRequireAPIToken_Cookie(t *testing.T) {
-	cfg := &configLike{
+	cfg := &authConfigLike{
 		JWTSecret:         "zzz",
 		SessionCookieName: "codespace_session",
 	}

@@ -14,7 +14,7 @@ import (
 func demonstrateAPIUsage() {
 		Example HTTP handler usage:
 
-		func handleCreateSession(deps *serverDeps) http.HandlerFunc {
+		func (h *handlers) handleCreateSession(deps *serverDeps) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				// Extract session creation request
 				var req SessionCreateRequest
@@ -33,7 +33,7 @@ func demonstrateAPIUsage() {
 		}
 
 		// For operations requiring multiple permissions:
-		func handleBulkDelete(deps *serverDeps) http.HandlerFunc {
+		func (h *handlers) handleBulkDelete(deps *serverDeps) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				var req BulkDeleteRequest
 				json.NewDecoder(r.Body).Decode(&req)
@@ -196,11 +196,10 @@ func ExampleRBACUsage() {
 
 	// 1. User Authentication (handled by auth handlers)
 	user := &claims{
-		Sub:      "alice@company.com",
 		Username: "alice",
+		Sub:      "abcd123-efgh5678",
 		Email:    "alice@company.com",
 		Roles:    []string{"codespace-editor"},
-		Groups:   []string{"/team-alpha"},
 		Provider: "oidc",
 	}
 

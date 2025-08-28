@@ -1,43 +1,87 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/swaggo/swag"
 )
 
 // setupHandlers creates the HTTP handler with comprehensive RBAC
 func setupHandlers(deps *serverDeps) *http.ServeMux {
 	mux := http.NewServeMux()
+	h := newHandlers(deps)
 
 	// === Health and Status Endpoints (No Auth Required) ===
-	mux.HandleFunc("/healthz", handleHealthz)
-	mux.HandleFunc("/readyz", handleReadyz(deps))
+	mux.HandleFunc("/healthz", h.handleHealthz)
+	mux.HandleFunc("/readyz", h.handleReadyz)
 
 	// === Authentication Endpoints (Handled separately) ===
-	// These are registered by registerAuthHandlers()
+	registerAuthHandlers(mux, deps)
 
-	// === API v1 Endpoints (Auth Required) ===
+	// === Session Operations ===
+	mux.HandleFunc("/api/v1/server/sessions", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			h.handleListSessions(w, r)
+		case http.MethodPost:
+			h.handleCreateSession(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
-	// Session CRUD operations
-	mux.HandleFunc("/api/v1/server/sessions", handleSessionOperations(deps))
-	mux.HandleFunc("/api/v1/server/sessions/", handleSessionOperationsWithPath(deps))
+	// Session CRUD with path parameters
+	mux.HandleFunc("/api/v1/server/sessions/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/server/sessions/")
+		parts := strings.Split(path, "/")
 
-	// Session streaming (Server-Sent Events)
-	mux.HandleFunc("/api/v1/stream/sessions", handleStreamSessions(deps))
+		if len(parts) < 2 {
+			http.Error(w, "invalid path - expected /api/v1/server/sessions/{namespace}/{name}[/operation]", http.StatusBadRequest)
+			return
+		}
 
-	// User and system introspection - UPDATED WITH SPLIT ENDPOINTS
-	mux.HandleFunc("/api/v1/introspect", handleIntrospect(deps))
-	mux.HandleFunc("/api/v1/introspect/user", handleUserIntrospect(deps))
-	mux.HandleFunc("/api/v1/introspect/server", handleServerIntrospect(deps))
-	mux.HandleFunc("/api/v1/user/permissions", handleUserPermissions(deps))
+		// Check if this is a scale operation
+		if len(parts) == 3 && parts[2] == "scale" {
+			h.handleScaleSession(w, r)
+			return
+		}
 
-	// Admin endpoints (require elevated permissions)
-	mux.HandleFunc("/api/v1/admin/users", handleAdminUsers(deps))
-	mux.HandleFunc("/api/v1/admin/rbac/reload", handleRBACReload(deps))
-	mux.HandleFunc("/api/v1/admin/system/info", handleSystemInfo(deps))
+		// Regular CRUD operations on specific session
+		switch r.Method {
+		case http.MethodGet:
+			h.handleGetSession(w, r)
+		case http.MethodPut:
+			h.handleUpdateSession(w, r)
+		case http.MethodPatch:
+			h.handleUpdateSession(w, r)
+		case http.MethodDelete:
+			h.handleDeleteSession(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// === Session Streaming ===
+	mux.HandleFunc("/api/v1/stream/sessions", h.handleStreamSessions)
+
+	// === User and system introspection ===
+	mux.HandleFunc("/api/v1/me", h.handleMe)
+	mux.HandleFunc("/api/v1/introspect", h.handleIntrospect)
+	mux.HandleFunc("/api/v1/introspect/user", h.userIntrospect)
+	mux.HandleFunc("/api/v1/introspect/server", h.serverIntrospect)
+	mux.HandleFunc("/api/v1/user/permissions", h.handleUserPermissions)
+
+	// === Admin endpoints ===
+	mux.HandleFunc("/api/v1/admin/users", h.adminUsers)
+	mux.HandleFunc("/api/v1/admin/rbac/reload", h.handleRBACReload)
+	mux.HandleFunc("/api/v1/admin/system/info", h.systemInfo)
+
+	// === OpenAPI Documentation (if enabled) ===
+	setupOpenAPIHandlers(mux, h)
 
 	// === Static UI ===
 	setupStaticUI(mux)
@@ -45,299 +89,176 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	return mux
 }
 
-// === Admin Endpoints ===
-
-// handleAdminUsers - GET /api/v1/admin/users (requires admin privileges)
-func handleAdminUsers(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Require admin permissions for user management
-		cl, ok := mustCan(deps, w, r, "*", "admin", "*")
-		if !ok {
-			return
-		}
-
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// This would typically integrate with your user management system
-		// For now, return basic info about roles and permissions
-		users := []map[string]interface{}{
-			{
-				"subject": cl.Sub,
-				"roles":   cl.Roles,
-				"active":  true,
-			},
-		}
-
-		response := map[string]interface{}{
-			"users": users,
-			"total": len(users),
-		}
-
-		logger.Info("Listed users", "admin", cl.Sub)
-		writeJSON(w, response)
-	}
-}
-
-// handleRBACReload - POST /api/v1/admin/rbac/reload (force reload RBAC policies)
-func handleRBACReload(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Require admin permissions for RBAC management
-		cl, ok := mustCan(deps, w, r, "*", "admin", "*")
-		if !ok {
-			return
-		}
-
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Force reload RBAC policies
-		if err := deps.rbac.reload(); err != nil {
-			logger.Error("Failed to reload RBAC", "err", err, "admin", cl.Sub)
-			errJSON(w, fmt.Errorf("failed to reload RBAC policies: %w", err))
-			return
-		}
-
-		logger.Info("RBAC policies reloaded", "admin", cl.Sub)
-		writeJSON(w, map[string]string{
-			"status":  "success",
-			"message": "RBAC policies reloaded successfully",
-		})
-	}
-}
-
-// handleSystemInfo - GET /api/v1/admin/system/info (system information for admins)
-func handleSystemInfo(deps *serverDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Require admin permissions for system info
-		cl, ok := mustCan(deps, w, r, "*", "admin", "*")
-		if !ok {
-			return
-		}
-
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Gather system information
-		info := map[string]interface{}{
-			"version": "1.0.0", // This should come from build info
-			"rbac": map[string]interface{}{
-				"modelPath":  deps.rbac.modelPath,
-				"policyPath": deps.rbac.policyPath,
-				"status":     "active",
-			},
-			"kubernetes": map[string]interface{}{
-				"gvr": map[string]string{
-					"group":    gvr.Group,
-					"version":  gvr.Version,
-					"resource": gvr.Resource,
-				},
-			},
-			"authentication": map[string]interface{}{
-				"localLoginEnabled": deps.config.EnableLocalLogin,
-				"oidcConfigured":    deps.config.OIDCIssuerURL != "",
-			},
-		}
-
-		logger.Info("Retrieved system info", "admin", cl.Sub)
-		writeJSON(w, info)
-	}
-}
-
-// === RBAC Middleware and Helpers ===
-
-// requireAdminAccess middleware that requires admin-level permissions
-func requireAdminAccess(deps *serverDeps, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := mustCan(deps, w, r, "*", "admin", "*"); !ok {
-			return
-		}
-		next(w, r)
-	}
-}
-
-// requireNamespaceAccess middleware that checks namespace-level permissions
-func requireNamespaceAccess(deps *serverDeps, resource, action string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract namespace from URL path or query parameters
-		namespace := extractNamespaceFromRequest(r)
-		if namespace == "" {
-			namespace = "default"
-		}
-
-		if _, ok := mustCan(deps, w, r, resource, action, namespace); !ok {
-			return
-		}
-		next(w, r)
-	}
-}
-
-// extractNamespaceFromRequest extracts namespace from URL path or query parameters
-func extractNamespaceFromRequest(r *http.Request) string {
-	// Try query parameter first
-	if ns := r.URL.Query().Get("namespace"); ns != "" {
-		return ns
+// setupOpenAPIHandlers conditionally sets up OpenAPI based on build
+func setupOpenAPIHandlers(mux *http.ServeMux, h *handlers) {
+	// Check if docs are available (swag will be empty if not built with docs)
+	spec, err := swag.ReadDoc()
+	if err != nil || spec == "" {
+		logger.Debug("OpenAPI documentation not available - build with -tags docs to enable")
+		return
 	}
 
-	// Try to extract from path
-	if strings.Contains(r.URL.Path, "/sessions/") {
-		parts := strings.Split(r.URL.Path, "/")
-		for i, part := range parts {
-			if part == "sessions" && i+1 < len(parts) {
-				return parts[i+1]
-			}
+	logger.Info("OpenAPI documentation enabled")
+
+	// OpenAPI spec endpoint (admin-protected)
+	mux.HandleFunc("/api/openapi.json", func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := mustCan(h.deps, w, r, "*", "admin", "*"); !ok {
+			return
 		}
-	}
+		h.handleOpenAPISpec(w, r)
+	})
 
-	return ""
-}
+	// Swagger UI (admin-protected)
+	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := mustCan(h.deps, w, r, "*", "admin", "*"); !ok {
+			return
+		}
+		h.handleSwaggerUI(w, r)
+	})
 
-// === Utility Functions ===
-
-// corsMiddleware adds CORS headers with credentials support
-func corsMiddleware(allowOrigin string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if allowOrigin != "" {
-				w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-			}
-			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
-
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// rateLimitMiddleware provides basic rate limiting (placeholder implementation)
-func rateLimitMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Implement proper rate limiting based on user/IP
-		// For now, just pass through
-		next.ServeHTTP(w, r)
+	// Redirect /api/docs -> /api/docs/
+	mux.HandleFunc("/api/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/docs/", http.StatusMovedPermanently)
 	})
 }
 
-// securityHeadersMiddleware adds security headers
-func securityHeadersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+// handleSwaggerUI serves the Swagger UI
+func (h *handlers) handleSwaggerUI(w http.ResponseWriter, r *http.Request) {
+	// Simple embedded Swagger UI HTML
+	html := `<!DOCTYPE html>
+<html>
+<head>
+  <title>Codespace API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css" />
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        docExpansion: "list",
+        tagsSorter: "alpha",
+        operationsSorter: "alpha"
+      });
+    };
+  </script>
+</body>
+</html>`
 
-		// Only add HSTS if we're on HTTPS
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		}
-
-		next.ServeHTTP(w, r)
-	})
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Write([]byte(html))
 }
 
-// === Enhanced Auth Gate ===
+// Admin endpoints implementation
 
-// authGateEnhanced provides more sophisticated authentication routing
-func authGateEnhanced(cfg *configLike, next http.Handler) http.Handler {
-	authed := requireAPIToken(cfg, next)
+func (h *handlers) adminUsers(w http.ResponseWriter, r *http.Request) {
+	// Require admin permissions for user management
+	cl, ok := mustCan(h.deps, w, r, "*", "admin", "*")
+	if !ok {
+		return
+	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-		// Public endpoints (no auth required)
-		publicPaths := []string{
-			"/healthz",
-			"/readyz",
-			"/",
-		}
+	// This would typically integrate with your user management system
+	users := []map[string]interface{}{
+		{
+			"subject": cl.Sub,
+			"roles":   cl.Roles,
+			"active":  true,
+		},
+	}
 
-		publicPrefixes := []string{
-			"/auth/",
-			"/assets/",
-			"/static/",
-		}
+	response := map[string]interface{}{
+		"users": users,
+		"total": len(users),
+	}
 
-		// Check if this is a public path
-		for _, publicPath := range publicPaths {
-			if path == publicPath {
-				next.ServeHTTP(w, r)
-				return
-			}
-		}
-
-		// Check if this is a public prefix
-		for _, prefix := range publicPrefixes {
-			if strings.HasPrefix(path, prefix) {
-				next.ServeHTTP(w, r)
-				return
-			}
-		}
-
-		// API endpoints require authentication
-		if strings.HasPrefix(path, "/api/") {
-			authed.ServeHTTP(w, r)
-			return
-		}
-
-		// Default to serving static content (SPA)
-		next.ServeHTTP(w, r)
-	})
+	logger.Info("Listed users", "admin", cl.Sub)
+	writeJSON(w, response)
 }
 
-// === Integration Point ===
-
-// buildMiddlewareChain creates the complete middleware chain for the server
-func buildMiddlewareChain(cfg *configLike, allowOrigin string, handler http.Handler) http.Handler {
-	// Build the chain from outside to inside:
-	// securityHeaders( cors( rateLimit( authGate( logRequests( handler )))))
-
-	chain := handler
-	chain = logRequests(chain)
-	chain = authGateEnhanced(cfg, chain)
-	chain = rateLimitMiddleware(chain)
-	chain = corsMiddleware(allowOrigin)(chain)
-	chain = securityHeadersMiddleware(chain)
-
-	return chain
+// swagDocAvailable checks if swagger docs are available
+func swagDocAvailable() bool {
+	spec, err := swag.ReadDoc()
+	return err == nil && spec != ""
 }
 
-// Serve SPA/static from embedded ui-dist/*
+// setupStaticUI serves the SPA/static files
 func setupStaticUI(mux *http.ServeMux) {
 	ui, err := fsSub(staticFS, "static")
 	if err != nil {
 		logger.Fatal("Failed to create static file system", "err", err)
 	}
 	files := http.FileServer(ui)
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("DEBUG") == "true" {
 			logger.Printf("Static request: %s", r.URL.Path)
 		}
+
+		// Serve actual files (with extensions) directly
 		if path.Ext(r.URL.Path) != "" && r.URL.Path != "/" {
 			files.ServeHTTP(w, r)
 			return
 		}
+
+		// For routes without extensions, serve index.html (SPA behavior)
 		index, err := staticFS.ReadFile("static/index.html")
 		if err != nil {
 			http.Error(w, "index.html not found", http.StatusNotFound)
 			return
 		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(index)
+		w.Write(index)
 	})
+}
+func (h *handlers) handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
+	spec, err := swag.ReadDoc()
+	if err != nil || spec == "" {
+		http.Error(w, "OpenAPI spec not available", http.StatusNotFound)
+		if err != nil {
+			logger.Error("Error reading OpenAPI spec:", err)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+
+	if r.URL.Query().Get("pretty") == "1" {
+		var specMap map[string]interface{}
+		if json.Unmarshal([]byte(spec), &specMap) == nil {
+			if prettyJSON, err := json.MarshalIndent(specMap, "", "  "); err == nil {
+				w.Write(prettyJSON)
+				return
+			}
+		}
+	}
+	w.Write([]byte(spec))
 }
