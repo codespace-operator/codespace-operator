@@ -8,18 +8,32 @@ import (
 	"crypto/subtle"
 	"embed"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
+)
+
+const (
+	LabelCreatedBy         = "codespace.dev/created-by"     // hashed, label-safe
+	AnnotationCreatedBy    = "codespace.dev/created-by"     // raw subject
+	AnnotationCreatedBySig = "codespace.dev/created-by.sig" // optional: HMAC of raw subject
 )
 
 type responseWriter struct {
@@ -205,24 +219,14 @@ func splitCSVQuery(s string) []string {
 // buildServerCapabilities manually checks what the server's service account can do
 // by attempting to list namespaces and sessions
 func buildServerCapabilities(ctx context.Context, deps *serverDeps) ServiceAccountInfo {
-	// Check namespace permissions by trying to list namespaces
 	nsPerms := NamespacePermissions{
 		List: canListNamespaces(ctx, deps),
 	}
-
-	// Check session resource permissions by trying operations
-	sessionPerms := make(map[string]bool)
-	sessionVerbs := []string{"get", "list", "watch", "create", "update", "delete", "patch"}
-
-	for _, verb := range sessionVerbs {
-		allowed := canPerformSessionAction(ctx, deps, verb)
-		sessionPerms[verb] = allowed
+	sessionPerms := map[string]bool{}
+	for _, verb := range []string{"get", "list", "watch", "create", "update", "delete", "patch"} {
+		sessionPerms[verb] = canPerformSessionAction(ctx, deps, verb)
 	}
-
-	return ServiceAccountInfo{
-		Namespaces: nsPerms,
-		Session:    sessionPerms,
-	}
+	return ServiceAccountInfo{Namespaces: nsPerms, Session: sessionPerms}
 }
 
 // canListNamespaces tests if the server can list namespaces
@@ -239,164 +243,120 @@ func canListNamespaces(ctx context.Context, deps *serverDeps) bool {
 func canPerformSessionAction(ctx context.Context, deps *serverDeps, verb string) bool {
 	switch verb {
 	case "list":
-		// Try to list sessions in default namespace
-		ul, err := deps.dyn.Resource(gvr).Namespace("default").List(ctx, metav1.ListOptions{Limit: 1})
-		if err != nil {
+		var sl codespacev1.SessionList
+		if err := deps.client.List(ctx, &sl, client.InNamespace("default")); err != nil {
 			logger.Debug("Server cannot list sessions", "err", err)
 			return false
 		}
-		return ul != nil
-
-	case "get":
-		// If we can list, we can likely get as well
+		return true
+	case "get", "watch", "create", "update", "delete", "patch":
+		// Heuristic: if we can list, we assume the service account is set up for the rest per your RBAC policy.
 		return canPerformSessionAction(ctx, deps, "list")
-
-	case "watch":
-		// If we can list, we can likely watch as well
-		return canPerformSessionAction(ctx, deps, "list")
-
-	case "create", "update", "delete", "patch":
-		// These are write operations - we'll assume they follow list permissions
-		// In a real implementation, you might want to check against specific RBAC rules
-		// or try a dry-run operation
-		return canPerformSessionAction(ctx, deps, "list")
-
 	default:
 		return false
 	}
 }
 
-// discoverNamespaces finds all namespaces and those with sessions
-func discoverNamespaces(ctx context.Context, deps *serverDeps) ([]string, []string, error) {
-	// Get all namespaces - only if server has permission
+// discoverNamespaces finds all namespaces server has rights to (by given ServiceAccount) also finds namespaces with sessions
+func discoverNamespaces(ctx context.Context, deps *serverDeps) ([]string, error) {
+	// all namespaces (typed)
 	var allNamespaces []string
-
 	if canListNamespaces(ctx, deps) {
 		var nsList corev1.NamespaceList
-		if err := deps.client.List(ctx, &nsList); err != nil {
-			logger.Warn("Failed to list namespaces despite permission check", "err", err)
-		} else {
+		if err := deps.client.List(ctx, &nsList); err == nil {
 			allNamespaces = make([]string, 0, len(nsList.Items))
 			for _, ns := range nsList.Items {
 				allNamespaces = append(allNamespaces, ns.Name)
 			}
 			sort.Strings(allNamespaces)
-			logger.Debug("Discovered namespaces", "count", len(allNamespaces), "namespaces", allNamespaces)
+		} else {
+			logger.Warn("Failed to list namespaces despite permission check", "err", err)
 		}
-	} else {
-		logger.Debug("Server cannot list namespaces - no cluster permissions")
 	}
 
+	if len(allNamespaces) == 0 {
+		allNamespaces = []string{"default"}
+
+	}
+	return allNamespaces, nil
+}
+
+// discoverNamespacesWithSessions finds namespaces with sessions
+func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]string, error) {
 	// Find namespaces with sessions - try cluster-wide list first
-	var sessionNamespaces []string
-
-	ul, err := deps.dyn.Resource(gvr).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		// If cluster-wide list fails, try to discover from known namespaces
-		logger.Debug("Cannot list sessions cluster-wide, trying per-namespace discovery", "err", err)
-
-		// If we have namespace list, check each one
-		if len(allNamespaces) > 0 {
-			nsSet := make(map[string]struct{})
-			for _, ns := range allNamespaces {
-				nsList, err := deps.dyn.Resource(gvr).Namespace(ns).List(ctx, metav1.ListOptions{Limit: 1})
-				if err != nil {
-					continue // Skip namespaces we can't access
-				}
-				if len(nsList.Items) > 0 {
-					nsSet[ns] = struct{}{}
-				}
+	var allNamespaces []string
+	if canListNamespaces(ctx, deps) {
+		var nsList corev1.NamespaceList
+		if err := deps.client.List(ctx, &nsList); err == nil {
+			allNamespaces = make([]string, 0, len(nsList.Items))
+			for _, ns := range nsList.Items {
+				allNamespaces = append(allNamespaces, ns.Name)
 			}
-
-			for ns := range nsSet {
-				sessionNamespaces = append(sessionNamespaces, ns)
-			}
+			sort.Strings(allNamespaces)
 		} else {
-			// Fallback: check common namespaces
-			commonNamespaces := []string{"default", "kube-system", "kube-public", "codespace-operator-system"}
-			nsSet := make(map[string]struct{})
-			for _, ns := range commonNamespaces {
-				nsList, err := deps.dyn.Resource(gvr).Namespace(ns).List(ctx, metav1.ListOptions{Limit: 1})
-				if err != nil {
-					continue
-				}
-				if len(nsList.Items) > 0 {
-					nsSet[ns] = struct{}{}
-				}
-			}
-
-			for ns := range nsSet {
-				sessionNamespaces = append(sessionNamespaces, ns)
-			}
+			logger.Warn("Failed to list namespaces despite permission check", "err", err)
 		}
-	} else {
-		// Cluster-wide list succeeded, extract unique namespaces
-		nsSet := make(map[string]struct{})
-		for _, item := range ul.Items {
-			nsSet[item.GetNamespace()] = struct{}{}
+	}
+	var sessionNamespaces []string
+	var sl codespacev1.SessionList
+	if err := deps.client.List(
+		ctx,
+		&sl,
+		client.MatchingLabels{InstanceIDLabel: deps.instanceID},
+	); err == nil {
+		nsSet := map[string]struct{}{}
+		for _, s := range sl.Items {
+			nsSet[s.Namespace] = struct{}{}
 		}
-
 		for ns := range nsSet {
 			sessionNamespaces = append(sessionNamespaces, ns)
 		}
-		logger.Debug("Discovered session namespaces via cluster-wide list", "count", len(sessionNamespaces), "namespaces", sessionNamespaces)
+		sort.Strings(sessionNamespaces)
+	} else {
+		// fallback: try per-namespace (only if we discovered them)
+		nsSet := map[string]struct{}{}
+		for _, ns := range allNamespaces {
+			var one codespacev1.SessionList
+			if err := deps.client.List(
+				ctx, &one,
+				client.InNamespace(ns),
+				client.MatchingLabels{InstanceIDLabel: deps.instanceID},
+				client.Limit(1),
+			); err == nil && len(one.Items) > 0 {
+				nsSet[ns] = struct{}{}
+			}
+		}
+		for ns := range nsSet {
+			sessionNamespaces = append(sessionNamespaces, ns)
+		}
+		sort.Strings(sessionNamespaces)
 	}
 
-	sort.Strings(sessionNamespaces)
-
-	// If we have no namespaces, add some defaults to prevent empty dropdowns
-	if len(allNamespaces) == 0 {
-		allNamespaces = []string{"default"}
-		logger.Debug("No namespaces discovered, using default fallback")
-	}
 	if len(sessionNamespaces) == 0 {
 		sessionNamespaces = []string{"default"}
-		logger.Debug("No session namespaces discovered, using default fallback")
 	}
-
-	return allNamespaces, sessionNamespaces, nil
+	return sessionNamespaces, nil
 }
 
 // getAllowedNamespacesForUser determines which namespaces a user can access
 // by checking their RBAC permissions against known namespaces
 func getAllowedNamespacesForUser(ctx context.Context, deps *serverDeps, subject string, roles []string) ([]string, error) {
 	// First, get all available namespaces
-	allNamespaces, sessionNamespaces, err := discoverNamespaces(ctx, deps)
+	allNamespaces, err := discoverNamespaces(ctx, deps)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover namespaces: %w", err)
 	}
-
-	// Combine all known namespaces (prioritize those with sessions)
-	candidateNamespaces := make([]string, 0, len(allNamespaces)+len(sessionNamespaces))
-	seen := make(map[string]bool)
-
-	// Add session namespaces first
-	for _, ns := range sessionNamespaces {
-		if !seen[ns] {
-			candidateNamespaces = append(candidateNamespaces, ns)
-			seen[ns] = true
-		}
-	}
-
-	// Add all other namespaces
-	for _, ns := range allNamespaces {
-		if !seen[ns] {
-			candidateNamespaces = append(candidateNamespaces, ns)
-			seen[ns] = true
-		}
-	}
-
 	// Check RBAC permissions for each namespace
 	allowedNamespaces := []string{}
 
 	// Always check cluster-wide access first
 	if hasClusterAccess, _ := deps.rbac.Enforce(subject, roles, "session", "list", "*"); hasClusterAccess {
 		// User has cluster-wide access, return all namespaces
-		return candidateNamespaces, nil
+		return allNamespaces, nil
 	}
 
 	// Check each namespace individually
-	for _, ns := range candidateNamespaces {
+	for _, ns := range allNamespaces {
 		if canAccess, _ := deps.rbac.CanAccessNamespace(subject, roles, ns); canAccess {
 			allowedNamespaces = append(allowedNamespaces, ns)
 		}
@@ -463,4 +423,121 @@ func extractNamespaceFromRequest(r *http.Request) string {
 	}
 
 	return ""
+}
+
+func inClusterNamespace() string {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns
+	}
+	if b, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		if s := strings.TrimSpace(string(b)); s != "" {
+			return s
+		}
+	}
+	return "default"
+}
+
+// Try to resolve a stable owner (Deployment > StatefulSet > ReplicaSet > Pod).
+func owningControllerAnchor(ctx context.Context, cl client.Client) (kind, name, uid string) {
+	ns := inClusterNamespace()
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		podName, _ = os.Hostname() // usually equals pod name in k8s
+	}
+	var pod corev1.Pod
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, &pod); err != nil {
+		return "Pod", podName, "" // fallback: still deterministic-ish
+	}
+	// default to the pod itself
+	kind, name, uid = "Pod", pod.Name, string(pod.UID)
+	for _, or := range pod.OwnerReferences {
+		if or.Controller == nil || !*or.Controller {
+			continue
+		}
+		switch or.Kind {
+		case "ReplicaSet":
+			var rs appsv1.ReplicaSet
+			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: or.Name}, &rs); err == nil {
+				// prefer Deployment if present
+				for _, rsor := range rs.OwnerReferences {
+					if rsor.Controller != nil && *rsor.Controller && rsor.Kind == "Deployment" {
+						var dep appsv1.Deployment
+						if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: rsor.Name}, &dep); err == nil {
+							return "Deployment", dep.Name, string(dep.UID)
+						}
+					}
+				}
+				return "ReplicaSet", rs.Name, string(rs.UID)
+			}
+		case "StatefulSet":
+			var sts appsv1.StatefulSet
+			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: or.Name}, &sts); err == nil {
+				return "StatefulSet", sts.Name, string(sts.UID)
+			}
+		}
+	}
+	return kind, name, uid
+}
+
+// ensureInstallationID creates/gets a per-instance ConfigMap and returns a stable id.
+// The ConfigMap name is derived from the owning controller UID to avoid collisions
+// between multiple instances in the same namespace.
+func ensureInstallationID(ctx context.Context, cl client.Client) (string, error) {
+	ns := inClusterNamespace()
+	kind, name, uid := owningControllerAnchor(ctx, cl)
+
+	anchorParts := []string{ns, "server", kind}
+	if uid != "" {
+		anchorParts = append(anchorParts, uid)
+	} else {
+		anchorParts = append(anchorParts, name)
+	}
+	anchor := strings.Join(anchorParts, ":")
+	cmName := fmt.Sprintf("%s-%s", cmPrefixName, shortHash(anchor))
+
+	cm := &corev1.ConfigMap{}
+	key := client.ObjectKey{Namespace: ns, Name: cmName}
+	if err := cl.Get(ctx, key, cm); err == nil {
+		if id := cm.Data["id"]; id != "" {
+			return id, nil
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return "", err
+	}
+
+	id := randB64(18)
+	cm = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cmName,
+			Namespace: ns,
+			Labels: map[string]string{
+				"app.kubernetes.io/part-of":    "codespace-operator",
+				"app.kubernetes.io/component":  "server",
+				"app.kubernetes.io/managed-by": "codespace-operator",
+				"codespace.dev/owner-kind":     kind,
+				"codespace.dev/owner-name":     name,
+			},
+		},
+		Data: map[string]string{"id": id},
+	}
+	if err := cl.Create(ctx, cm); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			// concurrent creator—re-read and return
+			if err := cl.Get(ctx, key, cm); err == nil && cm.Data["id"] != "" {
+				return cm.Data["id"], nil
+			}
+		}
+		return "", err
+	}
+	return id, nil
+}
+
+// SubjectToLabelID returns a stable, label-safe ID for a user/subject.
+// Format: s256-<40 hex> (first 20 bytes of SHA-256 => 40 hex chars). Total length 45.
+func SubjectToLabelID(sub string) string {
+	if sub == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(sub))
+	return "s256-" + hex.EncodeToString(sum[:20]) // 160-bit truncation; label-safe; <=63
 }

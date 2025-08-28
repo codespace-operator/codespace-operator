@@ -294,9 +294,13 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 
 	// Discover namespaces if requested and either user or server has permissions
 	if discover {
-		allNs, sessNs, err := discoverNamespaces(ctx, h.deps)
+		allNs, err := discoverNamespaces(ctx, h.deps)
 		if err != nil {
 			logger.Warn("Failed to discover namespaces", "err", err, "user", cl.Sub)
+		}
+		sessNs, err := discoverNamespacesWithSessions(ctx, h.deps)
+		if err != nil {
+			logger.Warn("Failed to discover session namespaces", "err", err, "user", cl.Sub)
 		} else {
 			// Filter namespaces based on user permissions if user doesn't have cluster access
 			if !hasClusterAccess {

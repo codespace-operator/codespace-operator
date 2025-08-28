@@ -9,6 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -107,18 +108,13 @@ func (h *handlers) handleSessionOperationsWithPath(w http.ResponseWriter, r *htt
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/server/sessions [get]
 func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
-
-	// Determine target namespace(s)
 	namespace := q(r, "namespace", "default")
 	allNamespaces := r.URL.Query().Get("all") == "true"
 
-	// For "all namespaces", use "*" as domain
 	domain := namespace
 	if allNamespaces {
 		domain = "*"
 	}
-
-	// Check RBAC permissions
 	cl, ok := mustCan(h.deps, w, r, "session", "list", domain)
 	if !ok {
 		return
@@ -128,58 +124,48 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	var namespaces []string
 
 	if allNamespaces {
-		// List across all namespaces (requires cluster-level or * domain permission)
-		ul, err := h.deps.dyn.Resource(gvr).List(r.Context(), metav1.ListOptions{})
-		if err != nil {
+		var sl codespacev1.SessionList
+		// ↓ Push label filter to API
+		if err := h.deps.client.List(
+			r.Context(),
+			&sl,
+			client.MatchingLabels{InstanceIDLabel: h.deps.instanceID},
+		); err != nil {
 			logger.Error("Failed to list sessions across all namespaces", "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions: %w", err))
 			return
 		}
-
-		// Convert unstructured to typed sessions and collect unique namespaces
 		nsSet := make(map[string]struct{})
-		for _, item := range ul.Items {
-			var session codespacev1.Session
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(item.Object, &session); err != nil {
-				logger.Warn("Failed to convert session", "name", item.GetName(), "namespace", item.GetNamespace(), "err", err)
+		for _, s := range sl.Items {
+			// keep RBAC namespace filter for non-admins
+			if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, s.Namespace); err != nil || !canAccess {
 				continue
 			}
-
-			// Apply namespace-level filtering for non-admin users
-			if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, session.Namespace); err != nil || !canAccess {
-				continue // Skip sessions in namespaces user can't access
-			}
-
-			sessions = append(sessions, session)
-			nsSet[session.Namespace] = struct{}{}
+			sessions = append(sessions, s)
+			nsSet[s.Namespace] = struct{}{}
 		}
-
-		// Convert namespace set to slice
 		for ns := range nsSet {
 			namespaces = append(namespaces, ns)
 		}
 	} else {
-		// List within specific namespace
 		var sessionList codespacev1.SessionList
-		if err := h.deps.client.List(r.Context(), &sessionList, client.InNamespace(namespace)); err != nil {
-			logger.Error("Failed to list sessions in namespace", "namespace", namespace, "err", err, "user", cl.Sub)
+		if err := h.deps.client.List(
+			r.Context(),
+			&sessionList,
+			client.InNamespace(namespace),
+			client.MatchingLabels{InstanceIDLabel: h.deps.instanceID}, // ← here too
+		); err != nil {
+			logger.Error("Failed to list sessions", "namespace", namespace, "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions in namespace %s: %w", namespace, err))
 			return
 		}
-
 		sessions = sessionList.Items
 		namespaces = []string{namespace}
 	}
 
-	response := SessionListResponse{
-		Items:      sessions,
-		Total:      len(sessions),
-		Namespaces: namespaces,
-		Filtered:   allNamespaces, // Indicate if results were filtered by RBAC
-	}
-
-	logger.Info("Listed sessions", "count", len(sessions), "namespaces", len(namespaces), "user", cl.Sub)
-	writeJSON(w, response)
+	writeJSON(w, SessionListResponse{
+		Items: sessions, Total: len(sessions), Namespaces: namespaces, Filtered: allNamespaces,
+	})
 }
 
 // @Summary Create session
@@ -232,8 +218,17 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	creatorID := SubjectToLabelID(cl.Sub)
+	ann := map[string]string{
+		"codespace.dev/created-at": time.Now().Format(time.RFC3339),
+		AnnotationCreatedBy:        cl.Sub, // raw, reversible
+	}
 	// Construct the session object
 	session := &codespacev1.Session{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: codespacev1.GroupVersion.String(),
+			Kind:       "Session",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.Name,
 			Namespace: req.Namespace,
@@ -241,16 +236,14 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 				"app.kubernetes.io/name":       "codespace-session",
 				"app.kubernetes.io/instance":   req.Name,
 				"app.kubernetes.io/managed-by": "codespace-operator",
-				"codespace.dev/created-by":     cl.Sub,
+				LabelCreatedBy:                 creatorID,
+				InstanceIDLabel:                h.deps.instanceID,
 			},
-			Annotations: map[string]string{
-				"codespace.dev/created-at": time.Now().Format(time.RFC3339),
-				"codespace.dev/created-by": cl.Sub,
-			},
+			Annotations: ann,
 		},
 		Spec: codespacev1.SessionSpec{
 			Profile:    req.Profile,
-			Auth:       codespacev1.AuthSpec{Mode: "none"}, // Default auth mode
+			Auth:       codespacev1.AuthSpec{Mode: "none"},
 			Home:       req.Home,
 			Scratch:    req.Scratch,
 			Networking: req.Network,
@@ -258,32 +251,21 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Set auth if provided
 	if req.Auth != nil {
 		session.Spec.Auth = *req.Auth
 	}
-
-	// Set default replicas if not specified
 	if session.Spec.Replicas == nil {
-		defaultReplicas := int32(1)
-		session.Spec.Replicas = &defaultReplicas
+		def := int32(1)
+		session.Spec.Replicas = &def
 	}
 
-	// Create the session using the dynamic client for better error handling
-	u := &unstructured.Unstructured{}
-	u.Object, _ = runtime.DefaultUnstructuredConverter.ToUnstructured(session)
-
-	created, err := h.deps.dyn.Resource(gvr).Namespace(req.Namespace).Create(r.Context(), u, metav1.CreateOptions{})
-	if err != nil {
+	if err := h.deps.client.Create(r.Context(), session); err != nil {
 		logger.Error("Failed to create session", "name", req.Name, "namespace", req.Namespace, "err", err, "user", cl.Sub)
 		errJSON(w, fmt.Errorf("failed to create session: %w", err))
 		return
 	}
-
-	logger.Info("Created session", "name", req.Name, "namespace", req.Namespace, "user", cl.Sub)
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, created.Object)
+	writeJSON(w, session)
 }
 
 // @Summary Get session
@@ -323,8 +305,10 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
-
-	logger.Debug("Retrieved session", "name", name, "namespace", namespace, "user", cl.Sub)
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
 	writeJSON(w, session)
 }
 
@@ -344,7 +328,6 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/server/sessions/{namespace}/{name} [delete]
 func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodDelete {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -355,29 +338,34 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid path - expected /api/v1/server/sessions/{namespace}/{name}", http.StatusBadRequest)
 		return
 	}
-
 	namespace, name := parts[0], parts[1]
 
-	// Check RBAC permissions
+	// RBAC
 	cl, ok := mustCan(h.deps, w, r, "session", "delete", namespace)
 	if !ok {
 		return
 	}
 
-	// Use the dynamic client for deletion to get better error details
-	err := h.deps.dyn.Resource(gvr).Namespace(namespace).Delete(r.Context(), name, metav1.DeleteOptions{})
-	if err != nil {
+	// FETCH then verify instance-id before deleting
+	var session codespacev1.Session
+	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
+		logger.Error("Failed to get session for delete", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		errJSON(w, fmt.Errorf("session not found: %w", err))
+		return
+	}
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	if err := h.deps.client.Delete(r.Context(), &session); err != nil {
 		logger.Error("Failed to delete session", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
 		errJSON(w, fmt.Errorf("failed to delete session: %w", err))
 		return
 	}
 
 	logger.Info("Deleted session", "name", name, "namespace", namespace, "user", cl.Sub)
-	writeJSON(w, map[string]string{
-		"status":    "deleted",
-		"name":      name,
-		"namespace": namespace,
-	})
+	writeJSON(w, map[string]string{"status": "deleted", "name": name, "namespace": namespace})
 }
 
 // @Summary Scale session
@@ -435,6 +423,12 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
 		logger.Error("Failed to get session for scaling", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
 		errJSON(w, fmt.Errorf("session not found: %w", err))
+		return
+	}
+
+	// Check if CR belongs to this instance
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
@@ -498,6 +492,12 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if CR belongs to this instance
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
 	if r.Method == http.MethodPut {
 		// Full replacement
 		var req SessionCreateRequest
@@ -526,7 +526,10 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-
+		if session.Labels == nil {
+			session.Labels = map[string]string{}
+		}
+		session.Labels[LabelCreatedBy] = SubjectToLabelID(session.Annotations[AnnotationCreatedBy])
 		// Apply selective updates - simplified implementation
 		if profile, ok := updates["profile"]; ok {
 			if profileData, err := json.Marshal(profile); err == nil {
@@ -605,11 +608,18 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	// Start watching
 	var watcher watch.Interface
 	var err error
+	sel := labels.Set{"codespace.dev/instance-id": h.deps.instanceID}.AsSelector().String()
 
 	if allNamespaces {
-		watcher, err = h.deps.dyn.Resource(gvr).Watch(r.Context(), metav1.ListOptions{Watch: true})
+		watcher, err = h.deps.dyn.Resource(gvr).Watch(
+			r.Context(),
+			metav1.ListOptions{Watch: true, LabelSelector: sel},
+		)
 	} else {
-		watcher, err = h.deps.dyn.Resource(gvr).Namespace(namespace).Watch(r.Context(), metav1.ListOptions{Watch: true})
+		watcher, err = h.deps.dyn.Resource(gvr).Namespace(namespace).Watch(
+			r.Context(),
+			metav1.ListOptions{Watch: true, LabelSelector: sel},
+		)
 	}
 
 	if err != nil {
@@ -676,4 +686,11 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 			flusher.Flush()
 		}
 	}
+}
+
+func (h *handlers) handleGetAllSubjectSessions(w http.ResponseWriter, r *http.Request) {
+	// Implementation for getting all sessions for a subject
+	// Verify Casbin RBAC
+	// Fetch all cl.subject sessions across all namespace
+	http.Error(w, "not implemented", http.StatusNotImplemented)
 }

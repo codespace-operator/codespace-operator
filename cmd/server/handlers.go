@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -20,72 +19,6 @@ type handlers struct {
 // newHandlers creates a new handlers instance
 func newHandlers(deps *serverDeps) *handlers {
 	return &handlers{deps: deps}
-}
-
-func (h *handlers) handleLogin(w http.ResponseWriter, r *http.Request) {
-	secret := []byte(h.deps.config.JWTSecret)
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	// Parse input
-	var body struct{ Username, Password string }
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		errJSON(w, err)
-		return
-	}
-
-	// Prefer file-backed users if configured
-	var (
-		okUser bool
-		email  string
-	)
-	if deps := r.Context().Value("deps"); deps != nil {
-		if sd, _ := deps.(*serverDeps); sd != nil && sd.localUsers != nil && sd.config.LocalUsersPath != "" {
-			if u, err := sd.localUsers.verify(body.Username, body.Password); err == nil {
-				okUser = true
-				email = u.Email
-			}
-		}
-	}
-
-	if !okUser {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
-	}
-
-	// === Get roles from Casbin (implicit roles) ===
-	roles := []string{"viewer"} // minimal default
-	if deps := r.Context().Value("deps"); deps != nil {
-		if sd, _ := deps.(*serverDeps); sd != nil && sd.rbac != nil {
-			if enf := sd.rbac.enf; enf != nil {
-				if rs, err := enf.GetImplicitRolesForUser(body.Username); err == nil && len(rs) > 0 {
-					roles = rs
-				}
-			}
-		}
-	}
-
-	// Session
-	ttl := 24 * time.Hour
-	tok, err := makeJWT(body.Username, roles, "local", secret, ttl, map[string]any{
-		"email":    email,
-		"username": body.Username,
-	})
-	if err != nil {
-		errJSON(w, err)
-		return
-	}
-
-	setAuthCookie(
-		w, r,
-		&authConfigLike{
-			JWTSecret:         h.deps.config.JWTSecret,
-			SessionCookieName: h.deps.config.SessionCookieName,
-			AllowTokenParam:   h.deps.config.AllowTokenParam,
-		},
-		tok, ttl)
-	writeJSON(w, map[string]any{"token": tok, "user": body.Username, "roles": roles})
 }
 
 // Healthz OK

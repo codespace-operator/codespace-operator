@@ -53,6 +53,9 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"Invalid request"`
 }
 
+const InstanceIDLabel = "codespace.dev/instance-id"
+const cmPrefixName = "codespace-server-instance"
+
 var (
 	gvr = schema.GroupVersionResource{
 		Group:    codespacev1.GroupVersion.Group,
@@ -68,6 +71,7 @@ type serverDeps struct {
 	config     *config.ServerConfig
 	rbac       *RBAC
 	localUsers *localUsers
+	instanceID string
 }
 
 func main() {
@@ -159,7 +163,10 @@ func runServer(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.Fatal("Local users load failed", "err", err)
 	}
-
+	instanceID, err := ensureInstallationID(context.Background(), client)
+	if err != nil {
+		logger.Error("failed to ensure server id", "err", err)
+	}
 	// Create server dependencies
 	deps := &serverDeps{
 		client:     client,
@@ -168,6 +175,7 @@ func runServer(cmd *cobra.Command, args []string) {
 		config:     cfg,
 		rbac:       rbac,
 		localUsers: users,
+		instanceID: instanceID,
 	}
 
 	// Setup HTTP handlers
