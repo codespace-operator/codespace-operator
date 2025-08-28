@@ -1,5 +1,4 @@
-// cmd/server/codespace_server.go
-//go:generate swag init -g codespace_server.go -o ../../docs --parseDependency --parseInternal
+//go:generate swag init -g codespace_server.go -o ../../docs/api --parseDependency --parseInternal -ot json,yaml
 
 // @title Codespace Operator API
 // @version 1.0.0

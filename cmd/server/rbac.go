@@ -1,4 +1,3 @@
-// cmd/server/rbac.go - Enhanced version
 package main
 
 import (

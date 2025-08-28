@@ -93,6 +93,7 @@ func (h *handlers) handleSessionOperationsWithPath(w http.ResponseWriter, r *htt
 // CRUD Operations for Sessions
 
 // @Summary List sessions
+// @ID listSessions
 // @Description Get a list of codespace sessions, optionally across all namespaces
 // @Tags sessions
 // @Accept json
@@ -106,6 +107,7 @@ func (h *handlers) handleSessionOperationsWithPath(w http.ResponseWriter, r *htt
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/server/sessions [get]
 func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
+
 	// Determine target namespace(s)
 	namespace := q(r, "namespace", "default")
 	allNamespaces := r.URL.Query().Get("all") == "true"
@@ -184,6 +186,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 // @Description Create a new codespace session
 // @Tags sessions
 // @Accept json
+// @ID createSession
 // @Produce json
 // @Security BearerAuth
 // @Security CookieAuth
@@ -194,6 +197,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/server/sessions [post]
 func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -286,6 +290,7 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 // @Description Get details of a specific session
 // @Tags sessions
 // @Accept json
+// @ID getSession
 // @Produce json
 // @Security BearerAuth
 // @Security CookieAuth
@@ -297,6 +302,7 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/server/sessions/{namespace}/{name} [get]
 func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
+
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/server/sessions/"), "/")
 	if len(parts) < 2 {
 		http.Error(w, "invalid path - expected /api/v1/server/sessions/{namespace}/{name}", http.StatusBadRequest)
@@ -327,6 +333,7 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
+// @ID deleteSession
 // @Security BearerAuth
 // @Security CookieAuth
 // @Param namespace path string true "Namespace"
@@ -337,6 +344,7 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/server/sessions/{namespace}/{name} [delete]
 func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodDelete {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -373,6 +381,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary Scale session
+// @ID scaleSession
 // @Description Scale the number of replicas for a session
 // @Tags sessions
 // @Accept json
@@ -389,6 +398,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/server/sessions/{namespace}/{name}/scale [post]
 func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -444,6 +454,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Update session
 // @Description Update a session (full replacement)
+// @ID updateSession
 // @Tags sessions
 // @Accept json
 // @Produce json
@@ -459,6 +470,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/server/sessions/{namespace}/{name} [put]
 func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -552,6 +564,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 // @Summary Stream sessions
 // @Description Stream real-time session updates via Server-Sent Events
 // @Tags sessions
+// /@ID streamSessions
 // @Produce text/event-stream
 // @Security BearerAuth
 // @Security CookieAuth
@@ -561,8 +574,9 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/stream/sessions [get]
+// Determine domain for RBAC
 func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) {
-	// Determine domain for RBAC
+
 	namespace := q(r, "namespace", "default")
 	allNamespaces := r.URL.Query().Get("all") == "true"
 	domain := namespace

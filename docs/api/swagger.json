@@ -46,13 +46,13 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -68,29 +68,17 @@
             "CookieAuth": []
           }
         ],
-        "description": "Get system information (requires admin privileges)",
+        "description": "Check system information (requires admin privileges)",
         "consumes": ["application/json"],
-        "produces": ["application/json"],
+        "produces": ["application/json", "application/json"],
         "tags": ["admin"],
-        "summary": "System info (Admin)",
+        "summary": "System Info",
         "responses": {
           "200": {
-            "description": "System information",
+            "description": "OK",
             "schema": {
               "type": "object",
               "additionalProperties": true
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
             }
           }
         }
@@ -122,13 +110,46 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/introspect": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "description": "Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Introspect (legacy combined)",
+        "deprecated": true,
+        "responses": {
+          "200": {
+            "description": "Combined user+server info",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -161,19 +182,19 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.ServerIntrospectionResponse"
+              "$ref": "#/definitions/cmd_server.ServerIntrospectionResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -212,13 +233,13 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.UserIntrospectionResponse"
+              "$ref": "#/definitions/cmd_server.UserIntrospectionResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -243,13 +264,13 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.UserInfo"
+              "$ref": "#/definitions/cmd_server.UserInfo"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -270,6 +291,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "List sessions",
+        "operationId": "listSessions",
         "parameters": [
           {
             "type": "string",
@@ -289,19 +311,19 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.SessionListResponse"
+              "$ref": "#/definitions/cmd_server.SessionListResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -320,6 +342,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "Create session",
+        "operationId": "createSession",
         "parameters": [
           {
             "description": "Session creation request",
@@ -327,7 +350,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/main.SessionCreateRequest"
+              "$ref": "#/definitions/cmd_server.SessionCreateRequest"
             }
           }
         ],
@@ -341,19 +364,19 @@
           "400": {
             "description": "Bad Request",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -374,6 +397,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "Get session",
+        "operationId": "getSession",
         "parameters": [
           {
             "type": "string",
@@ -400,19 +424,19 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -431,6 +455,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "Update session",
+        "operationId": "updateSession",
         "parameters": [
           {
             "type": "string",
@@ -452,7 +477,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/main.SessionCreateRequest"
+              "$ref": "#/definitions/cmd_server.SessionCreateRequest"
             }
           }
         ],
@@ -466,25 +491,25 @@
           "400": {
             "description": "Bad Request",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -503,6 +528,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "Delete session",
+        "operationId": "deleteSession",
         "parameters": [
           {
             "type": "string",
@@ -532,92 +558,19 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
-            }
-          }
-        }
-      },
-      "patch": {
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "CookieAuth": []
-          }
-        ],
-        "description": "Partially update a session",
-        "consumes": ["application/json"],
-        "produces": ["application/json"],
-        "tags": ["sessions"],
-        "summary": "Patch session",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Namespace",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "Session name",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "description": "Partial session update",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -638,6 +591,7 @@
         "produces": ["application/json"],
         "tags": ["sessions"],
         "summary": "Scale session",
+        "operationId": "scaleSession",
         "parameters": [
           {
             "type": "string",
@@ -659,7 +613,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/main.SessionScaleRequest"
+              "$ref": "#/definitions/cmd_server.SessionScaleRequest"
             }
           }
         ],
@@ -673,25 +627,25 @@
           "400": {
             "description": "Bad Request",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -736,13 +690,13 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           },
           "403": {
             "description": "Forbidden",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -787,7 +741,7 @@
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
@@ -804,7 +758,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.AuthFeatures"
+              "$ref": "#/definitions/cmd_server.AuthFeatures"
             }
           }
         }
@@ -824,7 +778,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/main.LocalLoginRequest"
+              "$ref": "#/definitions/cmd_server.LocalLoginRequest"
             }
           }
         ],
@@ -832,30 +786,21 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/main.LoginResponse"
+              "$ref": "#/definitions/cmd_server.LoginResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "$ref": "#/definitions/cmd_server.ErrorResponse"
             }
           }
         }
       }
     },
     "/auth/logout": {
-      "post": {
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "CookieAuth": []
-          }
-        ],
-        "description": "Logout current user",
-        "consumes": ["application/json"],
+      "get": {
+        "description": "Clears session cookie. If SSO configured, redirects to the provider’s end-session endpoint.",
         "produces": ["application/json"],
         "tags": ["authentication"],
         "summary": "Logout",
@@ -868,34 +813,65 @@
                 "type": "string"
               }
             }
+          }
+        }
+      }
+    },
+    "/auth/sso/callback": {
+      "get": {
+        "description": "Handles provider callback, mints session cookie, then redirects.",
+        "tags": ["authentication"],
+        "summary": "OIDC callback",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "OIDC state",
+            "name": "state",
+            "in": "query",
+            "required": true
           },
+          {
+            "type": "string",
+            "description": "Authorization code",
+            "name": "code",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
           "302": {
-            "description": "Redirect to OIDC logout"
+            "description": "Redirect",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "schema": {
+              "type": "string"
+            }
           }
         }
       }
     },
     "/auth/sso/login": {
       "get": {
-        "description": "Initiate SSO login flow",
+        "description": "Redirect to OIDC provider with PKCE/state. Optional `next` query to return to path.",
         "tags": ["authentication"],
-        "summary": "SSO login",
+        "summary": "OIDC start",
         "parameters": [
           {
             "type": "string",
-            "description": "Redirect URL after login",
+            "description": "Relative path to return to after login",
             "name": "next",
             "in": "query"
           }
         ],
         "responses": {
           "302": {
-            "description": "Redirect to OIDC provider"
-          },
-          "400": {
-            "description": "Bad Request",
+            "description": "Redirect",
             "schema": {
-              "$ref": "#/definitions/main.ErrorResponse"
+              "type": "string"
             }
           }
         }
@@ -950,6 +926,28 @@
     }
   },
   "definitions": {
+    "cmd_server.AuthFeatures": {
+      "description": "Available authentication features and endpoints",
+      "type": "object",
+      "properties": {
+        "localLoginEnabled": {
+          "type": "boolean",
+          "example": false
+        },
+        "localLoginPath": {
+          "type": "string",
+          "example": "/auth/local/login"
+        },
+        "ssoEnabled": {
+          "type": "boolean",
+          "example": true
+        },
+        "ssoLoginPath": {
+          "type": "string",
+          "example": "/auth/sso/login"
+        }
+      }
+    },
     "cmd_server.CasbinPermissions": {
       "type": "object",
       "properties": {
@@ -977,6 +975,50 @@
           "additionalProperties": {
             "type": "boolean"
           }
+        }
+      }
+    },
+    "cmd_server.ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "example": "Invalid request"
+        }
+      }
+    },
+    "cmd_server.LocalLoginRequest": {
+      "description": "Local login credentials",
+      "type": "object",
+      "required": ["password", "username"],
+      "properties": {
+        "password": {
+          "type": "string",
+          "example": "secretpassword"
+        },
+        "username": {
+          "type": "string",
+          "example": "alice"
+        }
+      }
+    },
+    "cmd_server.LoginResponse": {
+      "description": "Successful authentication response",
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["editor", "viewer"]
+        },
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string",
+          "example": "alice"
         }
       }
     },
@@ -1034,6 +1076,23 @@
         }
       }
     },
+    "cmd_server.ServerIntrospectionResponse": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/definitions/cmd_server.SystemCapabilities"
+        },
+        "cluster": {
+          "$ref": "#/definitions/cmd_server.ClusterInfo"
+        },
+        "namespaces": {
+          "$ref": "#/definitions/cmd_server.ServerNamespaceInfo"
+        },
+        "version": {
+          "$ref": "#/definitions/cmd_server.ServerVersionInfo"
+        }
+      }
+    },
     "cmd_server.ServerNamespaceInfo": {
       "type": "object",
       "properties": {
@@ -1081,6 +1140,77 @@
         }
       }
     },
+    "cmd_server.SessionCreateRequest": {
+      "description": "Request body for creating a new codespace session",
+      "type": "object",
+      "required": ["name", "profile"],
+      "properties": {
+        "auth": {
+          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
+        },
+        "home": {
+          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        },
+        "name": {
+          "type": "string",
+          "example": "my-session"
+        },
+        "namespace": {
+          "type": "string",
+          "example": "default"
+        },
+        "networking": {
+          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
+        },
+        "profile": {
+          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
+        },
+        "replicas": {
+          "type": "integer",
+          "example": 1
+        },
+        "scratch": {
+          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+        }
+      }
+    },
+    "cmd_server.SessionListResponse": {
+      "description": "Response containing list of sessions with metadata",
+      "type": "object",
+      "properties": {
+        "filtered": {
+          "type": "boolean"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+          }
+        },
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["default", "kube-system"]
+        },
+        "total": {
+          "type": "integer",
+          "example": 5
+        }
+      }
+    },
+    "cmd_server.SessionScaleRequest": {
+      "description": "Request body for scaling a session",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "example": 2
+        }
+      }
+    },
     "cmd_server.SystemCapabilities": {
       "type": "object",
       "properties": {
@@ -1107,6 +1237,70 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "cmd_server.UserInfo": {
+      "description": "Current authenticated user information",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "example": "alice@company.com"
+        },
+        "exp": {
+          "type": "integer",
+          "example": 1641081600
+        },
+        "iat": {
+          "type": "integer",
+          "example": 1640995200
+        },
+        "implicitRoles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["inherited-role"]
+        },
+        "provider": {
+          "type": "string",
+          "example": "oidc"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["editor", "viewer"]
+        },
+        "subject": {
+          "type": "string",
+          "example": "alice@company.com"
+        },
+        "username": {
+          "type": "string",
+          "example": "alice"
+        }
+      }
+    },
+    "cmd_server.UserIntrospectionResponse": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/definitions/cmd_server.UserCapabilities"
+        },
+        "domains": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/cmd_server.DomainPermissions"
+          }
+        },
+        "namespaces": {
+          "$ref": "#/definitions/cmd_server.NamespaceInfo"
+        },
+        "user": {
+          "$ref": "#/definitions/cmd_server.UserInfo"
         }
       }
     },
@@ -1276,225 +1470,6 @@
         },
         "url": {
           "type": "string"
-        }
-      }
-    },
-    "main.AuthFeatures": {
-      "description": "Available authentication features and endpoints",
-      "type": "object",
-      "properties": {
-        "localLoginEnabled": {
-          "type": "boolean",
-          "example": false
-        },
-        "localLoginPath": {
-          "type": "string",
-          "example": "/auth/local/login"
-        },
-        "ssoEnabled": {
-          "type": "boolean",
-          "example": true
-        },
-        "ssoLoginPath": {
-          "type": "string",
-          "example": "/auth/sso/login"
-        }
-      }
-    },
-    "main.ErrorResponse": {
-      "description": "API error response",
-      "type": "object",
-      "properties": {
-        "error": {
-          "type": "string",
-          "example": "Invalid request"
-        }
-      }
-    },
-    "main.LocalLoginRequest": {
-      "description": "Local login credentials",
-      "type": "object",
-      "required": ["password", "username"],
-      "properties": {
-        "password": {
-          "type": "string",
-          "example": "secretpassword"
-        },
-        "username": {
-          "type": "string",
-          "example": "alice"
-        }
-      }
-    },
-    "main.LoginResponse": {
-      "description": "Successful authentication response",
-      "type": "object",
-      "properties": {
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "example": ["editor", "viewer"]
-        },
-        "token": {
-          "type": "string"
-        },
-        "user": {
-          "type": "string",
-          "example": "alice"
-        }
-      }
-    },
-    "main.ServerIntrospectionResponse": {
-      "type": "object",
-      "properties": {
-        "capabilities": {
-          "$ref": "#/definitions/cmd_server.SystemCapabilities"
-        },
-        "cluster": {
-          "$ref": "#/definitions/cmd_server.ClusterInfo"
-        },
-        "namespaces": {
-          "$ref": "#/definitions/cmd_server.ServerNamespaceInfo"
-        },
-        "version": {
-          "$ref": "#/definitions/cmd_server.ServerVersionInfo"
-        }
-      }
-    },
-    "main.SessionCreateRequest": {
-      "description": "Request body for creating a new codespace session",
-      "type": "object",
-      "required": ["name", "profile"],
-      "properties": {
-        "auth": {
-          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
-        },
-        "home": {
-          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-        },
-        "name": {
-          "type": "string",
-          "example": "my-session"
-        },
-        "namespace": {
-          "type": "string",
-          "example": "default"
-        },
-        "networking": {
-          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
-        },
-        "profile": {
-          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
-        },
-        "replicas": {
-          "type": "integer",
-          "example": 1
-        },
-        "scratch": {
-          "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-        }
-      }
-    },
-    "main.SessionListResponse": {
-      "description": "Response containing list of sessions with metadata",
-      "type": "object",
-      "properties": {
-        "filtered": {
-          "type": "boolean"
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
-          }
-        },
-        "namespaces": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "example": ["default", "kube-system"]
-        },
-        "total": {
-          "type": "integer",
-          "example": 5
-        }
-      }
-    },
-    "main.SessionScaleRequest": {
-      "description": "Request body for scaling a session",
-      "type": "object",
-      "properties": {
-        "replicas": {
-          "type": "integer",
-          "minimum": 0,
-          "example": 2
-        }
-      }
-    },
-    "main.UserInfo": {
-      "description": "Current authenticated user information",
-      "type": "object",
-      "properties": {
-        "email": {
-          "type": "string",
-          "example": "alice@company.com"
-        },
-        "exp": {
-          "type": "integer",
-          "example": 1641081600
-        },
-        "iat": {
-          "type": "integer",
-          "example": 1640995200
-        },
-        "implicitRoles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "example": ["inherited-role"]
-        },
-        "provider": {
-          "type": "string",
-          "example": "oidc"
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "example": ["editor", "viewer"]
-        },
-        "subject": {
-          "type": "string",
-          "example": "alice@company.com"
-        },
-        "username": {
-          "type": "string",
-          "example": "alice"
-        }
-      }
-    },
-    "main.UserIntrospectionResponse": {
-      "type": "object",
-      "properties": {
-        "capabilities": {
-          "$ref": "#/definitions/cmd_server.UserCapabilities"
-        },
-        "domains": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/cmd_server.DomainPermissions"
-          }
-        },
-        "namespaces": {
-          "$ref": "#/definitions/cmd_server.NamespaceInfo"
-        },
-        "user": {
-          "$ref": "#/definitions/main.UserInfo"
         }
       }
     },

@@ -96,6 +96,7 @@ func (h *handlers) handleLogin(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {string} string "ok"
 // @Router /healthz [get]
 func (h *handlers) handleHealthz(w http.ResponseWriter, _ *http.Request) {
+
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -111,6 +112,7 @@ func (h *handlers) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 // @Failure 503 {string} string "not ready"
 // @Router /readyz [get]
 func (h *handlers) handleReadyz(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
@@ -129,8 +131,6 @@ func (h *handlers) handleReadyz(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("ready"))
 }
 
-// === Admin Endpoints ===
-
 // handleAdminUsers - GET /api/v1/admin/users (requires admin privileges)
 // @Summary List users (Admin)
 // @Description Get list of users in the system (requires admin privileges)
@@ -143,8 +143,9 @@ func (h *handlers) handleReadyz(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/admin/users [get]
+// Require admin permissions for user management
 func (h *handlers) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
-	// Require admin permissions for user management
+
 	cl, ok := mustCan(h.deps, w, r, "*", "admin", "*")
 	if !ok {
 		return
@@ -213,8 +214,20 @@ func (h *handlers) handleRBACReload(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSystemInfo - GET /api/v1/admin/system/info (system information for admins)
-func (h *handlers) systemInfo(w http.ResponseWriter, r *http.Request) {
-	// Require admin permissions for system info
+// Healthz OK
+// @Summary System Info
+// @Description Check system information (requires admin privileges)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/admin/system/info [get]
+// Require admin permissions for system info
+func (h *handlers) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
+
 	cl, ok := mustCan(h.deps, w, r, "*", "admin", "*")
 	if !ok {
 		return

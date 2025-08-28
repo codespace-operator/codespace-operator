@@ -64,7 +64,7 @@ endif
 # scaffolded by default. However, you might want to replace it to use other
 # tools. (i.e. podman)
 CONTAINER_TOOL ?= docker
-
+SWAG ?= swag
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -191,13 +191,6 @@ build-server:
 build-server-docs:
 	$(MAKE) build-server GO_BUILD_TAGS=docs
 
-# Dump OpenAPI (requires docs tag), then optionally generate TS types
-openapi-json:
-	go run -tags docs ./cmd/server --dump-openapi docs/openapi.json
-
-openapi-ts: openapi-json
-	npx --yes openapi-typescript docs/openapi.json --output ui/src/types/api.d.ts
-
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
@@ -242,8 +235,15 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 .PHONY: swagger
 swagger:
-	@which swag > /dev/null || go install github.com/swaggo/swag/cmd/swag@latest
-	@swag init -g cmd/server/codespace_server.go -o docs --parseDependency --parseInternal
+	@which ${SWAG} > /dev/null || go install github.com/swaggo/swag/cmd/swag@latest
+	@$(SWAG) init -g cmd/server/codespace_server.go \
+	  -o docs/api \
+	  --parseDependency --parseInternal \
+	  -ot json,yaml
+	@npx --yes swagger2openapi -o docs/api/openapi.json docs/api/swagger.yaml
+	@npx --yes openapi-typescript docs/api/openapi.json --output ui/src/types/api.d.ts
+
+
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

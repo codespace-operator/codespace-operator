@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "postbuild": "rm -rf ../cmd/server/static && mkdir -p ../cmd/server/static && cp -r dist/* ../cmd/server/static/",
+    "codegen": "openapi-typescript ${OPENAPI_SRC:-../docs/api/openapi.json} --output src/types/api.gen.ts --export-type --immutable --path-params-as-types",
+    "predev": "npm run -s codegen",
+    "prebuild": "npm run -s codegen",
     "preview": "vite preview --host --port 5173"
   },
   "dependencies": {
@@ -27,9 +30,10 @@
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "openapi-typescript": "^7.9.1",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.4.5",
-    "vite": "^5.4.19"
+    "vite": "^7.1.3"
   }
 }

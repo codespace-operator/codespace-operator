@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-
-	"github.com/codespace-operator/codespace-operator/cmd/config"
 )
 
 // AuthFeatures represents available authentication methods
@@ -66,13 +64,13 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 		}
 		// Store OIDC deps in handlers for these specific endpoints
 		mux.HandleFunc("/auth/sso/login", func(w http.ResponseWriter, r *http.Request) {
-			h.handleOIDCStart(w, r, cfg, od)
+			h.handleOIDCStart(w, r, od)
 		})
 		mux.HandleFunc("/auth/sso/callback", func(w http.ResponseWriter, r *http.Request) {
-			h.handleOIDCCallback(w, r, cfg, od)
+			h.handleOIDCCallback(w, r, od)
 		})
 		mux.HandleFunc("/auth/logout", func(w http.ResponseWriter, r *http.Request) {
-			h.handleLogout(w, r, cfg, od)
+			h.handleLogout(w, r, od)
 		})
 	}
 
@@ -81,15 +79,12 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 		mux.HandleFunc("/auth/local/login", h.handleLocalLogin)
 		// If SSO isn't available, also handle generic logout
 		if cfg.OIDCIssuerURL == "" {
-			mux.HandleFunc("/auth/logout", func(w http.ResponseWriter, r *http.Request) {
-				h.handleLocalLogout(w, r, cfg)
-			})
+			mux.HandleFunc("/auth/logout", h.handleLocalLogout)
 		}
 	}
 }
 
 // === Feature Detection ===
-
 // @Summary Get authentication features
 // @Description Get available authentication methods and endpoints
 // @Tags authentication
@@ -98,6 +93,7 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 // @Success 200 {object} AuthFeatures
 // @Router /auth/features [get]
 func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
+
 	cfg := h.deps.config
 
 	// SSO available if OIDC is fully configured
@@ -115,7 +111,13 @@ func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handlers) handleOIDCStart(w http.ResponseWriter, r *http.Request, cfg *config.ServerConfig, od *oidcDeps) {
+// @Summary OIDC start
+// @Description Redirect to OIDC provider with PKCE/state. Optional `next` query to return to path.
+// @Tags authentication
+// @Param next query string false "Relative path to return to after login"
+// @Success 302 {string} string "Redirect"
+// @Router /auth/sso/login [get]
+func (h *handlers) handleOIDCStart(w http.ResponseWriter, r *http.Request, od *oidcDeps) {
 	state := randB64(32)
 	nonce := randB64(32)
 	verifier, challenge := pkcePair()
@@ -139,7 +141,16 @@ func (h *handlers) handleOIDCStart(w http.ResponseWriter, r *http.Request, cfg *
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, cfg *config.ServerConfig, od *oidcDeps) {
+// @Summary OIDC callback
+// @Description Handles provider callback, mints session cookie, then redirects.
+// @Tags authentication
+// @Param state query string true "OIDC state"
+// @Param code query string true "Authorization code"
+// @Success 302 {string} string "Redirect"
+// @Failure 401 {string} string "unauthorized"
+// @Router /auth/sso/callback [get]
+func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, od *oidcDeps) {
+
 	q := r.URL.Query()
 
 	gotState := q.Get("state")
@@ -230,9 +241,9 @@ func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, cf
 		"username": idc.Username,
 	}
 
-	sessionTTL := cfg.SessionTTL()
+	sessionTTL := h.deps.config.SessionTTL()
 	canonSub := "oidc:" + od.issuerID + ":" + idt.Subject
-	tok, err := makeJWT(canonSub, roles, "oidc", []byte(cfg.JWTSecret), sessionTTL, extra)
+	tok, err := makeJWT(canonSub, roles, "oidc", []byte(h.deps.config.JWTSecret), sessionTTL, extra)
 	if err != nil {
 		errJSON(w, err)
 		http.Error(w, "session mint failed", http.StatusInternalServerError)
@@ -240,9 +251,9 @@ func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, cf
 	}
 
 	setAuthCookie(w, r, &authConfigLike{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		AllowTokenParam:   cfg.AllowTokenParam,
+		JWTSecret:         h.deps.config.JWTSecret,
+		SessionCookieName: h.deps.config.SessionCookieName,
+		AllowTokenParam:   h.deps.config.AllowTokenParam,
 	}, tok, sessionTTL)
 
 	// Store id_token for logout
@@ -267,7 +278,6 @@ func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, cf
 	http.Redirect(w, r, dest, http.StatusFound)
 }
 
-// === Local Login Handlers ===
 // @Summary Local login
 // @Description Authenticate using username and password
 // @Tags authentication
@@ -278,8 +288,7 @@ func (h *handlers) handleOIDCCallback(w http.ResponseWriter, r *http.Request, cf
 // @Failure 401 {object} ErrorResponse
 // @Router /auth/local/login [post]
 func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
-	cfg := h.deps.config
-	secret := []byte(cfg.JWTSecret)
+	secret := []byte(h.deps.config.JWTSecret)
 
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -298,7 +307,7 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Try file-backed users first
-	if h.deps.localUsers != nil && cfg.LocalUsersPath != "" {
+	if h.deps.localUsers != nil && h.deps.config.LocalUsersPath != "" {
 		if u, err := h.deps.localUsers.verify(body.Username, body.Password); err == nil {
 			okUser = true
 			email = u.Email
@@ -306,8 +315,8 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fallback to bootstrap user
-	if !okUser && cfg.BootstrapUser != "" && cfg.BootstrapPassword != "" {
-		if body.Username == cfg.BootstrapUser && body.Password == cfg.BootstrapPassword {
+	if !okUser && h.deps.config.BootstrapUser != "" && h.deps.config.BootstrapPassword != "" {
+		if body.Username == h.deps.config.BootstrapUser && body.Password == h.deps.config.BootstrapPassword {
 			okUser = true
 			email = "bootstrap@localhost"
 		}
@@ -326,7 +335,7 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sessionTTL := cfg.SessionTTL()
+	sessionTTL := h.deps.config.SessionTTL()
 	canonSub := "local:" + body.Username
 	tok, err := makeJWT(canonSub, roles, "local", secret, sessionTTL, map[string]any{
 		"email":    email,
@@ -338,9 +347,9 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setAuthCookie(w, r, &authConfigLike{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		AllowTokenParam:   cfg.AllowTokenParam,
+		JWTSecret:         h.deps.config.JWTSecret,
+		SessionCookieName: h.deps.config.SessionCookieName,
+		AllowTokenParam:   h.deps.config.AllowTokenParam,
 	}, tok, sessionTTL)
 
 	writeJSON(w, map[string]any{
@@ -350,13 +359,18 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// === Logout Handlers ===
+// @Summary Logout
+// @Description Clears session cookie. If SSO configured, redirects to the provider’s end-session endpoint.
+// @Tags authentication
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /auth/logout [get]
+func (h *handlers) handleLogout(w http.ResponseWriter, r *http.Request, od *oidcDeps) {
 
-func (h *handlers) handleLogout(w http.ResponseWriter, r *http.Request, cfg *config.ServerConfig, od *oidcDeps) {
 	clearAuthCookie(w, &authConfigLike{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		AllowTokenParam:   cfg.AllowTokenParam,
+		JWTSecret:         h.deps.config.JWTSecret,
+		SessionCookieName: h.deps.config.SessionCookieName,
+		AllowTokenParam:   h.deps.config.AllowTokenParam,
 	})
 
 	// SSO logout
@@ -365,7 +379,7 @@ func (h *handlers) handleLogout(w http.ResponseWriter, r *http.Request, cfg *con
 		if c, err := r.Cookie("oidc_id_token_hint"); err == nil {
 			hint = c.Value
 		}
-		post := cfg.OIDCRedirectURL
+		post := h.deps.config.OIDCRedirectURL
 		u := od.endSession + "?post_logout_redirect_uri=" + url.QueryEscape(post)
 		if hint != "" {
 			u += "&id_token_hint=" + url.QueryEscape(hint)
@@ -378,11 +392,11 @@ func (h *handlers) handleLogout(w http.ResponseWriter, r *http.Request, cfg *con
 	writeJSON(w, map[string]string{"status": "logged_out"})
 }
 
-func (h *handlers) handleLocalLogout(w http.ResponseWriter, r *http.Request, cfg *config.ServerConfig) {
+func (h *handlers) handleLocalLogout(w http.ResponseWriter, r *http.Request) {
 	clearAuthCookie(w, &authConfigLike{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		AllowTokenParam:   cfg.AllowTokenParam,
+		JWTSecret:         h.deps.config.JWTSecret,
+		SessionCookieName: h.deps.config.SessionCookieName,
+		AllowTokenParam:   h.deps.config.AllowTokenParam,
 	})
 	writeJSON(w, map[string]string{"status": "logged_out"})
 }

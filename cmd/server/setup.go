@@ -71,14 +71,14 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	// === User and system introspection ===
 	mux.HandleFunc("/api/v1/me", h.handleMe)
 	mux.HandleFunc("/api/v1/introspect", h.handleIntrospect)
-	mux.HandleFunc("/api/v1/introspect/user", h.userIntrospect)
-	mux.HandleFunc("/api/v1/introspect/server", h.serverIntrospect)
+	mux.HandleFunc("/api/v1/introspect/user", h.handleUserIntrospect)
+	mux.HandleFunc("/api/v1/introspect/server", h.handleServerIntrospect)
 	mux.HandleFunc("/api/v1/user/permissions", h.handleUserPermissions)
 
 	// === Admin endpoints ===
-	mux.HandleFunc("/api/v1/admin/users", h.adminUsers)
+	mux.HandleFunc("/api/v1/admin/users", h.handleAdminUsers)
 	mux.HandleFunc("/api/v1/admin/rbac/reload", h.handleRBACReload)
-	mux.HandleFunc("/api/v1/admin/system/info", h.systemInfo)
+	mux.HandleFunc("/api/v1/admin/system/info", h.handleSystemInfo)
 
 	// === OpenAPI Documentation (if enabled) ===
 	setupOpenAPIHandlers(mux, h)
@@ -166,38 +166,6 @@ func (h *handlers) handleSwaggerUI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	w.Write([]byte(html))
-}
-
-// Admin endpoints implementation
-
-func (h *handlers) adminUsers(w http.ResponseWriter, r *http.Request) {
-	// Require admin permissions for user management
-	cl, ok := mustCan(h.deps, w, r, "*", "admin", "*")
-	if !ok {
-		return
-	}
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// This would typically integrate with your user management system
-	users := []map[string]interface{}{
-		{
-			"subject": cl.Sub,
-			"roles":   cl.Roles,
-			"active":  true,
-		},
-	}
-
-	response := map[string]interface{}{
-		"users": users,
-		"total": len(users),
-	}
-
-	logger.Info("Listed users", "admin", cl.Sub)
-	writeJSON(w, response)
 }
 
 // swagDocAvailable checks if swagger docs are available

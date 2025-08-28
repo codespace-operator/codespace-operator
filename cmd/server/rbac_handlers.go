@@ -97,7 +97,8 @@ type ServerIntrospectionResponse struct {
 // @Success 200 {object} UserIntrospectionResponse
 // @Failure 401 {object} ErrorResponse
 // @Router /api/v1/introspect/user [get]
-func (h *handlers) userIntrospect(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) handleUserIntrospect(w http.ResponseWriter, r *http.Request) {
+
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -255,7 +256,8 @@ func (h *handlers) userIntrospect(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/introspect/server [get]
-func (h *handlers) serverIntrospect(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request) {
+
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -334,7 +336,19 @@ func (h *handlers) serverIntrospect(w http.ResponseWriter, r *http.Request) {
 }
 
 // Legacy handleIntrospect maintains backward compatibility by combining both responses
+// @Summary Introspect (legacy combined)
+// @Description Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server
+// @Tags user
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Deprecated
+// @Success 200 {object} map[string]interface{} "Combined user+server info"
+// @Failure 401 {object} ErrorResponse
+// @Router /api/v1/introspect [get]
 func (h *handlers) handleIntrospect(w http.ResponseWriter, r *http.Request) {
+
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -445,6 +459,7 @@ func combineCapabilities(user UserCapabilities, system SystemCapabilities) map[s
 // @Failure 401 {object} ErrorResponse
 // @Router /api/v1/me [get]
 func (h *handlers) handleMe(w http.ResponseWriter, r *http.Request) {
+
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -475,6 +490,7 @@ func (h *handlers) handleMe(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Router /api/v1/user/permissions [get]
 func (h *handlers) handleUserPermissions(w http.ResponseWriter, r *http.Request) {
+
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)

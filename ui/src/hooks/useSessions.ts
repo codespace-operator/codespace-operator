@@ -97,7 +97,7 @@ export function useSessions(
       if (!enabled) return;
       setLoading(true);
       try {
-        setRows(await api.list(effectiveNs));
+        setRows((await api.list(effectiveNs)) as Session[]);
       } finally {
         setLoading(false);
       }
