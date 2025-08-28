@@ -1,0 +1,76 @@
+name: Verify Operator (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "internal/**"
+      - "cmd/**"
+      - "ui/**"
+      - "Dockerfile"
+      - "Dockerfiles/**"
+      - "go.mod"
+      - "go.sum"
+      - "!CHANGELOG.*.md"
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  operator-build:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Mirrors release.operator prepare step
+      - name: Build server binary
+        run: make build-server
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build operator image (no push)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -f Dockerfile \
+            -t codespace-operator:test-pr-${{ github.event.number }}-${{ github.sha }} \
+            --load \
+            .
+
+      - name: Build server image (no push)
+        run: |
+          set -e
+          if grep -q "^docker-build-server" Makefile 2>/dev/null; then
+            # Prefer your Make target if it supports no-push
+            make docker-build-server SERVER_IMG=codespace-server:test-pr-${{ github.event.number }}-${{ github.sha }} PUSH=false || true
+          elif [ -f Dockerfiles/server.Dockerfile ]; then
+            docker buildx build \
+              --platform linux/amd64 \
+              -f Dockerfiles/server.Dockerfile \
+              -t codespace-server:test-pr-${{ github.event.number }}-${{ github.sha }} \
+              --load \
+              .
+          else
+            echo "⚠️ Skipping server image build (no Make target or Dockerfiles/server.Dockerfile)."
+          fi
+
+      # Optional: preview next release notes/version (dry-run)
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm i -D semantic-release @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github
+      - run: npx semantic-release -e ./.github/release-config/release.operator.cjs --dry-run
