@@ -49,6 +49,8 @@ import (
 //go:embed all:static
 var staticFS embed.FS
 
+const APP_NAME = "codespace-operator"
+
 type ErrorResponse struct {
 	Error string `json:"error" example:"Invalid request"`
 }
@@ -72,6 +74,7 @@ type serverDeps struct {
 	rbac       *RBAC
 	localUsers *localUsers
 	instanceID string
+	manager    ManagerMeta
 }
 
 func main() {
@@ -169,7 +172,8 @@ func runServer(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.Error("failed to ensure server id", "err", err)
 	}
-
+	manager := getSelfManagerMeta(context.Background(), client)
+	logger.Info("Detected manager", "kind", manager.Kind, "name", manager.Name, "namespace", manager.Namespace)
 	// Create server dependencies
 	deps := &serverDeps{
 		client:     client,
@@ -179,6 +183,7 @@ func runServer(cmd *cobra.Command, args []string) {
 		rbac:       rbac,
 		localUsers: users,
 		instanceID: instanceID,
+		manager:    manager,
 	}
 
 	// Setup HTTP handlers

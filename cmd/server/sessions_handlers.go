@@ -156,17 +156,35 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		if !h.deps.config.ClusterScope {
 			opts = append(opts, client.MatchingLabels{InstanceIDLabel: h.deps.instanceID})
 		}
-		if err := h.deps.client.List(
-			r.Context(),
-			&sessionList,
-			opts...,
-		); err != nil {
+		if err := h.deps.client.List(r.Context(), &sessionList, opts...); err != nil {
 			logger.Error("Failed to list sessions", "namespace", namespace, "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions in namespace %s: %w", namespace, err))
 			return
 		}
 		sessions = sessionList.Items
 		namespaces = []string{namespace}
+	}
+
+	// Enrich with manager meta in cluster-scope
+	if h.deps.config.ClusterScope {
+		idx := h.buildInstanceMetaIndex(r)
+		for i := range sessions {
+			s := &sessions[i]
+			if s.Labels == nil {
+				s.Labels = map[string]string{}
+			}
+			if meta, ok := idx[s.Labels[InstanceIDLabel]]; ok {
+				if s.Labels[LabelManagerKind] == "" {
+					s.Labels[LabelManagerKind] = meta.Kind
+				}
+				if s.Labels[LabelManagerNamespace] == "" {
+					s.Labels[LabelManagerNamespace] = meta.Namespace
+				}
+				if s.Labels[LabelManagerName] == "" && meta.Name != "" {
+					s.Labels[LabelManagerName] = meta.Name
+				}
+			}
+		}
 	}
 
 	writeJSON(w, SessionListResponse{
@@ -241,9 +259,13 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			Labels: map[string]string{
 				"app.kubernetes.io/name":       "codespace-session",
 				"app.kubernetes.io/instance":   req.Name,
-				"app.kubernetes.io/managed-by": "codespace-operator",
+				"app.kubernetes.io/managed-by": APP_NAME,
 				LabelCreatedBy:                 creatorID,
 				InstanceIDLabel:                h.deps.instanceID,
+				// Manager identity (helps cluster-scope UIs show who manages this session)
+				LabelManagerKind:      h.deps.manager.Kind,
+				LabelManagerNamespace: h.deps.manager.Namespace,
+				LabelManagerName:      h.deps.manager.Name,
 			},
 			Annotations: ann,
 		},
@@ -642,7 +664,13 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 
 	logger.Info("Started session stream", "namespace", namespace, "all", allNamespaces, "user", cl.Sub)
 
-	// Keep-alive ticker
+	// Optional enrichment index for cluster-scope
+	var idx map[string]ManagerMeta
+	if h.deps.config.ClusterScope {
+		idx = h.buildInstanceMetaIndex(r)
+	}
+
+	// Keep-alive
 	ticker := time.NewTicker(25 * time.Second)
 	defer ticker.Stop()
 
@@ -684,7 +712,24 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 
-			// Send the event
+			// Enrich labels on the fly (cluster-scope)
+			if h.deps.config.ClusterScope {
+				if session.Labels == nil {
+					session.Labels = map[string]string{}
+				}
+				if meta, ok := idx[session.Labels[InstanceIDLabel]]; ok {
+					if session.Labels[LabelManagerKind] == "" {
+						session.Labels[LabelManagerKind] = meta.Kind
+					}
+					if session.Labels[LabelManagerNamespace] == "" {
+						session.Labels[LabelManagerNamespace] = meta.Namespace
+					}
+					if session.Labels[LabelManagerName] == "" && meta.Name != "" {
+						session.Labels[LabelManagerName] = meta.Name
+					}
+				}
+			}
+
 			payload := map[string]interface{}{
 				"type":   string(ev.Type),
 				"object": session,

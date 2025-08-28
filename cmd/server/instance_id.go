@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -13,6 +14,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ManagerMeta describes how this codespace-server is managed.
+type ManagerMeta struct {
+	Kind      string // helm|argo|deployment|statefulset|namespace
+	Name      string // release/app/deployment name (sanitized when used as label)
+	Namespace string // namespace where the manager runs
+}
 
 // ensureInstallationID creates/gets a per-instance ConfigMap and returns a stable id.
 func ensureInstallationID(ctx context.Context, cl client.Client) (string, error) {
@@ -58,6 +66,49 @@ func ensureInstallationID(ctx context.Context, cl client.Client) (string, error)
 	}
 
 	return id, nil
+}
+
+// getSelfManagerMeta inspects the current Pod & owners to determine manager identity.
+func getSelfManagerMeta(ctx context.Context, cl client.Client) ManagerMeta {
+	ns := inClusterNamespace()
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		podName, _ = os.Hostname()
+	}
+
+	var pod corev1.Pod
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, &pod); err != nil {
+		return ManagerMeta{Kind: "namespace", Name: "server", Namespace: ns}
+	}
+
+	// Prefer Helm
+	if release, ok := pod.Labels["app.kubernetes.io/instance"]; ok {
+		return ManagerMeta{Kind: "helm", Name: sanitizeLabelValue(release), Namespace: ns}
+	}
+	// Then ArgoCD
+	if app, ok := pod.Labels["argocd.argoproj.io/instance"]; ok {
+		return ManagerMeta{Kind: "argo", Name: sanitizeLabelValue(app), Namespace: ns}
+	}
+
+	// Walk owners for Deployment/StatefulSet
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "ReplicaSet" {
+			var rs appsv1.ReplicaSet
+			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: owner.Name}, &rs); err == nil {
+				for _, o := range rs.OwnerReferences {
+					if o.Kind == "Deployment" {
+						return ManagerMeta{Kind: "deployment", Name: sanitizeLabelValue(o.Name), Namespace: ns}
+					}
+				}
+			}
+		}
+		if owner.Kind == "StatefulSet" {
+			return ManagerMeta{Kind: "statefulset", Name: sanitizeLabelValue(owner.Name), Namespace: ns}
+		}
+	}
+
+	// Fallback
+	return ManagerMeta{Kind: "namespace", Name: "server", Namespace: ns}
 }
 
 // determineStableAnchor creates a stable identity based on deployment context
@@ -236,9 +287,9 @@ func getStatefulSetAnchor(ctx context.Context, cl client.Client, ns string) stri
 // buildSafeLabels creates Kubernetes-safe labels
 func buildSafeLabels(ctx context.Context, cl client.Client, ns string) map[string]string {
 	labels := map[string]string{
-		"app.kubernetes.io/part-of":    "codespace-operator",
+		"app.kubernetes.io/part-of":    APP_NAME,
 		"app.kubernetes.io/component":  "server",
-		"app.kubernetes.io/managed-by": "codespace-operator",
+		"app.kubernetes.io/managed-by": APP_NAME,
 	}
 
 	// Add safe deployment context labels
@@ -257,8 +308,9 @@ func buildSafeLabels(ctx context.Context, cl client.Client, ns string) map[strin
 		// Add deployment method
 		if _, ok := pod.Labels["helm.sh/chart"]; ok {
 			labels["codespace.dev/method"] = "helm"
-		} else if _, ok := pod.Labels["argocd.argoproj.io/instance"]; ok {
+		} else if app, ok := pod.Labels["argocd.argoproj.io/instance"]; ok {
 			labels["codespace.dev/method"] = "argo"
+			labels["codespace.dev/argo-app"] = sanitizeLabelValue(app)
 		} else {
 			labels["codespace.dev/method"] = "kubectl"
 		}
@@ -297,4 +349,38 @@ func sanitizeLabelValue(value string) string {
 	}
 
 	return safe
+}
+
+// buildInstanceMetaIndex scans per-instance ConfigMaps and returns instanceID -> ManagerMeta.
+func (h *handlers) buildInstanceMetaIndex(r *http.Request) map[string]ManagerMeta {
+	out := map[string]ManagerMeta{}
+	// Only cluster-scope needs this; keep it simple and cheap.
+	var cms corev1.ConfigMapList
+	// Best-effort label filters to narrow results
+	sel := client.MatchingLabels{
+		"app.kubernetes.io/part-of":   APP_NAME,
+		"app.kubernetes.io/component": "server",
+	}
+	if err := h.deps.client.List(r.Context(), &cms, sel); err != nil {
+		logger.Debug("buildInstanceMetaIndex: list configmaps failed", "err", err)
+		return out
+	}
+	for _, cm := range cms.Items {
+		id := cm.Data["id"]
+		if id == "" {
+			continue
+		}
+		method := cm.Labels["codespace.dev/method"] // helm|argo|kubectl
+		meta := ManagerMeta{Kind: method, Namespace: cm.Namespace}
+		if method == "helm" && cm.Labels["codespace.dev/release"] != "" {
+			meta.Name = cm.Labels["codespace.dev/release"]
+		} else if method == "argo" && cm.Labels["codespace.dev/argo-app"] != "" {
+			meta.Name = cm.Labels["codespace.dev/argo-app"]
+		}
+		if meta.Kind == "" {
+			meta.Kind = "namespace"
+		}
+		out[id] = meta
+	}
+	return out
 }

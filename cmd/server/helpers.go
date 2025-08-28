@@ -32,6 +32,18 @@ const (
 	AnnotationCreatedBySig = "codespace.dev/created-by.sig" // optional: HMAC of raw subject
 )
 
+/*
+	We backfill for existing sessions (cluster-scope) during list/stream:
+	the server builds a map of instance-id -> manager meta by scanning the per-instance ConfigMaps it already creates (the ones named like codespace-server-instance-*)
+	the server enriches each returned session with the same labels in-memory (no persistence needed).
+*/
+// Manager identity labels stamped on Session objects
+const (
+	LabelManagerKind      = "codespace.dev/manager-kind" // helm|argo|deployment|statefulset|namespace
+	LabelManagerName      = "codespace.dev/manager-name" // release/app/deployment name (sanitized)
+	LabelManagerNamespace = "codespace.dev/manager-ns"   // namespace the manager runs in
+)
+
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int

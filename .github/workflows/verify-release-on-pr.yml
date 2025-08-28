@@ -27,54 +27,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha }}
   cancel-in-progress: true
 jobs:
-  filter:
-    name: Detect release lanes
-    runs-on: ubuntu-latest
-    outputs:
-      operator: ${{ steps.changes.outputs.operator }}
-      crd: ${{ steps.changes.outputs.crd }}
-      crd_would_release: ${{ steps.crdtitle.outputs.needed }}
-    steps:
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            operator:
-              - 'internal/**'
-              - 'cmd/**'
-              - 'ui/**'
-              - 'Dockerfile'
-              - 'Dockerfiles/**'
-              - 'go.mod'
-              - 'go.sum'
-            crd:
-              - 'api/**'
-              - 'config/crd/**'
-              - 'hack/**'
-
-      - name: Decide if CRD release would happen from PR title
-        id: crdtitle
-        shell: bash
-        run: |
-          set -euo pipefail
-          TITLE="${{ github.event.pull_request.title }}"
-          BODY="${{ github.event.pull_request.body }}"
-          # extract type and optional scopes from "type(scope1,scope2): subject"
-          if [[ "$TITLE" =~ ^(feat|fix|perf|revert)(\(([^\)]+)\))?: ]]; then
-            SCOPES="${BASH_REMATCH[3]:-}"
-            if echo "$SCOPES" | grep -Eiq '(^|,|\s)(crd|crds)(,|\s|$)'; then
-              echo "needed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            # allow BREAKING with CRD scopes mentioned in body (optional)
-            if echo "$BODY" | grep -Eiq 'BREAKING( CHANGE| CHANGES)?' && \
-               echo "$BODY" | grep -Eiq '(^|,|\s)(crd|crds)(,|\s|$)'; then
-              echo "needed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          fi
-          echo "needed=false" >> "$GITHUB_OUTPUT"
-
   operator:
     name: Operator lane - build test
     needs: filter

@@ -18,7 +18,7 @@ var tsOut string
 var dumpOpenAPI = flag.String("dump-openapi", "", "write OpenAPI JSON to the given path and exit")
 
 var rootCmd = &cobra.Command{
-	Use:   "codespace-operator",
+	Use:   APP_NAME,
 	Short: "Codespace Operator",
 }
 
