@@ -204,9 +204,6 @@ func (c *ServerConfig) SessionTTL() time.Duration {
 // setupViper configures common Viper settings.
 // envPrefix: e.g. "CODESPACE_SERVER"
 // fileBase:  e.g. "server-config" (-> server-config.yaml)
-// setupViper configures common Viper settings.
-// envPrefix: e.g. "CODESPACE_SERVER"
-// fileBase:  e.g. "server-config" (-> server-config.yaml)
 func setupViper(v *viper.Viper, envPrefix, fileBase string) {
 	// --- Environment (UPPER_SNAKE with prefix) ---
 	v.SetEnvPrefix(envPrefix)

@@ -204,6 +204,9 @@ definitions:
     type: object
   cmd_server.SystemCapabilities:
     properties:
+      clusterScope:
+        description: "Displays cluster_scope: true or false"
+        type: boolean
       multiTenant:
         description: Whether system supports multiple tenants
         type: boolean

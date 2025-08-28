@@ -175,6 +175,11 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
 
+.PHONY: docker-build-server
+docker-build-server:
+	docker build -t $(SERVER_IMG) -f ui/Dockerfile .
+
+
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
@@ -208,6 +213,16 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
 	rm Dockerfile.cross
 
+.PHONY: docker-buildx-server
+docker-buildx-server: ## Build and push docker image for the server for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' ui/Dockerfile > ui/Dockerfile.cross
+	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
+	$(CONTAINER_TOOL) buildx use codespace-operator-builder
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${SERVER_IMG} -f ui/Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
+	rm Dockerfile.cross
+
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
@@ -235,10 +250,10 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 # --- tools ---
 SWAG ?= swag
-SWAG_FLAGS ?= -g cmd/server/codespace_server.go -o docs/api --parseDependency --parseInternal -ot json,yaml
+SWAG_FLAGS ?= -g cmd/server/codespace_server.go -o gen/api --parseDependency --parseInternal -ot json,yaml
 
-OAPI_JSON ?= docs/api/openapi.json
-SWAGGER_YAML ?= docs/api/swagger.yaml
+OAPI_JSON ?= gen/api/openapi.json
+SWAGGER_YAML ?= gen/api/swagger.yaml
 TS_TYPES ?= ui/src/types/api.gen.ts
 
 # Generate Swagger 2.0 (yaml/json) from comments
@@ -264,11 +279,11 @@ api: api-types
 # Optional cleanup
 .PHONY: clean-api
 clean-api:
-	rm -f $(OAPI_JSON) $(TS_TYPES) docs/api/swagger.json $(SWAGGER_YAML)
+	rm -f $(OAPI_JSON) $(TS_TYPES) gen/api/swagger.json $(SWAGGER_YAML)
 
 # Fix build-server to honor tags (so you can ship docs only when desired)
 .PHONY: build-server
-build-server:
+build-server: api  #! Enforces ./ui/src/types/api.gen.ts regeneration during development
 	cd ui && npm run build
 	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
 	cp -r ./ui/dist/* cmd/server/static/

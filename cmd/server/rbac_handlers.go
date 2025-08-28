@@ -58,7 +58,8 @@ type UserCapabilities struct {
 
 // SystemCapabilities contains system-wide capability information
 type SystemCapabilities struct {
-	MultiTenant bool `json:"multiTenant"` // Whether system supports multiple tenants
+	ClusterScope bool `json:"clusterScope"` // Displays cluster_scope: true or false
+	MultiTenant  bool `json:"multiTenant"`  // Whether system supports multiple tenants
 }
 
 // ServerVersionInfo contains server version and build information
@@ -319,7 +320,8 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 
 	// Build system capabilities
 	systemCapabilities := SystemCapabilities{
-		MultiTenant: len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
+		MultiTenant:  len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
+		ClusterScope: h.deps.config.ClusterScope,       // displays cluster_scope: true or false
 	}
 
 	// Version info (could be populated from build-time variables)

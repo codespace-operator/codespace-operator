@@ -1002,6 +1002,8 @@ export interface components {
       replicas?: number;
     };
     "cmd_server.SystemCapabilities": {
+      /** @description Displays cluster_scope: true or false */
+      clusterScope?: boolean;
       /** @description Whether system supports multiple tenants */
       multiTenant?: boolean;
     };

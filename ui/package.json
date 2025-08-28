@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:with-codegen": "npm run -s codegen && vite build",
     "postbuild": "rm -rf ../cmd/server/static && mkdir -p ../cmd/server/static && cp -r dist/* ../cmd/server/static/",
     "codegen": "HERE=${pwd} && cd .. && make -s api && cd $HERE",
-    "prebuild": "npm run -s codegen",
-    "preview": "vite preview --host --port 5173"
+    "preview": "vite preview --host --port 8080"
   },
   "dependencies": {
     "@patternfly/patternfly": "^6.3.1",

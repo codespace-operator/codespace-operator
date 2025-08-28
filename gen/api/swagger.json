@@ -1214,6 +1214,10 @@
     "cmd_server.SystemCapabilities": {
       "type": "object",
       "properties": {
+        "clusterScope": {
+          "description": "Displays cluster_scope: true or false",
+          "type": "boolean"
+        },
         "multiTenant": {
           "description": "Whether system supports multiple tenants",
           "type": "boolean"
