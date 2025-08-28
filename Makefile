@@ -187,10 +187,16 @@ build-server:
 	touch ./cmd/server/static/.gitkeep
 	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
 
-.PHONY: docker-build-server
-docker-build-server:
-	docker build -t $(SERVER_IMG) -f ui/Dockerfile .
+.PHONY: build-server-docs
+build-server-docs:
+	$(MAKE) build-server GO_BUILD_TAGS=docs
 
+# Dump OpenAPI (requires docs tag), then optionally generate TS types
+openapi-json:
+	go run -tags docs ./cmd/server --dump-openapi docs/openapi.json
+
+openapi-ts: openapi-json
+	npx --yes openapi-typescript docs/openapi.json --output ui/src/types/api.d.ts
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
