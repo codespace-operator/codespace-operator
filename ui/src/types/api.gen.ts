@@ -63,6 +63,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/sessions/adopt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adopt an orphaned session
+         * @description Attempts to adopt a session resource by the current instance. If the session is not orphaned, adoption is blocked unless 'force=1' is specified.
+         */
+        post: {
+            parameters: {
+                query: {
+                    /** @description Namespace of the session */
+                    namespace?: string;
+                    /** @description Name of the session */
+                    name: string;
+                    /** @description If set to 1, returns the patched session without updating it */
+                    dryRun?: 0 | 1;
+                    /** @description If set to 1, forces adoption even if the session is not orphaned */
+                    force?: 0 | 1;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Adopted session object */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    };
+                };
+                /** @description Session is not orphaned; use force=1 to override */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/system/info": {
         parameters: {
             query?: never;
@@ -458,49 +524,7 @@ export interface paths {
          * Stream sessions
          * @description Stream real-time session updates via Server-Sent Events
          */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Target namespace */
-                    namespace?: string;
-                    /** @description Stream sessions from all namespaces */
-                    all?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description SSE stream */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
-                    };
-                };
-            };
-        };
+        get: operations["streamSessions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -929,6 +953,14 @@ export interface components {
             /** @example alice */
             user?: string;
         };
+        "cmd_server.ManagerMeta": {
+            /** @description helm|argo|deployment|statefulset|namespace */
+            kind?: string;
+            /** @description release/app/deployment name (sanitized when used as label) */
+            name?: string;
+            /** @description namespace where the manager runs */
+            namespace?: string;
+        };
         "cmd_server.NamespaceInfo": {
             /** @description Namespaces user can access */
             userAllowed?: string[];
@@ -950,6 +982,8 @@ export interface components {
         "cmd_server.ServerIntrospectionResponse": {
             capabilities?: components["schemas"]["cmd_server.SystemCapabilities"];
             cluster?: components["schemas"]["cmd_server.ClusterInfo"];
+            instanceID?: string;
+            manager?: components["schemas"]["cmd_server.ManagerMeta"];
             namespaces?: components["schemas"]["cmd_server.ServerNamespaceInfo"];
             version?: components["schemas"]["cmd_server.ServerVersionInfo"];
         };
@@ -1673,6 +1707,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                };
+            };
+        };
+    };
+    streamSessions: {
+        parameters: {
+            query?: {
+                /** @description Target namespace */
+                namespace?: string;
+                /** @description Stream sessions from all namespaces */
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
                 };
             };
         };

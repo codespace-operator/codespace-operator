@@ -34,6 +34,15 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 		}
 	})
 
+	// === Adopt Session ===
+	mux.HandleFunc("/api/v1/server/sessions/adopt", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.handleAdoptSession(w, r)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
+
 	// Session CRUD with path parameters
 	mux.HandleFunc("/api/v1/server/sessions/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/server/sessions/")

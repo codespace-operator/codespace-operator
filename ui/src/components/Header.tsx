@@ -173,7 +173,7 @@ export function Header({
                       const label = isAll
                         ? "All Namespaces"
                         : isEmpty
-                          ? `${ns} (empty)`
+                          ? `${ns}`
                           : ns;
                       return (
                         <FormSelectOption

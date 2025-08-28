@@ -83,6 +83,9 @@ type ServerIntrospectionResponse struct {
 	Namespaces   ServerNamespaceInfo `json:"namespaces"`
 	Capabilities SystemCapabilities  `json:"capabilities"`
 	Version      ServerVersionInfo   `json:"version,omitempty"`
+
+	InstanceID string      `json:"instanceID,omitempty"`
+	Manager    ManagerMeta `json:"manager,omitempty"`
 }
 
 // handleUserIntrospect provides user-specific RBAC and permission information
@@ -244,7 +247,6 @@ func (h *handlers) handleUserIntrospect(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, response)
 }
 
-// handleServerIntrospect provides server/cluster information (requires appropriate permissions)
 // @Summary Server introspection
 // @Description Get server and cluster information
 // @Tags user
@@ -258,7 +260,6 @@ func (h *handlers) handleUserIntrospect(w http.ResponseWriter, r *http.Request) 
 // @Failure 403 {object} ErrorResponse
 // @Router /api/v1/introspect/server [get]
 func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request) {
-
 	cl := fromContext(r)
 	if cl == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -268,7 +269,6 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 	// Require at least some level of cluster access to see server info
 	hasClusterAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
 	hasSessionAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
-
 	if !hasClusterAccess && !hasSessionAccess {
 		http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
 		return
@@ -305,14 +305,12 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 		} else {
 			// Filter namespaces based on user permissions if user doesn't have cluster access
 			if !hasClusterAccess {
-				// Filter to only namespaces the user can access
 				userAllowedNs, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
 				if err == nil {
 					allNs = filterNamespaces(allNs, userAllowedNs)
 					sessNs = filterNamespaces(sessNs, userAllowedNs)
 				}
 			}
-
 			serverNamespaceInfo.All = allNs
 			serverNamespaceInfo.WithSessions = sessNs
 		}
@@ -320,21 +318,23 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 
 	// Build system capabilities
 	systemCapabilities := SystemCapabilities{
-		MultiTenant:  len(serverNamespaceInfo.All) > 5, // Heuristic: more than 5 namespaces suggests multi-tenancy
-		ClusterScope: h.deps.config.ClusterScope,       // displays cluster_scope: true or false
+		MultiTenant:  len(serverNamespaceInfo.All) > 5, // heuristic
+		ClusterScope: h.deps.config.ClusterScope,
 	}
 
 	// Version info (could be populated from build-time variables)
 	versionInfo := ServerVersionInfo{
-		Version: "1.0.0", // TODO: stamp to a variable during build
+		Version: "1.0.0",
 	}
 
-	// Build server response
+	// Include server identity for Cluster Settings page
 	response := ServerIntrospectionResponse{
 		Cluster:      clusterInfo,
 		Namespaces:   serverNamespaceInfo,
 		Capabilities: systemCapabilities,
 		Version:      versionInfo,
+		InstanceID:   h.deps.instanceID,
+		Manager:      h.deps.manager,
 	}
 
 	logger.Debug("Server introspection completed", "user", cl.Sub, "discover", discover)

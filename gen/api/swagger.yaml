@@ -70,6 +70,18 @@ definitions:
         example: alice
         type: string
     type: object
+  cmd_server.ManagerMeta:
+    properties:
+      kind:
+        description: helm|argo|deployment|statefulset|namespace
+        type: string
+      name:
+        description: release/app/deployment name (sanitized when used as label)
+        type: string
+      namespace:
+        description: namespace where the manager runs
+        type: string
+    type: object
   cmd_server.NamespaceInfo:
     properties:
       userAllowed:
@@ -112,6 +124,10 @@ definitions:
         $ref: '#/definitions/cmd_server.SystemCapabilities'
       cluster:
         $ref: '#/definitions/cmd_server.ClusterInfo'
+      instanceID:
+        type: string
+      manager:
+        $ref: '#/definitions/cmd_server.ManagerMeta'
       namespaces:
         $ref: '#/definitions/cmd_server.ServerNamespaceInfo'
       version:
@@ -727,6 +743,58 @@ paths:
       summary: Reload RBAC (Admin)
       tags:
       - admin
+  /api/v1/admin/sessions/adopt:
+    post:
+      consumes:
+      - application/json
+      description: Attempts to adopt a session resource by the current instance. If
+        the session is not orphaned, adoption is blocked unless 'force=1' is specified.
+      parameters:
+      - default: default
+        description: Namespace of the session
+        in: query
+        name: namespace
+        type: string
+      - description: Name of the session
+        in: query
+        name: name
+        required: true
+        type: string
+      - default: 0
+        description: If set to 1, returns the patched session without updating it
+        enum:
+        - 0
+        - 1
+        in: query
+        name: dryRun
+        type: integer
+      - default: 0
+        description: If set to 1, forces adoption even if the session is not orphaned
+        enum:
+        - 0
+        - 1
+        in: query
+        name: force
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Adopted session object
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/cmd_server.ErrorResponse'
+        "409":
+          description: Session is not orphaned; use force=1 to override
+          schema:
+            type: string
+      summary: Adopt an orphaned session
+      tags:
+      - admin
+      - sessions
   /api/v1/admin/system/info:
     get:
       consumes:
@@ -1147,6 +1215,7 @@ paths:
   /api/v1/stream/sessions:
     get:
       description: Stream real-time session updates via Server-Sent Events
+      operationId: streamSessions
       parameters:
       - default: default
         description: Target namespace

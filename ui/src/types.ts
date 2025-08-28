@@ -21,8 +21,13 @@ export interface SessionDeleteResponse {
 // Shared types that mirror the Session CRD (fields the UI needs)
 export type UISession = {
   kind: "Session";
-  apiVersion: "codespaceoperator.dev/v1";
-  metadata: { name: string; namespace: string };
+  apiVersion: "codespace.codespace.dev/v1";
+  metadata: {
+    name: string;
+    namespace: string;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+  };
   spec: {
     profile: {
       ide: "jupyterlab" | "vscode" | "rstudio" | "custom";

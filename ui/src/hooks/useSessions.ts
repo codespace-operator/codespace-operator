@@ -165,10 +165,17 @@ export function useFilteredSessions(rows: UISession[], query: string) {
     if (!q) return rows;
     return rows.filter((s) => {
       const host = s.spec.networking?.host || "";
+      const L = s.metadata.labels || {};
+      const managedBy =
+        L["codespace.dev/manager-name"] ||
+        L["codespace.dev/manager"] ||
+        L["app.kubernetes.io/managed-by"] ||
+        "";
       return (
         s.metadata.name.toLowerCase().includes(q) ||
         s.spec.profile.image.toLowerCase().includes(q) ||
-        host.toLowerCase().includes(q)
+        host.toLowerCase().includes(q) ||
+        managedBy.toLowerCase().includes(q)
       );
     });
   }, [rows, query]);

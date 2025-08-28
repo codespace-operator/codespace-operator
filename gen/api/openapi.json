@@ -68,6 +68,94 @@
                 ]
             }
         },
+        "/api/v1/admin/sessions/adopt": {
+            "post": {
+                "description": "Attempts to adopt a session resource by the current instance. If the session is not orphaned, adoption is blocked unless 'force=1' is specified.",
+                "parameters": [
+                    {
+                        "description": "Namespace of the session",
+                        "in": "query",
+                        "name": "namespace",
+                        "schema": {
+                            "type": "string",
+                            "default": "default"
+                        }
+                    },
+                    {
+                        "description": "Name of the session",
+                        "in": "query",
+                        "name": "name",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "If set to 1, returns the patched session without updating it",
+                        "in": "query",
+                        "name": "dryRun",
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                0,
+                                1
+                            ],
+                            "default": 0
+                        }
+                    },
+                    {
+                        "description": "If set to 1, forces adoption even if the session is not orphaned",
+                        "in": "query",
+                        "name": "force",
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                0,
+                                1
+                            ],
+                            "default": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adopted session object",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.Session"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Session is not orphaned; use force=1 to override",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Adopt an orphaned session",
+                "tags": [
+                    "admin",
+                    "sessions"
+                ]
+            }
+        },
         "/api/v1/admin/system/info": {
             "get": {
                 "description": "Check system information (requires admin privileges)",
@@ -846,6 +934,7 @@
         "/api/v1/stream/sessions": {
             "get": {
                 "description": "Stream real-time session updates via Server-Sent Events",
+                "operationId": "streamSessions",
                 "parameters": [
                     {
                         "description": "Target namespace",
@@ -1322,6 +1411,23 @@
                 },
                 "type": "object"
             },
+            "cmd_server.ManagerMeta": {
+                "properties": {
+                    "kind": {
+                        "description": "helm|argo|deployment|statefulset|namespace",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "release/app/deployment name (sanitized when used as label)",
+                        "type": "string"
+                    },
+                    "namespace": {
+                        "description": "namespace where the manager runs",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "cmd_server.NamespaceInfo": {
                 "properties": {
                     "userAllowed": {
@@ -1383,6 +1489,12 @@
                     },
                     "cluster": {
                         "$ref": "#/components/schemas/cmd_server.ClusterInfo"
+                    },
+                    "instanceID": {
+                        "type": "string"
+                    },
+                    "manager": {
+                        "$ref": "#/components/schemas/cmd_server.ManagerMeta"
                     },
                     "namespaces": {
                         "$ref": "#/components/schemas/cmd_server.ServerNamespaceInfo"

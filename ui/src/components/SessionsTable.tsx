@@ -21,6 +21,36 @@ function PhaseLabel({ phase }: { phase?: string }) {
   const pfColor = intent[phase || "none"] || "info";
   return <Label color={pfColor as any}>{phase || "-"}</Label>;
 }
+function getManagerInfo(s: UISession) {
+  const L = s.metadata.labels || {};
+  const A = s.metadata.annotations || {};
+
+  // prefer explicit codespace-operator labels; fall back to the k8s conventional one
+  const managerName =
+    L["codespace.dev/manager-name"] ||
+    L["codespace.dev/manager"] ||
+    L["app.kubernetes.io/managed-by"];
+  const managerNamespace = L["codespace.dev/manager-namespace"] || "";
+  const managerKind = L["codespace.dev/manager-kind"] || "";
+  const instanceId =
+    L["codespace.dev/instance-id"] ||
+    L["codespace.codespace.dev/instance-id"] ||
+    "";
+
+  const adoptedFrom = A["codespace.dev/adopted-from"] || "";
+  const adoptedAt = A["codespace.dev/adopted-at"] || "";
+  const adoptedBy = A["codespace.dev/adopted-by"] || "";
+
+  return {
+    managerName,
+    managerNamespace,
+    managerKind,
+    instanceId,
+    adoptedFrom,
+    adoptedAt,
+    adoptedBy,
+  };
+}
 
 type Props = {
   loading: boolean;
@@ -49,6 +79,7 @@ export function SessionsTable({
             <Th>IDE</Th>
             <Th>Image</Th>
             <Th>Host</Th>
+            <Th>Managed By</Th>
             <Th>Phase</Th>
             <Th textCenter>Replicas</Th>
             <Th modifier="fitContent">Actions</Th>
@@ -57,7 +88,7 @@ export function SessionsTable({
         <Tbody>
           {loading ? (
             <Tr>
-              <Td colSpan={8}>
+              <Td colSpan={9}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Spinner size="md" /> Loading...
                 </div>
@@ -65,7 +96,7 @@ export function SessionsTable({
             </Tr>
           ) : rows.length === 0 ? (
             <Tr>
-              <Td colSpan={8}>No sessions</Td>
+              <Td colSpan={9}>No sessions</Td>
             </Tr>
           ) : (
             rows.map((s) => (
@@ -78,6 +109,68 @@ export function SessionsTable({
                 </Td>
                 <Td dataLabel="Host" modifier="truncate">
                   {s.spec.networking?.host || ""}
+                </Td>
+                <Td dataLabel="Managed by">
+                  {(() => {
+                    const m = getManagerInfo(s);
+                    if (!m.managerName)
+                      return <span className="pf-u-color-200">—</span>;
+                    const labelText = m.managerNamespace
+                      ? `${m.managerNamespace}/${m.managerName}`
+                      : m.managerName;
+                    return (
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Tooltip
+                          content={
+                            <div style={{ lineHeight: 1.4 }}>
+                              {m.managerKind && (
+                                <div>
+                                  <strong>Kind:</strong> {m.managerKind}
+                                </div>
+                              )}
+                              {m.instanceId && (
+                                <div>
+                                  <strong>Instance:</strong> {m.instanceId}
+                                </div>
+                              )}
+                              {m.adoptedFrom && (
+                                <div>
+                                  <strong>Adopted from:</strong> {m.adoptedFrom}
+                                </div>
+                              )}
+                              {m.adoptedBy && (
+                                <div>
+                                  <strong>Adopted by:</strong> {m.adoptedBy}
+                                </div>
+                              )}
+                              {m.adoptedAt && (
+                                <div>
+                                  <strong>Adopted at:</strong> {m.adoptedAt}
+                                </div>
+                              )}
+                            </div>
+                          }
+                        >
+                          <Label isCompact color="blue">
+                            {labelText}
+                          </Label>
+                        </Tooltip>
+                        {m.adoptedFrom && (
+                          <Tooltip content="This session was adopted by the current manager">
+                            <Label isCompact color="purple">
+                              adopted
+                            </Label>
+                          </Tooltip>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </Td>
                 <Td dataLabel="Phase">
                   <PhaseLabel phase={s.status?.phase} />

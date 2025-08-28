@@ -130,7 +130,6 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			opts = append(opts, client.MatchingLabels{InstanceIDLabel: h.deps.instanceID})
 		}
 
-		// ↓ Push label filter to API
 		if err := h.deps.client.List(r.Context(), &sl, opts...); err != nil {
 			logger.Error("Failed to list sessions across all namespaces", "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions: %w", err))
@@ -165,25 +164,40 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		namespaces = []string{namespace}
 	}
 
-	// Enrich with manager meta in cluster-scope
+	// Ensure Manager labels are present on every returned item.
+	// In cluster-scope we try to map instance-id -> manager meta using ConfigMaps;
+	// otherwise we fall back to the server's own manager identity.
+	var idx map[string]ManagerMeta
 	if h.deps.config.ClusterScope {
-		idx := h.buildInstanceMetaIndex(r)
-		for i := range sessions {
-			s := &sessions[i]
-			if s.Labels == nil {
-				s.Labels = map[string]string{}
-			}
-			if meta, ok := idx[s.Labels[InstanceIDLabel]]; ok {
-				if s.Labels[LabelManagerKind] == "" {
-					s.Labels[LabelManagerKind] = meta.Kind
-				}
-				if s.Labels[LabelManagerNamespace] == "" {
-					s.Labels[LabelManagerNamespace] = meta.Namespace
-				}
-				if s.Labels[LabelManagerName] == "" && meta.Name != "" {
-					s.Labels[LabelManagerName] = meta.Name
-				}
-			}
+		idx = h.buildInstanceMetaIndex(r)
+	} else {
+		idx = map[string]ManagerMeta{}
+	}
+
+	for i := range sessions {
+		s := &sessions[i]
+		if s.Labels == nil {
+			s.Labels = map[string]string{}
+		}
+		// Best-effort: ensure instance-id is set on older objects in non-cluster mode
+		if !h.deps.config.ClusterScope && s.Labels[InstanceIDLabel] == "" {
+			s.Labels[InstanceIDLabel] = h.deps.instanceID
+		}
+
+		// Pick manager meta: index (cluster-scope) or server's own manager
+		meta, ok := idx[s.Labels[InstanceIDLabel]]
+		if !ok {
+			meta = h.deps.manager
+		}
+
+		if s.Labels[LabelManagerKind] == "" && meta.Kind != "" {
+			s.Labels[LabelManagerKind] = meta.Kind
+		}
+		if s.Labels[LabelManagerNamespace] == "" && meta.Namespace != "" {
+			s.Labels[LabelManagerNamespace] = meta.Namespace
+		}
+		if s.Labels[LabelManagerName] == "" && meta.Name != "" {
+			s.Labels[LabelManagerName] = meta.Name
 		}
 	}
 
@@ -596,7 +610,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 // @Summary Stream sessions
 // @Description Stream real-time session updates via Server-Sent Events
 // @Tags sessions
-// /@ID streamSessions
+// @ID streamSessions
 // @Produce text/event-stream
 // @Security BearerAuth
 // @Security CookieAuth
@@ -740,9 +754,116 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (h *handlers) handleGetAllSubjectSessions(w http.ResponseWriter, r *http.Request) {
-	// Implementation for getting all sessions for a subject
-	// Verify Casbin RBAC
-	// Fetch all cl.subject sessions across all namespace
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// handleAdoptSession handles adoption of an orphaned session by the current instance.
+// @summary Adopt an orphaned session
+// @description Attempts to adopt a session resource by the current instance. If the session is not orphaned, adoption is blocked unless 'force=1' is specified.
+// @tags admin, sessions
+// @accept json
+// @produce json
+// @param namespace query string false "Namespace of the session" default(default)
+// @param name query string true "Name of the session"
+// @param dryRun query integer false "If set to 1, returns the patched session without updating it" enums(0,1) default(0)
+// @param force query integer false "If set to 1, forces adoption even if the session is not orphaned" enums(0,1) default(0)
+// @success 200 {object} codespacev1.Session "Adopted session object"
+// @failure 404 {object} ErrorResponse
+// @failure 409 {string} string "Session is not orphaned; use force=1 to override"
+// @router /api/v1/admin/sessions/adopt [post]
+func (h *handlers) handleAdoptSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ns := q(r, "namespace", "default")
+	name := q(r, "name", "")
+	if name == "" {
+		http.Error(w, "missing name", http.StatusBadRequest)
+		return
+	}
+
+	cl := fromContext(r)
+	if cl == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// RBAC: allow if admin(*/*/*) OR session:update in the target namespace
+	isAdmin, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "*", "admin", "*")
+	if !isAdmin {
+		ok, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "update", ns)
+		if !ok {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	dry := r.URL.Query().Get("dryRun") == "1" || r.URL.Query().Get("dryRun") == "true"
+	force := r.URL.Query().Get("force") == "1" || r.URL.Query().Get("force") == "true"
+
+	var s codespacev1.Session
+	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: ns, Name: name}, &s); err != nil {
+		errJSON(w, fmt.Errorf("session not found: %w", err))
+		return
+	}
+
+	// Non cluster-scope servers should not cross-adopt other instance sessions
+	if !h.deps.config.ClusterScope {
+		if sid := s.Labels[InstanceIDLabel]; sid != "" && sid != h.deps.instanceID {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+	}
+
+	// Determine orphan/foreign status
+	oldID := ""
+	if s.Labels != nil {
+		oldID = s.Labels[InstanceIDLabel]
+	}
+	idx := h.buildInstanceMetaIndex(r)
+	_, known := idx[oldID]
+	orphan := oldID == "" || !known
+
+	// If it's not orphaned and belongs to a different instance, require force
+	if !orphan && oldID != h.deps.instanceID && !force {
+		http.Error(w, "not orphaned; use force=1 to override", http.StatusConflict)
+		return
+	}
+
+	// Prepare mutation
+	if s.Labels == nil {
+		s.Labels = map[string]string{}
+	}
+	if s.Annotations == nil {
+		s.Annotations = map[string]string{}
+	}
+
+	s.Labels[InstanceIDLabel] = h.deps.instanceID
+	s.Labels[LabelManagerKind] = h.deps.manager.Kind
+	s.Labels[LabelManagerNamespace] = h.deps.manager.Namespace
+	s.Labels[LabelManagerName] = h.deps.manager.Name
+
+	if oldID != "" {
+		s.Annotations["codespace.dev/adopted-from"] = oldID
+	}
+	s.Annotations["codespace.dev/adopted-at"] = time.Now().Format(time.RFC3339)
+	s.Annotations["codespace.dev/adopted-by"] = cl.Sub
+
+	if dry {
+		writeJSON(w, s)
+		return
+	}
+
+	if err := helpers.RetryOnConflict(func() error {
+		return h.deps.client.Update(r.Context(), &s)
+	}); err != nil {
+		errJSON(w, fmt.Errorf("adoption failed: %w", err))
+		return
+	}
+
+	logger.Info("Adopted session",
+		"name", name, "namespace", ns,
+		"from", oldID, "to", h.deps.instanceID,
+		"by", cl.Sub, "force", force,
+	)
+	writeJSON(w, s)
 }
