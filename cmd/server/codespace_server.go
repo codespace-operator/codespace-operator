@@ -1,3 +1,28 @@
+//go:generate swag init -g codespace_server.go -o ../../docs --parseDependency --parseInternal
+
+// @title Codespace Operator API
+// @version 1.0.0
+// @description REST API for managing Codespace sessions in Kubernetes
+// @termsOfService https://github.com/codespace-operator/codespace-operator
+
+// @contact.name Codespace Operator Support
+// @contact.url https://github.com/codespace-operator/codespace-operator
+// @contact.email support@codespace.dev
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name codespace_session
+
 package main
 
 import (
@@ -188,7 +213,7 @@ func runServer(cmd *cobra.Command, args []string) {
 		localUsers: users,
 	}
 
-	mux := setupHandlers(deps)
+	mux := setupHandlersWithDocs(deps)
 	registerAuthHandlers(mux, deps)
 
 	// build middleware chain:

@@ -60,8 +60,6 @@ func registerAuthHandlers(mux *http.ServeMux, deps *serverDeps) {
 		}
 	}
 
-	// Always available
-	mux.Handle("/api/v1/me", handleMe())
 }
 
 func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, error) {

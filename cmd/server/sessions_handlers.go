@@ -17,31 +17,6 @@ import (
 	"github.com/codespace-operator/codespace-operator/internal/helpers"
 )
 
-// SessionCreateRequest represents the request body for creating a session
-type SessionCreateRequest struct {
-	Name      string                  `json:"name"`
-	Namespace string                  `json:"namespace"`
-	Profile   codespacev1.ProfileSpec `json:"profile"`
-	Auth      *codespacev1.AuthSpec   `json:"auth,omitempty"`
-	Home      *codespacev1.PVCSpec    `json:"home,omitempty"`
-	Scratch   *codespacev1.PVCSpec    `json:"scratch,omitempty"`
-	Network   *codespacev1.NetSpec    `json:"networking,omitempty"`
-	Replicas  *int32                  `json:"replicas,omitempty"`
-}
-
-// SessionScaleRequest represents the request body for scaling a session
-type SessionScaleRequest struct {
-	Replicas int32 `json:"replicas"`
-}
-
-// SessionListResponse wraps the session list with metadata
-type SessionListResponse struct {
-	Items      []codespacev1.Session `json:"items"`
-	Total      int                   `json:"total"`
-	Namespaces []string              `json:"namespaces,omitempty"`
-	Filtered   bool                  `json:"filtered,omitempty"`
-}
-
 // handleSessionOperations handles the main session endpoint operations
 func handleSessionOperations(deps *serverDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

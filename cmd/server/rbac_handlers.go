@@ -8,34 +8,6 @@ import (
 	"sort"
 )
 
-// UserIntrospectionResponse represents user-specific information only
-type UserIntrospectionResponse struct {
-	User         UserInfo                     `json:"user"`
-	Domains      map[string]DomainPermissions `json:"domains"`
-	Namespaces   NamespaceInfo                `json:"namespaces"`
-	Capabilities UserCapabilities             `json:"capabilities"`
-}
-
-// ServerIntrospectionResponse represents server/cluster information only
-type ServerIntrospectionResponse struct {
-	Cluster      ClusterInfo         `json:"cluster"`
-	Namespaces   ServerNamespaceInfo `json:"namespaces"`
-	Capabilities SystemCapabilities  `json:"capabilities"`
-	Version      ServerVersionInfo   `json:"version,omitempty"`
-}
-
-// UserInfo contains authenticated user details
-type UserInfo struct {
-	Subject       string   `json:"subject"`
-	Username      string   `json:"username,omitempty"`
-	Email         string   `json:"email,omitempty"`
-	Roles         []string `json:"roles"`
-	Provider      string   `json:"provider"`
-	IssuedAt      int64    `json:"iat,omitempty"`
-	ExpiresAt     int64    `json:"exp,omitempty"`
-	ImplicitRoles []string `json:"implicitRoles,omitempty"` // Roles from Casbin inheritance
-}
-
 // ClusterInfo contains cluster-level permission information
 type ClusterInfo struct {
 	Casbin               CasbinPermissions  `json:"casbin"`

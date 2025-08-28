@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.1
+VERSION ?= 1.0.0
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -162,7 +162,7 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/session-controller cmd/session-controller/session_controller.go
+	go build -ldflags "-X main.Version=$(VERSION)" -o bin/session-controller cmd/session-controller/session_controller.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -185,7 +185,7 @@ build-server:
 	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
 	cp -r ./ui/dist/* cmd/server/static/
 	touch ./cmd/server/static/.gitkeep
-	go build -o ./bin/codespace-server ./cmd/server
+	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
 
 .PHONY: docker-build-server
 docker-build-server:
@@ -233,6 +233,11 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+
+.PHONY: swagger
+swagger:
+	@which swag > /dev/null || go install github.com/swaggo/swag/cmd/swag@latest
+	@swag init -g cmd/server/codespace_server.go -o docs --parseDependency --parseInternal
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
