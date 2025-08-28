@@ -3,6 +3,8 @@
 : "${SETUP_CONFIG:=misc/tests/config.sh}"
 : "${DEPLOY_SCRIPT:=misc/tests/deploy.sh}"
 : "${BUILD_SCRIPT:=misc/tests/build.sh}"
+: "${CREATE_SESSION_SCRIPT:=misc/tests/create-session.sh}"
+
 source "${SETUP_CONFIG}"
 
 need() { command -v "$1" >/dev/null || { echo "Missing '$1' in PATH"; exit 1; }; }
@@ -69,4 +71,5 @@ fi
 echo ">>> Installing CRDs via Helm chart (or comment this and use 'make install')..."
 ./${DEPLOY_SCRIPT}
 
-echo ">>> Done. If 127.0.0.1:80 still refuses, re-run the Windows preflight and confirm no service owns :80."
+
+./${CREATE_SESSION_SCRIPT}
