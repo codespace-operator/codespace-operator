@@ -90,6 +90,7 @@ func main() {
 	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().Float32("kube-qps", 50.0, "Kubernetes client QPS limit")
 	rootCmd.Flags().Int("kube-burst", 100, "Kubernetes client burst limit")
+	rootCmd.Flags().Bool("cluster-scope", false, "Enable cluster-scoped mode")
 
 	// Authentication flags
 	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
@@ -164,9 +165,11 @@ func runServer(cmd *cobra.Command, args []string) {
 		logger.Fatal("Local users load failed", "err", err)
 	}
 	instanceID, err := ensureInstallationID(context.Background(), client)
+	logger.Info(fmt.Sprintf("Ensured server installation ID: %s", instanceID), "instanceID", instanceID)
 	if err != nil {
 		logger.Error("failed to ensure server id", "err", err)
 	}
+
 	// Create server dependencies
 	deps := &serverDeps{
 		client:     client,
@@ -194,6 +197,13 @@ func runServer(cmd *cobra.Command, args []string) {
 	logger.Printf("🚀 Codespace Server starting on %s", cfg.GetAddr())
 	if swagDocAvailable() {
 		logger.Printf("📚 API Documentation available at http://%s/api/docs/", cfg.GetAddr())
+	}
+
+	// Report if running cluster-scoped
+	if cfg.ClusterScope {
+		logger.Info(" ----------------- Running in cluster-scoped mode ----------------- ")
+	} else {
+		logger.Info(" --------------- Running in instance-id scoped mode --------------- ")
 	}
 
 	if err := http.ListenAndServe(cfg.GetAddr(), handler); err != nil {
@@ -238,6 +248,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *config.ServerConfig {
 	}
 
 	// Apply overrides
+	overrideBool(&cfg.ClusterScope, "cluster-scope")
 	overrideInt(&cfg.Port, "port")
 	overrideString(&cfg.Host, "host")
 	overrideString(&cfg.AllowOrigin, "allow-origin")

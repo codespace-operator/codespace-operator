@@ -299,10 +299,14 @@ func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]st
 	}
 	var sessionNamespaces []string
 	var sl codespacev1.SessionList
+	opts := []client.ListOption{}
+	if !deps.config.ClusterScope {
+		opts = append(opts, client.MatchingLabels{InstanceIDLabel: deps.instanceID})
+	}
 	if err := deps.client.List(
 		ctx,
 		&sl,
-		client.MatchingLabels{InstanceIDLabel: deps.instanceID},
+		opts...,
 	); err == nil {
 		nsSet := map[string]struct{}{}
 		for _, s := range sl.Items {
@@ -317,12 +321,14 @@ func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]st
 		nsSet := map[string]struct{}{}
 		for _, ns := range allNamespaces {
 			var one codespacev1.SessionList
-			if err := deps.client.List(
-				ctx, &one,
+			opts := []client.ListOption{
 				client.InNamespace(ns),
-				client.MatchingLabels{InstanceIDLabel: deps.instanceID},
 				client.Limit(1),
-			); err == nil && len(one.Items) > 0 {
+			}
+			if !deps.config.ClusterScope {
+				opts = append(opts, client.MatchingLabels{InstanceIDLabel: deps.instanceID})
+			}
+			if err := deps.client.List(ctx, &one, opts...); err == nil && len(one.Items) > 0 {
 				nsSet[ns] = struct{}{}
 			}
 		}
@@ -478,10 +484,15 @@ func owningControllerAnchor(ctx context.Context, cl client.Client) (kind, name, 
 	}
 	return kind, name, uid
 }
+func k8sHexHash(s string, bytes int) string {
+	if bytes <= 0 || bytes > 32 {
+		bytes = 10 // 10 bytes -> 20 hex chars
+	}
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:bytes]) // lowercase [0-9a-f]
+}
 
 // ensureInstallationID creates/gets a per-instance ConfigMap and returns a stable id.
-// The ConfigMap name is derived from the owning controller UID to avoid collisions
-// between multiple instances in the same namespace.
 func ensureInstallationID(ctx context.Context, cl client.Client) (string, error) {
 	ns := inClusterNamespace()
 	kind, name, uid := owningControllerAnchor(ctx, cl)
@@ -493,7 +504,9 @@ func ensureInstallationID(ctx context.Context, cl client.Client) (string, error)
 		anchorParts = append(anchorParts, name)
 	}
 	anchor := strings.Join(anchorParts, ":")
-	cmName := fmt.Sprintf("%s-%s", cmPrefixName, shortHash(anchor))
+
+	// IMPORTANT: use lowercase, RFC1123-safe hash here
+	cmName := fmt.Sprintf("%s-%s", cmPrefixName, k8sHexHash(anchor, 10))
 
 	cm := &corev1.ConfigMap{}
 	key := client.ObjectKey{Namespace: ns, Name: cmName}
@@ -505,7 +518,7 @@ func ensureInstallationID(ctx context.Context, cl client.Client) (string, error)
 		return "", err
 	}
 
-	id := randB64(18)
+	id := randB64(18) // value only; can include '-','_' — fine for data, not names/labels
 	cm = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cmName,
@@ -515,14 +528,13 @@ func ensureInstallationID(ctx context.Context, cl client.Client) (string, error)
 				"app.kubernetes.io/component":  "server",
 				"app.kubernetes.io/managed-by": "codespace-operator",
 				"codespace.dev/owner-kind":     kind,
-				"codespace.dev/owner-name":     name,
+				"codespace.dev/owner-name":     strings.ToLower(name),
 			},
 		},
 		Data: map[string]string{"id": id},
 	}
 	if err := cl.Create(ctx, cm); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			// concurrent creator—re-read and return
 			if err := cl.Get(ctx, key, cm); err == nil && cm.Data["id"] != "" {
 				return cm.Data["id"], nil
 			}

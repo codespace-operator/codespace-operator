@@ -17,6 +17,7 @@ import (
 
 // ServerConfig holds all configuration for the codespace server
 type ServerConfig struct {
+	ClusterScope bool `mapstructure:"cluster_scope"`
 	// Network
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
@@ -67,7 +68,6 @@ type ControllerConfig struct {
 	ProbeAddr            string `mapstructure:"probe_addr"`
 	EnableLeaderElection bool   `mapstructure:"enable_leader_election"`
 	LeaderElectionID     string `mapstructure:"leader_election_id"`
-
 	// Certificate settings
 	MetricsCertPath string `mapstructure:"metrics_cert_path"`
 	MetricsCertName string `mapstructure:"metrics_cert_name"`
@@ -97,6 +97,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v := viper.New()
 
 	// Defaults (match prior behavior)
+	v.SetDefault("cluster_scope", false)
 	v.SetDefault("host", "")
 	v.SetDefault("port", 8080)
 	v.SetDefault("read_timeout", 0)

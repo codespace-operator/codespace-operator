@@ -125,12 +125,13 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 
 	if allNamespaces {
 		var sl codespacev1.SessionList
+		opts := []client.ListOption{}
+		if !h.deps.config.ClusterScope {
+			opts = append(opts, client.MatchingLabels{InstanceIDLabel: h.deps.instanceID})
+		}
+
 		// ↓ Push label filter to API
-		if err := h.deps.client.List(
-			r.Context(),
-			&sl,
-			client.MatchingLabels{InstanceIDLabel: h.deps.instanceID},
-		); err != nil {
+		if err := h.deps.client.List(r.Context(), &sl, opts...); err != nil {
 			logger.Error("Failed to list sessions across all namespaces", "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions: %w", err))
 			return
@@ -149,11 +150,16 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		var sessionList codespacev1.SessionList
+		opts := []client.ListOption{
+			client.InNamespace(namespace),
+		}
+		if !h.deps.config.ClusterScope {
+			opts = append(opts, client.MatchingLabels{InstanceIDLabel: h.deps.instanceID})
+		}
 		if err := h.deps.client.List(
 			r.Context(),
 			&sessionList,
-			client.InNamespace(namespace),
-			client.MatchingLabels{InstanceIDLabel: h.deps.instanceID}, // ← here too
+			opts...,
 		); err != nil {
 			logger.Error("Failed to list sessions", "namespace", namespace, "err", err, "user", cl.Sub)
 			errJSON(w, fmt.Errorf("failed to list sessions in namespace %s: %w", namespace, err))
@@ -305,7 +311,8 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
-	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID && !h.deps.config.ClusterScope {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -353,7 +360,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
-	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID && !h.deps.config.ClusterScope {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -427,7 +434,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if CR belongs to this instance
-	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID && !h.deps.config.ClusterScope {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -493,7 +500,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if CR belongs to this instance
-	if session.Labels[InstanceIDLabel] != h.deps.instanceID {
+	if session.Labels[InstanceIDLabel] != h.deps.instanceID && !h.deps.config.ClusterScope {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
