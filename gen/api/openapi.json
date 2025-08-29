@@ -38,7 +38,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -48,7 +48,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -133,7 +133,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -206,7 +206,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -216,7 +216,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -257,7 +257,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -296,7 +296,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ServerIntrospectionResponse"
+                                    "$ref": "#/components/schemas/internal_server.ServerIntrospectionResponse"
                                 }
                             }
                         }
@@ -306,7 +306,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -316,7 +316,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -363,7 +363,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.UserIntrospectionResponse"
+                                    "$ref": "#/components/schemas/internal_server.UserIntrospectionResponse"
                                 }
                             }
                         }
@@ -373,7 +373,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -402,7 +402,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.UserInfo"
+                                    "$ref": "#/components/schemas/internal_server.UserInfo"
                                 }
                             }
                         }
@@ -412,7 +412,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -461,7 +461,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.SessionListResponse"
+                                    "$ref": "#/components/schemas/internal_server.SessionListResponse"
                                 }
                             }
                         }
@@ -471,7 +471,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -481,7 +481,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -507,7 +507,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/cmd_server.SessionCreateRequest"
+                                "$ref": "#/components/schemas/internal_server.SessionCreateRequest"
                             }
                         }
                     },
@@ -530,7 +530,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -540,7 +540,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -550,7 +550,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -613,7 +613,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -623,7 +623,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -633,7 +633,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -691,7 +691,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -701,7 +701,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -711,7 +711,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -757,7 +757,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/cmd_server.SessionCreateRequest"
+                                "$ref": "#/components/schemas/internal_server.SessionCreateRequest"
                             }
                         }
                     },
@@ -780,7 +780,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -790,7 +790,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -800,7 +800,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -810,7 +810,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -858,7 +858,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/cmd_server.SessionScaleRequest"
+                                "$ref": "#/components/schemas/internal_server.SessionScaleRequest"
                             }
                         }
                     },
@@ -881,7 +881,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -891,7 +891,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -901,7 +901,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -911,7 +911,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -970,7 +970,7 @@
                         "content": {
                             "text/event-stream": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -980,7 +980,7 @@
                         "content": {
                             "text/event-stream": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -1027,7 +1027,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.UserPermissions"
+                                    "$ref": "#/components/schemas/internal_server.UserPermissions"
                                 }
                             }
                         }
@@ -1037,7 +1037,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -1066,7 +1066,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.AuthFeatures"
+                                    "$ref": "#/components/schemas/internal_server.AuthFeatures"
                                 }
                             }
                         }
@@ -1085,7 +1085,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/cmd_server.LocalLoginRequest"
+                                "$ref": "#/components/schemas/internal_server.LocalLoginRequest"
                             }
                         }
                     },
@@ -1098,7 +1098,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.LoginResponse"
+                                    "$ref": "#/components/schemas/internal_server.LoginResponse"
                                 }
                             }
                         }
@@ -1108,7 +1108,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/cmd_server.ErrorResponse"
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
                                 }
                             }
                         }
@@ -1309,458 +1309,6 @@
             }
         },
         "schemas": {
-            "cmd_server.AuthFeatures": {
-                "description": "Available authentication features and endpoints",
-                "properties": {
-                    "localLoginEnabled": {
-                        "example": false,
-                        "type": "boolean"
-                    },
-                    "localLoginPath": {
-                        "example": "/auth/local/login",
-                        "type": "string"
-                    },
-                    "ssoEnabled": {
-                        "example": true,
-                        "type": "boolean"
-                    },
-                    "ssoLoginPath": {
-                        "example": "/auth/sso/login",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.CasbinPermissions": {
-                "properties": {
-                    "namespaces": {
-                        "$ref": "#/components/schemas/cmd_server.NamespacePermissions"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ClusterInfo": {
-                "properties": {
-                    "casbin": {
-                        "$ref": "#/components/schemas/cmd_server.CasbinPermissions"
-                    },
-                    "serverServiceAccount": {
-                        "$ref": "#/components/schemas/cmd_server.ServiceAccountInfo"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.DomainPermissions": {
-                "properties": {
-                    "session": {
-                        "additionalProperties": {
-                            "type": "boolean"
-                        },
-                        "type": "object"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ErrorResponse": {
-                "properties": {
-                    "error": {
-                        "example": "Invalid request",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.LocalLoginRequest": {
-                "description": "Local login credentials",
-                "properties": {
-                    "password": {
-                        "example": "secretpassword",
-                        "type": "string"
-                    },
-                    "username": {
-                        "example": "alice",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "password",
-                    "username"
-                ],
-                "type": "object"
-            },
-            "cmd_server.LoginResponse": {
-                "description": "Successful authentication response",
-                "properties": {
-                    "roles": {
-                        "example": [
-                            "editor",
-                            "viewer"
-                        ],
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "token": {
-                        "type": "string"
-                    },
-                    "user": {
-                        "example": "alice",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ManagerMeta": {
-                "properties": {
-                    "kind": {
-                        "description": "helm|argo|deployment|statefulset|namespace",
-                        "type": "string"
-                    },
-                    "name": {
-                        "description": "release/app/deployment name (sanitized when used as label)",
-                        "type": "string"
-                    },
-                    "namespace": {
-                        "description": "namespace where the manager runs",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.NamespaceInfo": {
-                "properties": {
-                    "userAllowed": {
-                        "description": "Namespaces user can access",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "userCreatable": {
-                        "description": "Namespaces user can create sessions in",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "userDeletable": {
-                        "description": "Namespaces user can delete sessions from",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.NamespacePermissions": {
-                "properties": {
-                    "list": {
-                        "type": "boolean"
-                    },
-                    "watch": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.PermissionCheck": {
-                "properties": {
-                    "action": {
-                        "type": "string"
-                    },
-                    "allowed": {
-                        "type": "boolean"
-                    },
-                    "namespace": {
-                        "type": "string"
-                    },
-                    "resource": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ServerIntrospectionResponse": {
-                "properties": {
-                    "capabilities": {
-                        "$ref": "#/components/schemas/cmd_server.SystemCapabilities"
-                    },
-                    "cluster": {
-                        "$ref": "#/components/schemas/cmd_server.ClusterInfo"
-                    },
-                    "instanceID": {
-                        "type": "string"
-                    },
-                    "manager": {
-                        "$ref": "#/components/schemas/cmd_server.ManagerMeta"
-                    },
-                    "namespaces": {
-                        "$ref": "#/components/schemas/cmd_server.ServerNamespaceInfo"
-                    },
-                    "version": {
-                        "$ref": "#/components/schemas/cmd_server.ServerVersionInfo"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ServerNamespaceInfo": {
-                "properties": {
-                    "all": {
-                        "description": "All namespaces (if discoverable)",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "withSessions": {
-                        "description": "Namespaces containing sessions",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ServerVersionInfo": {
-                "properties": {
-                    "buildDate": {
-                        "type": "string"
-                    },
-                    "gitCommit": {
-                        "type": "string"
-                    },
-                    "version": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.ServiceAccountInfo": {
-                "properties": {
-                    "namespaces": {
-                        "$ref": "#/components/schemas/cmd_server.NamespacePermissions"
-                    },
-                    "session": {
-                        "additionalProperties": {
-                            "type": "boolean"
-                        },
-                        "type": "object"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.SessionCreateRequest": {
-                "description": "Request body for creating a new codespace session",
-                "properties": {
-                    "auth": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
-                    },
-                    "home": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-                    },
-                    "name": {
-                        "example": "my-session",
-                        "type": "string"
-                    },
-                    "namespace": {
-                        "example": "default",
-                        "type": "string"
-                    },
-                    "networking": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
-                    },
-                    "profile": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
-                    },
-                    "replicas": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "scratch": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-                    }
-                },
-                "required": [
-                    "name",
-                    "profile"
-                ],
-                "type": "object"
-            },
-            "cmd_server.SessionListResponse": {
-                "description": "Response containing list of sessions with metadata",
-                "properties": {
-                    "filtered": {
-                        "type": "boolean"
-                    },
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.Session"
-                        },
-                        "type": "array"
-                    },
-                    "namespaces": {
-                        "example": [
-                            "default",
-                            "kube-system"
-                        ],
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "total": {
-                        "example": 5,
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.SessionScaleRequest": {
-                "description": "Request body for scaling a session",
-                "properties": {
-                    "replicas": {
-                        "example": 2,
-                        "minimum": 0,
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.SystemCapabilities": {
-                "properties": {
-                    "clusterScope": {
-                        "description": "Displays cluster_scope: true or false",
-                        "type": "boolean"
-                    },
-                    "multiTenant": {
-                        "description": "Whether system supports multiple tenants",
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.UserCapabilities": {
-                "properties": {
-                    "adminAccess": {
-                        "description": "Whether user has admin privileges",
-                        "type": "boolean"
-                    },
-                    "clusterScope": {
-                        "description": "Whether user has any cluster-level access",
-                        "type": "boolean"
-                    },
-                    "namespaceScope": {
-                        "description": "Effective namespace scope for user",
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.UserInfo": {
-                "description": "Current authenticated user information",
-                "properties": {
-                    "email": {
-                        "example": "alice@company.com",
-                        "type": "string"
-                    },
-                    "exp": {
-                        "example": 1641081600,
-                        "type": "integer"
-                    },
-                    "iat": {
-                        "example": 1640995200,
-                        "type": "integer"
-                    },
-                    "implicitRoles": {
-                        "example": [
-                            "inherited-role"
-                        ],
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "provider": {
-                        "example": "oidc",
-                        "type": "string"
-                    },
-                    "roles": {
-                        "example": [
-                            "editor",
-                            "viewer"
-                        ],
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "subject": {
-                        "example": "alice@company.com",
-                        "type": "string"
-                    },
-                    "username": {
-                        "example": "alice",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.UserIntrospectionResponse": {
-                "properties": {
-                    "capabilities": {
-                        "$ref": "#/components/schemas/cmd_server.UserCapabilities"
-                    },
-                    "domains": {
-                        "additionalProperties": {
-                            "$ref": "#/components/schemas/cmd_server.DomainPermissions"
-                        },
-                        "type": "object"
-                    },
-                    "namespaces": {
-                        "$ref": "#/components/schemas/cmd_server.NamespaceInfo"
-                    },
-                    "user": {
-                        "$ref": "#/components/schemas/cmd_server.UserInfo"
-                    }
-                },
-                "type": "object"
-            },
-            "cmd_server.UserPermissions": {
-                "properties": {
-                    "namespaces": {
-                        "additionalProperties": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "description": "namespace -> allowed actions",
-                        "type": "object"
-                    },
-                    "permissions": {
-                        "items": {
-                            "$ref": "#/components/schemas/cmd_server.PermissionCheck"
-                        },
-                        "type": "array"
-                    },
-                    "roles": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "subject": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
             "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
                 "properties": {
                     "mode": {
@@ -1895,6 +1443,458 @@
                         "type": "string"
                     },
                     "url": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.AuthFeatures": {
+                "description": "Available authentication features and endpoints",
+                "properties": {
+                    "localLoginEnabled": {
+                        "example": false,
+                        "type": "boolean"
+                    },
+                    "localLoginPath": {
+                        "example": "/auth/local/login",
+                        "type": "string"
+                    },
+                    "ssoEnabled": {
+                        "example": true,
+                        "type": "boolean"
+                    },
+                    "ssoLoginPath": {
+                        "example": "/auth/sso/login",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.CasbinPermissions": {
+                "properties": {
+                    "namespaces": {
+                        "$ref": "#/components/schemas/internal_server.NamespacePermissions"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ClusterInfo": {
+                "properties": {
+                    "casbin": {
+                        "$ref": "#/components/schemas/internal_server.CasbinPermissions"
+                    },
+                    "serverServiceAccount": {
+                        "$ref": "#/components/schemas/internal_server.ServiceAccountInfo"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.DomainPermissions": {
+                "properties": {
+                    "session": {
+                        "additionalProperties": {
+                            "type": "boolean"
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ErrorResponse": {
+                "properties": {
+                    "error": {
+                        "example": "Invalid request",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.LocalLoginRequest": {
+                "description": "Local login credentials",
+                "properties": {
+                    "password": {
+                        "example": "secretpassword",
+                        "type": "string"
+                    },
+                    "username": {
+                        "example": "alice",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "password",
+                    "username"
+                ],
+                "type": "object"
+            },
+            "internal_server.LoginResponse": {
+                "description": "Successful authentication response",
+                "properties": {
+                    "roles": {
+                        "example": [
+                            "editor",
+                            "viewer"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "example": "alice",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ManagerMeta": {
+                "properties": {
+                    "kind": {
+                        "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "release/app/deployment name (sanitized when used as label)",
+                        "type": "string"
+                    },
+                    "namespace": {
+                        "description": "namespace where the manager runs",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.NamespaceInfo": {
+                "properties": {
+                    "userAllowed": {
+                        "description": "Namespaces user can access",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "userCreatable": {
+                        "description": "Namespaces user can create sessions in",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "userDeletable": {
+                        "description": "Namespaces user can delete sessions from",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.NamespacePermissions": {
+                "properties": {
+                    "list": {
+                        "type": "boolean"
+                    },
+                    "watch": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.PermissionCheck": {
+                "properties": {
+                    "action": {
+                        "type": "string"
+                    },
+                    "allowed": {
+                        "type": "boolean"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "resource": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ServerIntrospectionResponse": {
+                "properties": {
+                    "capabilities": {
+                        "$ref": "#/components/schemas/internal_server.SystemCapabilities"
+                    },
+                    "cluster": {
+                        "$ref": "#/components/schemas/internal_server.ClusterInfo"
+                    },
+                    "instanceID": {
+                        "type": "string"
+                    },
+                    "manager": {
+                        "$ref": "#/components/schemas/internal_server.ManagerMeta"
+                    },
+                    "namespaces": {
+                        "$ref": "#/components/schemas/internal_server.ServerNamespaceInfo"
+                    },
+                    "version": {
+                        "$ref": "#/components/schemas/internal_server.ServerVersionInfo"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ServerNamespaceInfo": {
+                "properties": {
+                    "all": {
+                        "description": "All namespaces (if discoverable)",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "withSessions": {
+                        "description": "Namespaces containing sessions",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ServerVersionInfo": {
+                "properties": {
+                    "buildDate": {
+                        "type": "string"
+                    },
+                    "gitCommit": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.ServiceAccountInfo": {
+                "properties": {
+                    "namespaces": {
+                        "$ref": "#/components/schemas/internal_server.NamespacePermissions"
+                    },
+                    "session": {
+                        "additionalProperties": {
+                            "type": "boolean"
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.SessionCreateRequest": {
+                "description": "Request body for creating a new codespace session",
+                "properties": {
+                    "auth": {
+                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
+                    },
+                    "home": {
+                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+                    },
+                    "name": {
+                        "example": "my-session",
+                        "type": "string"
+                    },
+                    "namespace": {
+                        "example": "default",
+                        "type": "string"
+                    },
+                    "networking": {
+                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
+                    },
+                    "profile": {
+                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
+                    },
+                    "replicas": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "scratch": {
+                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+                    }
+                },
+                "required": [
+                    "name",
+                    "profile"
+                ],
+                "type": "object"
+            },
+            "internal_server.SessionListResponse": {
+                "description": "Response containing list of sessions with metadata",
+                "properties": {
+                    "filtered": {
+                        "type": "boolean"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_api_v1.Session"
+                        },
+                        "type": "array"
+                    },
+                    "namespaces": {
+                        "example": [
+                            "default",
+                            "kube-system"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "total": {
+                        "example": 5,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.SessionScaleRequest": {
+                "description": "Request body for scaling a session",
+                "properties": {
+                    "replicas": {
+                        "example": 2,
+                        "minimum": 0,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.SystemCapabilities": {
+                "properties": {
+                    "clusterScope": {
+                        "description": "Displays cluster_scope: true or false",
+                        "type": "boolean"
+                    },
+                    "multiTenant": {
+                        "description": "Whether system supports multiple tenants",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.UserCapabilities": {
+                "properties": {
+                    "adminAccess": {
+                        "description": "Whether user has admin privileges",
+                        "type": "boolean"
+                    },
+                    "clusterScope": {
+                        "description": "Whether user has any cluster-level access",
+                        "type": "boolean"
+                    },
+                    "namespaceScope": {
+                        "description": "Effective namespace scope for user",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.UserInfo": {
+                "description": "Current authenticated user information",
+                "properties": {
+                    "email": {
+                        "example": "alice@company.com",
+                        "type": "string"
+                    },
+                    "exp": {
+                        "example": 1641081600,
+                        "type": "integer"
+                    },
+                    "iat": {
+                        "example": 1640995200,
+                        "type": "integer"
+                    },
+                    "implicitRoles": {
+                        "example": [
+                            "inherited-role"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "provider": {
+                        "example": "oidc",
+                        "type": "string"
+                    },
+                    "roles": {
+                        "example": [
+                            "editor",
+                            "viewer"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "subject": {
+                        "example": "alice@company.com",
+                        "type": "string"
+                    },
+                    "username": {
+                        "example": "alice",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.UserIntrospectionResponse": {
+                "properties": {
+                    "capabilities": {
+                        "$ref": "#/components/schemas/internal_server.UserCapabilities"
+                    },
+                    "domains": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/internal_server.DomainPermissions"
+                        },
+                        "type": "object"
+                    },
+                    "namespaces": {
+                        "$ref": "#/components/schemas/internal_server.NamespaceInfo"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/internal_server.UserInfo"
+                    }
+                },
+                "type": "object"
+            },
+            "internal_server.UserPermissions": {
+                "properties": {
+                    "namespaces": {
+                        "additionalProperties": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "description": "namespace -> allowed actions",
+                        "type": "object"
+                    },
+                    "permissions": {
+                        "items": {
+                            "$ref": "#/components/schemas/internal_server.PermissionCheck"
+                        },
+                        "type": "array"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "subject": {
                         "type": "string"
                     }
                 },

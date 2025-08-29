@@ -20,8 +20,8 @@ COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
 # Drop the built SPA into a static folder your server serves from
-RUN mkdir -p cmd/server/static
-COPY --from=ui /src/ui/dist/ cmd/server/static/
+RUN mkdir -p internal/server/static
+COPY --from=ui /src/ui/dist/ internal/server/static/
 
 # Build a static binary
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /workspace/codespace-server ./cmd/server

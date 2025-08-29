@@ -6,7 +6,7 @@
 /test/ @codespace-operator
 
 # Server/UI
-/cmd/server/ @codespace-operator
+/internal/server/ @codespace-operator
 /ui/ @codespace-operator
 
 # CRDs

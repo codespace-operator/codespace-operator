@@ -11,11 +11,11 @@ COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /workspace/session-controller ./cmd/session-controller
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /workspace/controller ./cmd/
 
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/session-controller /session-controller
+COPY --from=builder /workspace/controller /controller
 USER 65532:65532
 
 ENV CODESPACE_CONTROLLER_METRICS_ADDR="0"
@@ -30,6 +30,6 @@ ENV CODESPACE_CONTROLLER_DEBUG="false"
 
 # exec form only; let the program's exit code drive health
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD ["/session-controller", "--health-check"]
+  CMD ["/controller", "--health-check"]
 
-ENTRYPOINT ["/session-controller"]
+ENTRYPOINT ["/controller"]

@@ -1,314 +1,5 @@
 basePath: /
 definitions:
-  cmd_server.AuthFeatures:
-    description: Available authentication features and endpoints
-    properties:
-      localLoginEnabled:
-        example: false
-        type: boolean
-      localLoginPath:
-        example: /auth/local/login
-        type: string
-      ssoEnabled:
-        example: true
-        type: boolean
-      ssoLoginPath:
-        example: /auth/sso/login
-        type: string
-    type: object
-  cmd_server.CasbinPermissions:
-    properties:
-      namespaces:
-        $ref: '#/definitions/cmd_server.NamespacePermissions'
-    type: object
-  cmd_server.ClusterInfo:
-    properties:
-      casbin:
-        $ref: '#/definitions/cmd_server.CasbinPermissions'
-      serverServiceAccount:
-        $ref: '#/definitions/cmd_server.ServiceAccountInfo'
-    type: object
-  cmd_server.DomainPermissions:
-    properties:
-      session:
-        additionalProperties:
-          type: boolean
-        type: object
-    type: object
-  cmd_server.ErrorResponse:
-    properties:
-      error:
-        example: Invalid request
-        type: string
-    type: object
-  cmd_server.LocalLoginRequest:
-    description: Local login credentials
-    properties:
-      password:
-        example: secretpassword
-        type: string
-      username:
-        example: alice
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  cmd_server.LoginResponse:
-    description: Successful authentication response
-    properties:
-      roles:
-        example:
-        - editor
-        - viewer
-        items:
-          type: string
-        type: array
-      token:
-        type: string
-      user:
-        example: alice
-        type: string
-    type: object
-  cmd_server.ManagerMeta:
-    properties:
-      kind:
-        description: helm|argo|deployment|statefulset|namespace
-        type: string
-      name:
-        description: release/app/deployment name (sanitized when used as label)
-        type: string
-      namespace:
-        description: namespace where the manager runs
-        type: string
-    type: object
-  cmd_server.NamespaceInfo:
-    properties:
-      userAllowed:
-        description: Namespaces user can access
-        items:
-          type: string
-        type: array
-      userCreatable:
-        description: Namespaces user can create sessions in
-        items:
-          type: string
-        type: array
-      userDeletable:
-        description: Namespaces user can delete sessions from
-        items:
-          type: string
-        type: array
-    type: object
-  cmd_server.NamespacePermissions:
-    properties:
-      list:
-        type: boolean
-      watch:
-        type: boolean
-    type: object
-  cmd_server.PermissionCheck:
-    properties:
-      action:
-        type: string
-      allowed:
-        type: boolean
-      namespace:
-        type: string
-      resource:
-        type: string
-    type: object
-  cmd_server.ServerIntrospectionResponse:
-    properties:
-      capabilities:
-        $ref: '#/definitions/cmd_server.SystemCapabilities'
-      cluster:
-        $ref: '#/definitions/cmd_server.ClusterInfo'
-      instanceID:
-        type: string
-      manager:
-        $ref: '#/definitions/cmd_server.ManagerMeta'
-      namespaces:
-        $ref: '#/definitions/cmd_server.ServerNamespaceInfo'
-      version:
-        $ref: '#/definitions/cmd_server.ServerVersionInfo'
-    type: object
-  cmd_server.ServerNamespaceInfo:
-    properties:
-      all:
-        description: All namespaces (if discoverable)
-        items:
-          type: string
-        type: array
-      withSessions:
-        description: Namespaces containing sessions
-        items:
-          type: string
-        type: array
-    type: object
-  cmd_server.ServerVersionInfo:
-    properties:
-      buildDate:
-        type: string
-      gitCommit:
-        type: string
-      version:
-        type: string
-    type: object
-  cmd_server.ServiceAccountInfo:
-    properties:
-      namespaces:
-        $ref: '#/definitions/cmd_server.NamespacePermissions'
-      session:
-        additionalProperties:
-          type: boolean
-        type: object
-    type: object
-  cmd_server.SessionCreateRequest:
-    description: Request body for creating a new codespace session
-    properties:
-      auth:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
-      home:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
-      name:
-        example: my-session
-        type: string
-      namespace:
-        example: default
-        type: string
-      networking:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
-      profile:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
-      replicas:
-        example: 1
-        type: integer
-      scratch:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
-    required:
-    - name
-    - profile
-    type: object
-  cmd_server.SessionListResponse:
-    description: Response containing list of sessions with metadata
-    properties:
-      filtered:
-        type: boolean
-      items:
-        items:
-          $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
-        type: array
-      namespaces:
-        example:
-        - default
-        - kube-system
-        items:
-          type: string
-        type: array
-      total:
-        example: 5
-        type: integer
-    type: object
-  cmd_server.SessionScaleRequest:
-    description: Request body for scaling a session
-    properties:
-      replicas:
-        example: 2
-        minimum: 0
-        type: integer
-    type: object
-  cmd_server.SystemCapabilities:
-    properties:
-      clusterScope:
-        description: 'Displays cluster_scope: true or false'
-        type: boolean
-      multiTenant:
-        description: Whether system supports multiple tenants
-        type: boolean
-    type: object
-  cmd_server.UserCapabilities:
-    properties:
-      adminAccess:
-        description: Whether user has admin privileges
-        type: boolean
-      clusterScope:
-        description: Whether user has any cluster-level access
-        type: boolean
-      namespaceScope:
-        description: Effective namespace scope for user
-        items:
-          type: string
-        type: array
-    type: object
-  cmd_server.UserInfo:
-    description: Current authenticated user information
-    properties:
-      email:
-        example: alice@company.com
-        type: string
-      exp:
-        example: 1641081600
-        type: integer
-      iat:
-        example: 1640995200
-        type: integer
-      implicitRoles:
-        example:
-        - inherited-role
-        items:
-          type: string
-        type: array
-      provider:
-        example: oidc
-        type: string
-      roles:
-        example:
-        - editor
-        - viewer
-        items:
-          type: string
-        type: array
-      subject:
-        example: alice@company.com
-        type: string
-      username:
-        example: alice
-        type: string
-    type: object
-  cmd_server.UserIntrospectionResponse:
-    properties:
-      capabilities:
-        $ref: '#/definitions/cmd_server.UserCapabilities'
-      domains:
-        additionalProperties:
-          $ref: '#/definitions/cmd_server.DomainPermissions'
-        type: object
-      namespaces:
-        $ref: '#/definitions/cmd_server.NamespaceInfo'
-      user:
-        $ref: '#/definitions/cmd_server.UserInfo'
-    type: object
-  cmd_server.UserPermissions:
-    properties:
-      namespaces:
-        additionalProperties:
-          items:
-            type: string
-          type: array
-        description: namespace -> allowed actions
-        type: object
-      permissions:
-        items:
-          $ref: '#/definitions/cmd_server.PermissionCheck'
-        type: array
-      roles:
-        items:
-          type: string
-        type: array
-      subject:
-        type: string
-    type: object
   github_com_codespace-operator_codespace-operator_api_v1.AuthSpec:
     properties:
       mode:
@@ -413,6 +104,315 @@ definitions:
       reason:
         type: string
       url:
+        type: string
+    type: object
+  internal_server.AuthFeatures:
+    description: Available authentication features and endpoints
+    properties:
+      localLoginEnabled:
+        example: false
+        type: boolean
+      localLoginPath:
+        example: /auth/local/login
+        type: string
+      ssoEnabled:
+        example: true
+        type: boolean
+      ssoLoginPath:
+        example: /auth/sso/login
+        type: string
+    type: object
+  internal_server.CasbinPermissions:
+    properties:
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespacePermissions'
+    type: object
+  internal_server.ClusterInfo:
+    properties:
+      casbin:
+        $ref: '#/definitions/internal_server.CasbinPermissions'
+      serverServiceAccount:
+        $ref: '#/definitions/internal_server.ServiceAccountInfo'
+    type: object
+  internal_server.DomainPermissions:
+    properties:
+      session:
+        additionalProperties:
+          type: boolean
+        type: object
+    type: object
+  internal_server.ErrorResponse:
+    properties:
+      error:
+        example: Invalid request
+        type: string
+    type: object
+  internal_server.LocalLoginRequest:
+    description: Local login credentials
+    properties:
+      password:
+        example: secretpassword
+        type: string
+      username:
+        example: alice
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  internal_server.LoginResponse:
+    description: Successful authentication response
+    properties:
+      roles:
+        example:
+        - editor
+        - viewer
+        items:
+          type: string
+        type: array
+      token:
+        type: string
+      user:
+        example: alice
+        type: string
+    type: object
+  internal_server.ManagerMeta:
+    properties:
+      kind:
+        description: argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved
+        type: string
+      name:
+        description: release/app/deployment name (sanitized when used as label)
+        type: string
+      namespace:
+        description: namespace where the manager runs
+        type: string
+    type: object
+  internal_server.NamespaceInfo:
+    properties:
+      userAllowed:
+        description: Namespaces user can access
+        items:
+          type: string
+        type: array
+      userCreatable:
+        description: Namespaces user can create sessions in
+        items:
+          type: string
+        type: array
+      userDeletable:
+        description: Namespaces user can delete sessions from
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.NamespacePermissions:
+    properties:
+      list:
+        type: boolean
+      watch:
+        type: boolean
+    type: object
+  internal_server.PermissionCheck:
+    properties:
+      action:
+        type: string
+      allowed:
+        type: boolean
+      namespace:
+        type: string
+      resource:
+        type: string
+    type: object
+  internal_server.ServerIntrospectionResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/internal_server.SystemCapabilities'
+      cluster:
+        $ref: '#/definitions/internal_server.ClusterInfo'
+      instanceID:
+        type: string
+      manager:
+        $ref: '#/definitions/internal_server.ManagerMeta'
+      namespaces:
+        $ref: '#/definitions/internal_server.ServerNamespaceInfo'
+      version:
+        $ref: '#/definitions/internal_server.ServerVersionInfo'
+    type: object
+  internal_server.ServerNamespaceInfo:
+    properties:
+      all:
+        description: All namespaces (if discoverable)
+        items:
+          type: string
+        type: array
+      withSessions:
+        description: Namespaces containing sessions
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.ServerVersionInfo:
+    properties:
+      buildDate:
+        type: string
+      gitCommit:
+        type: string
+      version:
+        type: string
+    type: object
+  internal_server.ServiceAccountInfo:
+    properties:
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespacePermissions'
+      session:
+        additionalProperties:
+          type: boolean
+        type: object
+    type: object
+  internal_server.SessionCreateRequest:
+    description: Request body for creating a new codespace session
+    properties:
+      auth:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
+      home:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+      name:
+        example: my-session
+        type: string
+      namespace:
+        example: default
+        type: string
+      networking:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
+      profile:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
+      replicas:
+        example: 1
+        type: integer
+      scratch:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+    required:
+    - name
+    - profile
+    type: object
+  internal_server.SessionListResponse:
+    description: Response containing list of sessions with metadata
+    properties:
+      filtered:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        type: array
+      namespaces:
+        example:
+        - default
+        - kube-system
+        items:
+          type: string
+        type: array
+      total:
+        example: 5
+        type: integer
+    type: object
+  internal_server.SessionScaleRequest:
+    description: Request body for scaling a session
+    properties:
+      replicas:
+        example: 2
+        minimum: 0
+        type: integer
+    type: object
+  internal_server.SystemCapabilities:
+    properties:
+      clusterScope:
+        description: 'Displays cluster_scope: true or false'
+        type: boolean
+      multiTenant:
+        description: Whether system supports multiple tenants
+        type: boolean
+    type: object
+  internal_server.UserCapabilities:
+    properties:
+      adminAccess:
+        description: Whether user has admin privileges
+        type: boolean
+      clusterScope:
+        description: Whether user has any cluster-level access
+        type: boolean
+      namespaceScope:
+        description: Effective namespace scope for user
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.UserInfo:
+    description: Current authenticated user information
+    properties:
+      email:
+        example: alice@company.com
+        type: string
+      exp:
+        example: 1641081600
+        type: integer
+      iat:
+        example: 1640995200
+        type: integer
+      implicitRoles:
+        example:
+        - inherited-role
+        items:
+          type: string
+        type: array
+      provider:
+        example: oidc
+        type: string
+      roles:
+        example:
+        - editor
+        - viewer
+        items:
+          type: string
+        type: array
+      subject:
+        example: alice@company.com
+        type: string
+      username:
+        example: alice
+        type: string
+    type: object
+  internal_server.UserIntrospectionResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/internal_server.UserCapabilities'
+      domains:
+        additionalProperties:
+          $ref: '#/definitions/internal_server.DomainPermissions'
+        type: object
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespaceInfo'
+      user:
+        $ref: '#/definitions/internal_server.UserInfo'
+    type: object
+  internal_server.UserPermissions:
+    properties:
+      namespaces:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: namespace -> allowed actions
+        type: object
+      permissions:
+        items:
+          $ref: '#/definitions/internal_server.PermissionCheck'
+        type: array
+      roles:
+        items:
+          type: string
+        type: array
+      subject:
         type: string
     type: object
   v1.FieldsV1:
@@ -732,11 +732,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -786,7 +786,7 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "409":
           description: Session is not orphaned; use force=1 to override
           schema:
@@ -831,11 +831,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -859,7 +859,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -882,15 +882,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.ServerIntrospectionResponse'
+            $ref: '#/definitions/internal_server.ServerIntrospectionResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -917,11 +917,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.UserIntrospectionResponse'
+            $ref: '#/definitions/internal_server.UserIntrospectionResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -939,11 +939,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.UserInfo'
+            $ref: '#/definitions/internal_server.UserInfo'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -972,15 +972,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.SessionListResponse'
+            $ref: '#/definitions/internal_server.SessionListResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -998,7 +998,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/cmd_server.SessionCreateRequest'
+          $ref: '#/definitions/internal_server.SessionCreateRequest'
       produces:
       - application/json
       responses:
@@ -1009,15 +1009,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1053,15 +1053,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1094,15 +1094,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1130,7 +1130,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/cmd_server.SessionCreateRequest'
+          $ref: '#/definitions/internal_server.SessionCreateRequest'
       produces:
       - application/json
       responses:
@@ -1141,19 +1141,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1182,7 +1182,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/cmd_server.SessionScaleRequest'
+          $ref: '#/definitions/internal_server.SessionScaleRequest'
       produces:
       - application/json
       responses:
@@ -1193,19 +1193,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1236,11 +1236,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1267,11 +1267,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.UserPermissions'
+            $ref: '#/definitions/internal_server.UserPermissions'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1289,7 +1289,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.AuthFeatures'
+            $ref: '#/definitions/internal_server.AuthFeatures'
       summary: Get authentication features
       tags:
       - authentication
@@ -1304,18 +1304,18 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/cmd_server.LocalLoginRequest'
+          $ref: '#/definitions/internal_server.LocalLoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/cmd_server.LoginResponse'
+            $ref: '#/definitions/internal_server.LoginResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/cmd_server.ErrorResponse'
+            $ref: '#/definitions/internal_server.ErrorResponse'
       summary: Local login
       tags:
       - authentication

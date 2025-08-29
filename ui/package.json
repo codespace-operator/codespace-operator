@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:with-codegen": "npm run -s codegen && vite build",
-    "postbuild": "rm -rf ../cmd/server/static && mkdir -p ../cmd/server/static && cp -r dist/* ../cmd/server/static/",
+    "postbuild": "rm -rf ../internal/server/static && mkdir -p ../internal/server/static && cp -r dist/* ../internal/server/static/",
     "codegen": "HERE=${pwd} && cd .. && make -s api && cd $HERE",
     "preview": "vite preview --host --port 8080"
   },

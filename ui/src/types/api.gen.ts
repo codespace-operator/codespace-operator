@@ -43,7 +43,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -52,7 +52,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -109,7 +109,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
                 /** @description Session is not orphaned; use force=1 to override */
@@ -207,7 +207,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -216,7 +216,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -267,7 +267,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -309,7 +309,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ServerIntrospectionResponse"];
+                        "application/json": components["schemas"]["internal_server.ServerIntrospectionResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -318,7 +318,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -327,7 +327,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -371,7 +371,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.UserIntrospectionResponse"];
+                        "application/json": components["schemas"]["internal_server.UserIntrospectionResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -380,7 +380,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -419,7 +419,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.UserInfo"];
+                        "application/json": components["schemas"]["internal_server.UserInfo"];
                     };
                 };
                 /** @description Unauthorized */
@@ -428,7 +428,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -564,7 +564,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.UserPermissions"];
+                        "application/json": components["schemas"]["internal_server.UserPermissions"];
                     };
                 };
                 /** @description Unauthorized */
@@ -573,7 +573,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -612,7 +612,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.AuthFeatures"];
+                        "application/json": components["schemas"]["internal_server.AuthFeatures"];
                     };
                 };
             };
@@ -648,7 +648,7 @@ export interface paths {
             /** @description Login credentials */
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["cmd_server.LocalLoginRequest"];
+                    "application/json": components["schemas"]["internal_server.LocalLoginRequest"];
                 };
             };
             responses: {
@@ -658,7 +658,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.LoginResponse"];
+                        "application/json": components["schemas"]["internal_server.LoginResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -667,7 +667,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
                     };
                 };
             };
@@ -908,188 +908,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Available authentication features and endpoints */
-        "cmd_server.AuthFeatures": {
-            /** @example false */
-            localLoginEnabled?: boolean;
-            /** @example /auth/local/login */
-            localLoginPath?: string;
-            /** @example true */
-            ssoEnabled?: boolean;
-            /** @example /auth/sso/login */
-            ssoLoginPath?: string;
-        };
-        "cmd_server.CasbinPermissions": {
-            namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
-        };
-        "cmd_server.ClusterInfo": {
-            casbin?: components["schemas"]["cmd_server.CasbinPermissions"];
-            serverServiceAccount?: components["schemas"]["cmd_server.ServiceAccountInfo"];
-        };
-        "cmd_server.DomainPermissions": {
-            session?: {
-                [key: string]: boolean;
-            };
-        };
-        "cmd_server.ErrorResponse": {
-            /** @example Invalid request */
-            error?: string;
-        };
-        /** @description Local login credentials */
-        "cmd_server.LocalLoginRequest": {
-            /** @example secretpassword */
-            password: string;
-            /** @example alice */
-            username: string;
-        };
-        /** @description Successful authentication response */
-        "cmd_server.LoginResponse": {
-            /** @example [
-             *       "editor",
-             *       "viewer"
-             *     ] */
-            roles?: string[];
-            token?: string;
-            /** @example alice */
-            user?: string;
-        };
-        "cmd_server.ManagerMeta": {
-            /** @description helm|argo|deployment|statefulset|namespace */
-            kind?: string;
-            /** @description release/app/deployment name (sanitized when used as label) */
-            name?: string;
-            /** @description namespace where the manager runs */
-            namespace?: string;
-        };
-        "cmd_server.NamespaceInfo": {
-            /** @description Namespaces user can access */
-            userAllowed?: string[];
-            /** @description Namespaces user can create sessions in */
-            userCreatable?: string[];
-            /** @description Namespaces user can delete sessions from */
-            userDeletable?: string[];
-        };
-        "cmd_server.NamespacePermissions": {
-            list?: boolean;
-            watch?: boolean;
-        };
-        "cmd_server.PermissionCheck": {
-            action?: string;
-            allowed?: boolean;
-            namespace?: string;
-            resource?: string;
-        };
-        "cmd_server.ServerIntrospectionResponse": {
-            capabilities?: components["schemas"]["cmd_server.SystemCapabilities"];
-            cluster?: components["schemas"]["cmd_server.ClusterInfo"];
-            instanceID?: string;
-            manager?: components["schemas"]["cmd_server.ManagerMeta"];
-            namespaces?: components["schemas"]["cmd_server.ServerNamespaceInfo"];
-            version?: components["schemas"]["cmd_server.ServerVersionInfo"];
-        };
-        "cmd_server.ServerNamespaceInfo": {
-            /** @description All namespaces (if discoverable) */
-            all?: string[];
-            /** @description Namespaces containing sessions */
-            withSessions?: string[];
-        };
-        "cmd_server.ServerVersionInfo": {
-            buildDate?: string;
-            gitCommit?: string;
-            version?: string;
-        };
-        "cmd_server.ServiceAccountInfo": {
-            namespaces?: components["schemas"]["cmd_server.NamespacePermissions"];
-            session?: {
-                [key: string]: boolean;
-            };
-        };
-        /** @description Request body for creating a new codespace session */
-        "cmd_server.SessionCreateRequest": {
-            auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
-            home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
-            /** @example my-session */
-            name: string;
-            /** @example default */
-            namespace?: string;
-            networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
-            profile: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
-            /** @example 1 */
-            replicas?: number;
-            scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
-        };
-        /** @description Response containing list of sessions with metadata */
-        "cmd_server.SessionListResponse": {
-            filtered?: boolean;
-            items?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"][];
-            /** @example [
-             *       "default",
-             *       "kube-system"
-             *     ] */
-            namespaces?: string[];
-            /** @example 5 */
-            total?: number;
-        };
-        /** @description Request body for scaling a session */
-        "cmd_server.SessionScaleRequest": {
-            /** @example 2 */
-            replicas?: number;
-        };
-        "cmd_server.SystemCapabilities": {
-            /** @description Displays cluster_scope: true or false */
-            clusterScope?: boolean;
-            /** @description Whether system supports multiple tenants */
-            multiTenant?: boolean;
-        };
-        "cmd_server.UserCapabilities": {
-            /** @description Whether user has admin privileges */
-            adminAccess?: boolean;
-            /** @description Whether user has any cluster-level access */
-            clusterScope?: boolean;
-            /** @description Effective namespace scope for user */
-            namespaceScope?: string[];
-        };
-        /** @description Current authenticated user information */
-        "cmd_server.UserInfo": {
-            /** @example alice@company.com */
-            email?: string;
-            /** @example 1641081600 */
-            exp?: number;
-            /** @example 1640995200 */
-            iat?: number;
-            /** @example [
-             *       "inherited-role"
-             *     ] */
-            implicitRoles?: string[];
-            /** @example oidc */
-            provider?: string;
-            /** @example [
-             *       "editor",
-             *       "viewer"
-             *     ] */
-            roles?: string[];
-            /** @example alice@company.com */
-            subject?: string;
-            /** @example alice */
-            username?: string;
-        };
-        "cmd_server.UserIntrospectionResponse": {
-            capabilities?: components["schemas"]["cmd_server.UserCapabilities"];
-            domains?: {
-                [key: string]: components["schemas"]["cmd_server.DomainPermissions"];
-            };
-            namespaces?: components["schemas"]["cmd_server.NamespaceInfo"];
-            user?: components["schemas"]["cmd_server.UserInfo"];
-        };
-        "cmd_server.UserPermissions": {
-            /** @description namespace -> allowed actions */
-            namespaces?: {
-                [key: string]: string[];
-            };
-            permissions?: components["schemas"]["cmd_server.PermissionCheck"][];
-            roles?: string[];
-            subject?: string;
-        };
         "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
             /** @description +kubebuilder:validation:Enum=oauth2proxy;none
              *     +kubebuilder:default=none */
@@ -1154,6 +972,188 @@ export interface components {
             phase?: string;
             reason?: string;
             url?: string;
+        };
+        /** @description Available authentication features and endpoints */
+        "internal_server.AuthFeatures": {
+            /** @example false */
+            localLoginEnabled?: boolean;
+            /** @example /auth/local/login */
+            localLoginPath?: string;
+            /** @example true */
+            ssoEnabled?: boolean;
+            /** @example /auth/sso/login */
+            ssoLoginPath?: string;
+        };
+        "internal_server.CasbinPermissions": {
+            namespaces?: components["schemas"]["internal_server.NamespacePermissions"];
+        };
+        "internal_server.ClusterInfo": {
+            casbin?: components["schemas"]["internal_server.CasbinPermissions"];
+            serverServiceAccount?: components["schemas"]["internal_server.ServiceAccountInfo"];
+        };
+        "internal_server.DomainPermissions": {
+            session?: {
+                [key: string]: boolean;
+            };
+        };
+        "internal_server.ErrorResponse": {
+            /** @example Invalid request */
+            error?: string;
+        };
+        /** @description Local login credentials */
+        "internal_server.LocalLoginRequest": {
+            /** @example secretpassword */
+            password: string;
+            /** @example alice */
+            username: string;
+        };
+        /** @description Successful authentication response */
+        "internal_server.LoginResponse": {
+            /** @example [
+             *       "editor",
+             *       "viewer"
+             *     ] */
+            roles?: string[];
+            token?: string;
+            /** @example alice */
+            user?: string;
+        };
+        "internal_server.ManagerMeta": {
+            /** @description argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved */
+            kind?: string;
+            /** @description release/app/deployment name (sanitized when used as label) */
+            name?: string;
+            /** @description namespace where the manager runs */
+            namespace?: string;
+        };
+        "internal_server.NamespaceInfo": {
+            /** @description Namespaces user can access */
+            userAllowed?: string[];
+            /** @description Namespaces user can create sessions in */
+            userCreatable?: string[];
+            /** @description Namespaces user can delete sessions from */
+            userDeletable?: string[];
+        };
+        "internal_server.NamespacePermissions": {
+            list?: boolean;
+            watch?: boolean;
+        };
+        "internal_server.PermissionCheck": {
+            action?: string;
+            allowed?: boolean;
+            namespace?: string;
+            resource?: string;
+        };
+        "internal_server.ServerIntrospectionResponse": {
+            capabilities?: components["schemas"]["internal_server.SystemCapabilities"];
+            cluster?: components["schemas"]["internal_server.ClusterInfo"];
+            instanceID?: string;
+            manager?: components["schemas"]["internal_server.ManagerMeta"];
+            namespaces?: components["schemas"]["internal_server.ServerNamespaceInfo"];
+            version?: components["schemas"]["internal_server.ServerVersionInfo"];
+        };
+        "internal_server.ServerNamespaceInfo": {
+            /** @description All namespaces (if discoverable) */
+            all?: string[];
+            /** @description Namespaces containing sessions */
+            withSessions?: string[];
+        };
+        "internal_server.ServerVersionInfo": {
+            buildDate?: string;
+            gitCommit?: string;
+            version?: string;
+        };
+        "internal_server.ServiceAccountInfo": {
+            namespaces?: components["schemas"]["internal_server.NamespacePermissions"];
+            session?: {
+                [key: string]: boolean;
+            };
+        };
+        /** @description Request body for creating a new codespace session */
+        "internal_server.SessionCreateRequest": {
+            auth?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"];
+            home?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+            /** @example my-session */
+            name: string;
+            /** @example default */
+            namespace?: string;
+            networking?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.NetSpec"];
+            profile: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"];
+            /** @example 1 */
+            replicas?: number;
+            scratch?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"];
+        };
+        /** @description Response containing list of sessions with metadata */
+        "internal_server.SessionListResponse": {
+            filtered?: boolean;
+            items?: components["schemas"]["github_com_codespace-operator_codespace-operator_api_v1.Session"][];
+            /** @example [
+             *       "default",
+             *       "kube-system"
+             *     ] */
+            namespaces?: string[];
+            /** @example 5 */
+            total?: number;
+        };
+        /** @description Request body for scaling a session */
+        "internal_server.SessionScaleRequest": {
+            /** @example 2 */
+            replicas?: number;
+        };
+        "internal_server.SystemCapabilities": {
+            /** @description Displays cluster_scope: true or false */
+            clusterScope?: boolean;
+            /** @description Whether system supports multiple tenants */
+            multiTenant?: boolean;
+        };
+        "internal_server.UserCapabilities": {
+            /** @description Whether user has admin privileges */
+            adminAccess?: boolean;
+            /** @description Whether user has any cluster-level access */
+            clusterScope?: boolean;
+            /** @description Effective namespace scope for user */
+            namespaceScope?: string[];
+        };
+        /** @description Current authenticated user information */
+        "internal_server.UserInfo": {
+            /** @example alice@company.com */
+            email?: string;
+            /** @example 1641081600 */
+            exp?: number;
+            /** @example 1640995200 */
+            iat?: number;
+            /** @example [
+             *       "inherited-role"
+             *     ] */
+            implicitRoles?: string[];
+            /** @example oidc */
+            provider?: string;
+            /** @example [
+             *       "editor",
+             *       "viewer"
+             *     ] */
+            roles?: string[];
+            /** @example alice@company.com */
+            subject?: string;
+            /** @example alice */
+            username?: string;
+        };
+        "internal_server.UserIntrospectionResponse": {
+            capabilities?: components["schemas"]["internal_server.UserCapabilities"];
+            domains?: {
+                [key: string]: components["schemas"]["internal_server.DomainPermissions"];
+            };
+            namespaces?: components["schemas"]["internal_server.NamespaceInfo"];
+            user?: components["schemas"]["internal_server.UserInfo"];
+        };
+        "internal_server.UserPermissions": {
+            /** @description namespace -> allowed actions */
+            namespaces?: {
+                [key: string]: string[];
+            };
+            permissions?: components["schemas"]["internal_server.PermissionCheck"][];
+            roles?: string[];
+            subject?: string;
         };
         "v1.FieldsV1": Record<string, never>;
         "v1.ManagedFieldsEntry": {
@@ -1398,7 +1398,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.SessionListResponse"];
+                    "application/json": components["schemas"]["internal_server.SessionListResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -1407,7 +1407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1416,7 +1416,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1431,7 +1431,7 @@ export interface operations {
         /** @description Session creation request */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
+                "application/json": components["schemas"]["internal_server.SessionCreateRequest"];
             };
         };
         responses: {
@@ -1450,7 +1450,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -1459,7 +1459,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1468,7 +1468,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1502,7 +1502,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1511,7 +1511,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -1520,7 +1520,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1540,7 +1540,7 @@ export interface operations {
         /** @description Session update request */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["cmd_server.SessionCreateRequest"];
+                "application/json": components["schemas"]["internal_server.SessionCreateRequest"];
             };
         };
         responses: {
@@ -1559,7 +1559,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -1568,7 +1568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1577,7 +1577,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -1586,7 +1586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1622,7 +1622,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1631,7 +1631,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -1640,7 +1640,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1660,7 +1660,7 @@ export interface operations {
         /** @description Scale request */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["cmd_server.SessionScaleRequest"];
+                "application/json": components["schemas"]["internal_server.SessionScaleRequest"];
             };
         };
         responses: {
@@ -1679,7 +1679,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -1688,7 +1688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1697,7 +1697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -1706,7 +1706,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["cmd_server.ErrorResponse"];
+                    "application/json": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };
@@ -1740,7 +1740,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
+                    "text/event-stream": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -1749,7 +1749,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/event-stream": components["schemas"]["cmd_server.ErrorResponse"];
+                    "text/event-stream": components["schemas"]["internal_server.ErrorResponse"];
                 };
             };
         };

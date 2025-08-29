@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +30,7 @@ import (
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
-var _ = Describe("Session Controller", func() {
+var _ = Describe("Project Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -39,59 +38,47 @@ var _ = Describe("Session Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: "default", // TODO(user):Modify as needed
 		}
-		session := &codespacev1.Session{}
+		project := &codespacev1.Project{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Session")
-			err := k8sClient.Get(ctx, typeNamespacedName, session)
+			By("creating the custom resource for the Kind Project")
+			err := k8sClient.Get(ctx, typeNamespacedName, project)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &codespacev1.Session{
+				resource := &codespacev1.Project{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
+					// TODO(user): Specify other spec details if needed.
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			resource := &codespacev1.Session{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: codespacev1.SessionSpec{
-					Profile: codespacev1.ProfileSpec{
-						IDE:   "jupyterlab",
-						Image: "jupyter/minimal-notebook:latest",
-						Cmd:   []string{"start-notebook.sh", "--NotebookApp.token="},
-					},
-					Networking: &codespacev1.NetSpec{
-						Host: "test.codespace.test",
-					},
-				},
-			}
-
+			// TODO(user): Cleanup logic after each test, like removing the resource instance.
+			resource := &codespacev1.Project{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance Session")
+			By("Cleanup the specific resource instance Project")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &SessionReconciler{
+			controllerReconciler := &ProjectReconciler{
 				Client: k8sClient,
-				Scheme: scheme.Scheme,
+				Scheme: k8sClient.Scheme(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
+			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
+			// Example: If you expect a certain status condition after reconciliation, verify it here.
 		})
 	})
 })
