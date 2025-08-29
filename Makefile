@@ -187,9 +187,9 @@ docker-push: ## Push docker image with the manager.
 .PHONY: build-server
 build-server:
 	cd ui && npm run build
-	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
-	cp -r ./ui/dist/* cmd/server/static/
-	touch ./cmd/server/static/.gitkeep
+	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
+	cp -r ./ui/dist/* internal/server/static/
+	touch ./internal/server/static/.gitkeep
 	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
 
 .PHONY: build-server-docs
@@ -250,7 +250,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 # --- tools ---
 SWAG ?= swag
-SWAG_FLAGS ?= -g cmd/server/codespace_server.go -o gen/api --parseDependency --parseInternal -ot json,yaml
+SWAG_FLAGS ?= -g cmd/server/main.go -o gen/api --parseDependency --parseInternal -ot json,yaml
 
 OAPI_JSON ?= gen/api/openapi.json
 SWAGGER_YAML ?= gen/api/swagger.yaml
@@ -285,9 +285,9 @@ clean-api:
 .PHONY: build-server
 build-server: api  #! Enforces ./ui/src/types/api.gen.ts regeneration during development
 	cd ui && npm run build
-	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
-	cp -r ./ui/dist/* cmd/server/static/
-	touch ./cmd/server/static/.gitkeep
+	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
+	cp -r ./ui/dist/* internal/server/static/
+	touch ./internal/server/static/.gitkeep
 	go build -ldflags "-X main.Version=$(VERSION)" \
 	  -o ./bin/codespace-server ./cmd/server
 

@@ -26,63 +26,24 @@
 package main
 
 import (
-	"context"
-	"embed"
-	"fmt"
-	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/cmd/config"
-	"github.com/codespace-operator/codespace-operator/internal/helpers"
+	server "github.com/codespace-operator/codespace-operator/internal/server"
 )
 
-//go:embed all:static
-var staticFS embed.FS
+var logger = server.GetLogger()
 
-const APP_NAME = "codespace-operator"
-
-type ErrorResponse struct {
-	Error string `json:"error" example:"Invalid request"`
-}
-
-const InstanceIDLabel = "codespace.dev/instance-id"
-const cmPrefixName = "codespace-server-instance"
-
-var (
-	gvr = schema.GroupVersionResource{
-		Group:    codespacev1.GroupVersion.Group,
-		Version:  codespacev1.GroupVersion.Version,
-		Resource: "sessions",
-	}
-)
-
-type serverDeps struct {
-	client     client.Client
-	dyn        dynamic.Interface
-	scheme     *runtime.Scheme
-	config     *config.ServerConfig
-	rbac       *RBAC
-	localUsers *localUsers
-	instanceID string
-	manager    ManagerMeta
-}
+const APP_NAME = "codespace-server"
 
 func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "codespace-server",
 		Short: "Codespace Operator Web Server",
 		Long:  `A web server that provides a REST API and UI for managing Codespace sessions.`,
-		Run:   runServer,
+		Run:   func(cmd *cobra.Command, args []string) { runServer(loadConfigWithOverrides(cmd), args) },
 	}
 
 	// Basic server flags
@@ -114,110 +75,16 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		logger.Fatal("Command execution failed", "err", err)
 	}
+
 }
 
-func runServer(cmd *cobra.Command, args []string) {
-	// Load configuration with CLI overrides
-	cfg := loadConfigWithOverrides(cmd)
-	configureLogger(cfg.LogLevel)
-
-	if cfg.LogLevel == "debug" {
-		logger.Info("Configuration loaded", "config", cfg)
-	}
-
-	// Setup Kubernetes clients
-	k8sCfg, err := helpers.BuildKubeConfig()
-	if err != nil {
-		logger.Fatal("Kubernetes config", "err", err)
-	}
-	k8sCfg.Timeout = 30 * time.Second
-	k8sCfg.QPS = cfg.KubeQPS
-	k8sCfg.Burst = cfg.KubeBurst
-
-	scheme := runtime.NewScheme()
-	if err := corev1.AddToScheme(scheme); err != nil {
-		logger.Fatal("Add corev1 scheme", "err", err)
-	}
-	if err := codespacev1.AddToScheme(scheme); err != nil {
-		logger.Fatal("Add codespace scheme", "err", err)
-	}
-
-	client, err := client.New(k8sCfg, client.Options{Scheme: scheme})
-	if err != nil {
-		logger.Fatal("client", "err", err)
-	}
-	dyn, err := dynamic.NewForConfig(k8sCfg)
-	if err != nil {
-		logger.Fatal("Dynamic client", "err", err)
-	}
-
-	// Test Kubernetes connectivity
-	if err := helpers.TestKubernetesConnection(client); err != nil {
-		logger.Fatal("Kubernetes connection test failed", "err", err)
-	}
-
-	// Setup RBAC
-	rbac, err := setupRBAC(cfg)
-	if err != nil {
-		logger.Fatal("RBAC init failed", "err", err)
-	}
-
-	// Setup local users
-	users, err := loadLocalUsers(cfg.LocalUsersPath)
-	if err != nil {
-		logger.Fatal("Local users load failed", "err", err)
-	}
-	instanceID, err := ensureInstallationID(context.Background(), client)
-	logger.Info(fmt.Sprintf("Ensured server installation ID: %s", instanceID), "instanceID", instanceID)
-	if err != nil {
-		logger.Error("failed to ensure server id", "err", err)
-	}
-	manager := getSelfManagerMeta(context.Background(), client)
-	logger.Info("Detected manager", "kind", manager.Kind, "name", manager.Name, "namespace", manager.Namespace)
-	// Create server dependencies
-	deps := &serverDeps{
-		client:     client,
-		dyn:        dyn,
-		scheme:     scheme,
-		config:     cfg,
-		rbac:       rbac,
-		localUsers: users,
-		instanceID: instanceID,
-		manager:    manager,
-	}
-
-	// Setup HTTP handlers
-	mux := setupHandlers(deps)
-
-	// Build middleware chain: security → CORS → logging → auth → handlers
-	var handler http.Handler = mux
-	handler = corsMiddleware(cfg.AllowOrigin)(handler)
-	handler = logRequests(handler)
-	handler = authGate(&authConfigLike{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		AllowTokenParam:   cfg.AllowTokenParam,
-	}, handler)
-
-	logger.Printf("🚀 Codespace Server starting on %s", cfg.GetAddr())
-	if swagDocAvailable() {
-		logger.Printf("📚 API Documentation available at http://%s/api/docs/", cfg.GetAddr())
-	}
-
-	// Report if running cluster-scoped
-	if cfg.ClusterScope {
-		logger.Info(" ----------------- Running in cluster-scoped mode ----------------- ")
-	} else {
-		logger.Info(" --------------- Running in instance-id scoped mode --------------- ")
-	}
-
-	if err := http.ListenAndServe(cfg.GetAddr(), handler); err != nil {
-		logger.Fatal("ListenAndServe", "err", err)
-	}
+// Wrapper to run server package
+func runServer(cfg *server.ServerConfig, args []string) {
+	server.RunServer(cfg, args)
 }
 
 // loadConfigWithOverrides loads configuration with CLI flag overrides
-func loadConfigWithOverrides(cmd *cobra.Command) *config.ServerConfig {
+func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	// Set config path if provided
 	if cmd.Flags().Changed("config") {
 		if p, _ := cmd.Flags().GetString("config"); strings.TrimSpace(p) != "" {
@@ -226,7 +93,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *config.ServerConfig {
 	}
 
 	// Load base configuration
-	cfg, err := config.LoadServerConfig()
+	cfg, err := server.LoadServerConfig()
 	if err != nil {
 		logger.Fatal("Failed to load configuration", "err", err)
 	}
@@ -258,6 +125,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *config.ServerConfig {
 	overrideString(&cfg.Host, "host")
 	overrideString(&cfg.AllowOrigin, "allow-origin")
 	overrideString(&cfg.LogLevel, "log-level")
+	overrideString(&cfg.APP_NAME, "app-name")
 
 	if cmd.Flags().Changed("kube-qps") {
 		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")
@@ -285,27 +153,4 @@ func loadConfigWithOverrides(cmd *cobra.Command) *config.ServerConfig {
 	overrideString(&cfg.RBACPolicyPath, "rbac-policy-path")
 
 	return cfg
-}
-
-// setupRBAC initializes the RBAC system
-func setupRBAC(cfg *config.ServerConfig) (*RBAC, error) {
-	// Push explicit RBAC paths into environment if provided
-	if cfg.RBACModelPath != "" {
-		os.Setenv(envModelPath, cfg.RBACModelPath)
-	}
-	if cfg.RBACPolicyPath != "" {
-		os.Setenv(envPolicyPath, cfg.RBACPolicyPath)
-	}
-
-	rbac, err := NewRBACFromEnv(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize RBAC: %w", err)
-	}
-
-	logger.Info("RBAC system initialized",
-		"modelPath", rbac.modelPath,
-		"policyPath", rbac.policyPath,
-	)
-
-	return rbac, nil
 }

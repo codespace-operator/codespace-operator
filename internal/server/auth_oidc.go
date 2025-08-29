@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 
 	oidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
-
-	"github.com/codespace-operator/codespace-operator/cmd/config"
 )
 
 const (
@@ -29,7 +27,7 @@ type oidcDeps struct {
 	endSession string
 }
 
-func newOIDCDeps(ctx context.Context, cfg *config.ServerConfig) (*oidcDeps, error) {
+func newOIDCDeps(ctx context.Context, cfg *ServerConfig) (*oidcDeps, error) {
 	var hc *http.Client
 	if cfg.OIDCInsecureSkipVerify {
 		tr := &http.Transport{

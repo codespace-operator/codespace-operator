@@ -52,13 +52,13 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -126,7 +126,7 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "409": {
@@ -203,13 +203,13 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -248,7 +248,7 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -287,19 +287,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ServerIntrospectionResponse"
+                            "$ref": "#/definitions/internal_server.ServerIntrospectionResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -344,13 +344,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.UserIntrospectionResponse"
+                            "$ref": "#/definitions/internal_server.UserIntrospectionResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -381,13 +381,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.UserInfo"
+                            "$ref": "#/definitions/internal_server.UserInfo"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -434,19 +434,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.SessionListResponse"
+                            "$ref": "#/definitions/internal_server.SessionListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -479,7 +479,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.SessionCreateRequest"
+                            "$ref": "#/definitions/internal_server.SessionCreateRequest"
                         }
                     }
                 ],
@@ -493,19 +493,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -559,19 +559,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -618,7 +618,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.SessionCreateRequest"
+                            "$ref": "#/definitions/internal_server.SessionCreateRequest"
                         }
                     }
                 ],
@@ -632,25 +632,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -705,19 +705,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -766,7 +766,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.SessionScaleRequest"
+                            "$ref": "#/definitions/internal_server.SessionScaleRequest"
                         }
                     }
                 ],
@@ -780,25 +780,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -848,13 +848,13 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -899,13 +899,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.UserPermissions"
+                            "$ref": "#/definitions/internal_server.UserPermissions"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -928,7 +928,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.AuthFeatures"
+                            "$ref": "#/definitions/internal_server.AuthFeatures"
                         }
                     }
                 }
@@ -954,7 +954,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.LocalLoginRequest"
+                            "$ref": "#/definitions/internal_server.LocalLoginRequest"
                         }
                     }
                 ],
@@ -962,13 +962,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.LoginResponse"
+                            "$ref": "#/definitions/internal_server.LoginResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/cmd_server.ErrorResponse"
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
                         }
                     }
                 }
@@ -1118,458 +1118,6 @@
         }
     },
     "definitions": {
-        "cmd_server.AuthFeatures": {
-            "description": "Available authentication features and endpoints",
-            "type": "object",
-            "properties": {
-                "localLoginEnabled": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "localLoginPath": {
-                    "type": "string",
-                    "example": "/auth/local/login"
-                },
-                "ssoEnabled": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "ssoLoginPath": {
-                    "type": "string",
-                    "example": "/auth/sso/login"
-                }
-            }
-        },
-        "cmd_server.CasbinPermissions": {
-            "type": "object",
-            "properties": {
-                "namespaces": {
-                    "$ref": "#/definitions/cmd_server.NamespacePermissions"
-                }
-            }
-        },
-        "cmd_server.ClusterInfo": {
-            "type": "object",
-            "properties": {
-                "casbin": {
-                    "$ref": "#/definitions/cmd_server.CasbinPermissions"
-                },
-                "serverServiceAccount": {
-                    "$ref": "#/definitions/cmd_server.ServiceAccountInfo"
-                }
-            }
-        },
-        "cmd_server.DomainPermissions": {
-            "type": "object",
-            "properties": {
-                "session": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "boolean"
-                    }
-                }
-            }
-        },
-        "cmd_server.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": "Invalid request"
-                }
-            }
-        },
-        "cmd_server.LocalLoginRequest": {
-            "description": "Local login credentials",
-            "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
-            "properties": {
-                "password": {
-                    "type": "string",
-                    "example": "secretpassword"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "alice"
-                }
-            }
-        },
-        "cmd_server.LoginResponse": {
-            "description": "Successful authentication response",
-            "type": "object",
-            "properties": {
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "editor",
-                        "viewer"
-                    ]
-                },
-                "token": {
-                    "type": "string"
-                },
-                "user": {
-                    "type": "string",
-                    "example": "alice"
-                }
-            }
-        },
-        "cmd_server.ManagerMeta": {
-            "type": "object",
-            "properties": {
-                "kind": {
-                    "description": "helm|argo|deployment|statefulset|namespace",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "release/app/deployment name (sanitized when used as label)",
-                    "type": "string"
-                },
-                "namespace": {
-                    "description": "namespace where the manager runs",
-                    "type": "string"
-                }
-            }
-        },
-        "cmd_server.NamespaceInfo": {
-            "type": "object",
-            "properties": {
-                "userAllowed": {
-                    "description": "Namespaces user can access",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "userCreatable": {
-                    "description": "Namespaces user can create sessions in",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "userDeletable": {
-                    "description": "Namespaces user can delete sessions from",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "cmd_server.NamespacePermissions": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "boolean"
-                },
-                "watch": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "cmd_server.PermissionCheck": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "allowed": {
-                    "type": "boolean"
-                },
-                "namespace": {
-                    "type": "string"
-                },
-                "resource": {
-                    "type": "string"
-                }
-            }
-        },
-        "cmd_server.ServerIntrospectionResponse": {
-            "type": "object",
-            "properties": {
-                "capabilities": {
-                    "$ref": "#/definitions/cmd_server.SystemCapabilities"
-                },
-                "cluster": {
-                    "$ref": "#/definitions/cmd_server.ClusterInfo"
-                },
-                "instanceID": {
-                    "type": "string"
-                },
-                "manager": {
-                    "$ref": "#/definitions/cmd_server.ManagerMeta"
-                },
-                "namespaces": {
-                    "$ref": "#/definitions/cmd_server.ServerNamespaceInfo"
-                },
-                "version": {
-                    "$ref": "#/definitions/cmd_server.ServerVersionInfo"
-                }
-            }
-        },
-        "cmd_server.ServerNamespaceInfo": {
-            "type": "object",
-            "properties": {
-                "all": {
-                    "description": "All namespaces (if discoverable)",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "withSessions": {
-                    "description": "Namespaces containing sessions",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "cmd_server.ServerVersionInfo": {
-            "type": "object",
-            "properties": {
-                "buildDate": {
-                    "type": "string"
-                },
-                "gitCommit": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
-        },
-        "cmd_server.ServiceAccountInfo": {
-            "type": "object",
-            "properties": {
-                "namespaces": {
-                    "$ref": "#/definitions/cmd_server.NamespacePermissions"
-                },
-                "session": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "boolean"
-                    }
-                }
-            }
-        },
-        "cmd_server.SessionCreateRequest": {
-            "description": "Request body for creating a new codespace session",
-            "type": "object",
-            "required": [
-                "name",
-                "profile"
-            ],
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
-                },
-                "home": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "my-session"
-                },
-                "namespace": {
-                    "type": "string",
-                    "example": "default"
-                },
-                "networking": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
-                },
-                "profile": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
-                },
-                "replicas": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "scratch": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
-                }
-            }
-        },
-        "cmd_server.SessionListResponse": {
-            "description": "Response containing list of sessions with metadata",
-            "type": "object",
-            "properties": {
-                "filtered": {
-                    "type": "boolean"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
-                    }
-                },
-                "namespaces": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "default",
-                        "kube-system"
-                    ]
-                },
-                "total": {
-                    "type": "integer",
-                    "example": 5
-                }
-            }
-        },
-        "cmd_server.SessionScaleRequest": {
-            "description": "Request body for scaling a session",
-            "type": "object",
-            "properties": {
-                "replicas": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "example": 2
-                }
-            }
-        },
-        "cmd_server.SystemCapabilities": {
-            "type": "object",
-            "properties": {
-                "clusterScope": {
-                    "description": "Displays cluster_scope: true or false",
-                    "type": "boolean"
-                },
-                "multiTenant": {
-                    "description": "Whether system supports multiple tenants",
-                    "type": "boolean"
-                }
-            }
-        },
-        "cmd_server.UserCapabilities": {
-            "type": "object",
-            "properties": {
-                "adminAccess": {
-                    "description": "Whether user has admin privileges",
-                    "type": "boolean"
-                },
-                "clusterScope": {
-                    "description": "Whether user has any cluster-level access",
-                    "type": "boolean"
-                },
-                "namespaceScope": {
-                    "description": "Effective namespace scope for user",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "cmd_server.UserInfo": {
-            "description": "Current authenticated user information",
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "alice@company.com"
-                },
-                "exp": {
-                    "type": "integer",
-                    "example": 1641081600
-                },
-                "iat": {
-                    "type": "integer",
-                    "example": 1640995200
-                },
-                "implicitRoles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "inherited-role"
-                    ]
-                },
-                "provider": {
-                    "type": "string",
-                    "example": "oidc"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "editor",
-                        "viewer"
-                    ]
-                },
-                "subject": {
-                    "type": "string",
-                    "example": "alice@company.com"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "alice"
-                }
-            }
-        },
-        "cmd_server.UserIntrospectionResponse": {
-            "type": "object",
-            "properties": {
-                "capabilities": {
-                    "$ref": "#/definitions/cmd_server.UserCapabilities"
-                },
-                "domains": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/cmd_server.DomainPermissions"
-                    }
-                },
-                "namespaces": {
-                    "$ref": "#/definitions/cmd_server.NamespaceInfo"
-                },
-                "user": {
-                    "$ref": "#/definitions/cmd_server.UserInfo"
-                }
-            }
-        },
-        "cmd_server.UserPermissions": {
-            "type": "object",
-            "properties": {
-                "namespaces": {
-                    "description": "namespace -\u003e allowed actions",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/cmd_server.PermissionCheck"
-                    }
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "subject": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
             "type": "object",
             "properties": {
@@ -1705,6 +1253,458 @@
                     "type": "string"
                 },
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_server.AuthFeatures": {
+            "description": "Available authentication features and endpoints",
+            "type": "object",
+            "properties": {
+                "localLoginEnabled": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "localLoginPath": {
+                    "type": "string",
+                    "example": "/auth/local/login"
+                },
+                "ssoEnabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "ssoLoginPath": {
+                    "type": "string",
+                    "example": "/auth/sso/login"
+                }
+            }
+        },
+        "internal_server.CasbinPermissions": {
+            "type": "object",
+            "properties": {
+                "namespaces": {
+                    "$ref": "#/definitions/internal_server.NamespacePermissions"
+                }
+            }
+        },
+        "internal_server.ClusterInfo": {
+            "type": "object",
+            "properties": {
+                "casbin": {
+                    "$ref": "#/definitions/internal_server.CasbinPermissions"
+                },
+                "serverServiceAccount": {
+                    "$ref": "#/definitions/internal_server.ServiceAccountInfo"
+                }
+            }
+        },
+        "internal_server.DomainPermissions": {
+            "type": "object",
+            "properties": {
+                "session": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "internal_server.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Invalid request"
+                }
+            }
+        },
+        "internal_server.LocalLoginRequest": {
+            "description": "Local login credentials",
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "secretpassword"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "internal_server.LoginResponse": {
+            "description": "Successful authentication response",
+            "type": "object",
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "editor",
+                        "viewer"
+                    ]
+                },
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "internal_server.ManagerMeta": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "release/app/deployment name (sanitized when used as label)",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "namespace where the manager runs",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_server.NamespaceInfo": {
+            "type": "object",
+            "properties": {
+                "userAllowed": {
+                    "description": "Namespaces user can access",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "userCreatable": {
+                    "description": "Namespaces user can create sessions in",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "userDeletable": {
+                    "description": "Namespaces user can delete sessions from",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_server.NamespacePermissions": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "boolean"
+                },
+                "watch": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_server.PermissionCheck": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "allowed": {
+                    "type": "boolean"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_server.ServerIntrospectionResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "$ref": "#/definitions/internal_server.SystemCapabilities"
+                },
+                "cluster": {
+                    "$ref": "#/definitions/internal_server.ClusterInfo"
+                },
+                "instanceID": {
+                    "type": "string"
+                },
+                "manager": {
+                    "$ref": "#/definitions/internal_server.ManagerMeta"
+                },
+                "namespaces": {
+                    "$ref": "#/definitions/internal_server.ServerNamespaceInfo"
+                },
+                "version": {
+                    "$ref": "#/definitions/internal_server.ServerVersionInfo"
+                }
+            }
+        },
+        "internal_server.ServerNamespaceInfo": {
+            "type": "object",
+            "properties": {
+                "all": {
+                    "description": "All namespaces (if discoverable)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "withSessions": {
+                    "description": "Namespaces containing sessions",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_server.ServerVersionInfo": {
+            "type": "object",
+            "properties": {
+                "buildDate": {
+                    "type": "string"
+                },
+                "gitCommit": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_server.ServiceAccountInfo": {
+            "type": "object",
+            "properties": {
+                "namespaces": {
+                    "$ref": "#/definitions/internal_server.NamespacePermissions"
+                },
+                "session": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "internal_server.SessionCreateRequest": {
+            "description": "Request body for creating a new codespace session",
+            "type": "object",
+            "required": [
+                "name",
+                "profile"
+            ],
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec"
+                },
+                "home": {
+                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-session"
+                },
+                "namespace": {
+                    "type": "string",
+                    "example": "default"
+                },
+                "networking": {
+                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec"
+                },
+                "profile": {
+                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec"
+                },
+                "replicas": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "scratch": {
+                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec"
+                }
+            }
+        },
+        "internal_server.SessionListResponse": {
+            "description": "Response containing list of sessions with metadata",
+            "type": "object",
+            "properties": {
+                "filtered": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session"
+                    }
+                },
+                "namespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "default",
+                        "kube-system"
+                    ]
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "internal_server.SessionScaleRequest": {
+            "description": "Request body for scaling a session",
+            "type": "object",
+            "properties": {
+                "replicas": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 2
+                }
+            }
+        },
+        "internal_server.SystemCapabilities": {
+            "type": "object",
+            "properties": {
+                "clusterScope": {
+                    "description": "Displays cluster_scope: true or false",
+                    "type": "boolean"
+                },
+                "multiTenant": {
+                    "description": "Whether system supports multiple tenants",
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_server.UserCapabilities": {
+            "type": "object",
+            "properties": {
+                "adminAccess": {
+                    "description": "Whether user has admin privileges",
+                    "type": "boolean"
+                },
+                "clusterScope": {
+                    "description": "Whether user has any cluster-level access",
+                    "type": "boolean"
+                },
+                "namespaceScope": {
+                    "description": "Effective namespace scope for user",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_server.UserInfo": {
+            "description": "Current authenticated user information",
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alice@company.com"
+                },
+                "exp": {
+                    "type": "integer",
+                    "example": 1641081600
+                },
+                "iat": {
+                    "type": "integer",
+                    "example": 1640995200
+                },
+                "implicitRoles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "inherited-role"
+                    ]
+                },
+                "provider": {
+                    "type": "string",
+                    "example": "oidc"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "editor",
+                        "viewer"
+                    ]
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "alice@company.com"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "internal_server.UserIntrospectionResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "$ref": "#/definitions/internal_server.UserCapabilities"
+                },
+                "domains": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/internal_server.DomainPermissions"
+                    }
+                },
+                "namespaces": {
+                    "$ref": "#/definitions/internal_server.NamespaceInfo"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_server.UserInfo"
+                }
+            }
+        },
+        "internal_server.UserPermissions": {
+            "type": "object",
+            "properties": {
+                "namespaces": {
+                    "description": "namespace -\u003e allowed actions",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_server.PermissionCheck"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subject": {
                     "type": "string"
                 }
             }

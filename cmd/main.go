@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/cmd/config"
 	controller "github.com/codespace-operator/codespace-operator/internal/controller"
 )
 
@@ -101,7 +100,7 @@ func runController(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	cfg, err := config.LoadControllerConfig()
+	cfg, err := controller.LoadControllerConfig()
 
 	if err != nil {
 		setupLog.Error(err, "Failed to load configuration")

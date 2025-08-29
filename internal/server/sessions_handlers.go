@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -273,6 +273,7 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			Labels: map[string]string{
 				"app.kubernetes.io/name":       "codespace-session",
 				"app.kubernetes.io/instance":   req.Name,
+				"app.kubernetes.io/part-of":    APP_NAME,
 				"app.kubernetes.io/managed-by": APP_NAME,
 				LabelCreatedBy:                 creatorID,
 				InstanceIDLabel:                h.deps.instanceID,

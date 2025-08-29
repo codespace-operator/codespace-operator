@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -10,40 +10,40 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type localUser struct {
+type LocalUser struct {
 	Username     string `json:"username" yaml:"username"`
 	PasswordHash string `json:"passwordHash" yaml:"passwordHash"`
 	Email        string `json:"email,omitempty" yaml:"email,omitempty"`
 }
 
-type localUsers struct {
+type LocalUsers struct {
 	mu   sync.RWMutex
-	byU  map[string]localUser
+	byU  map[string]LocalUser
 	path string
 }
 
-func loadLocalUsers(path string) (*localUsers, error) {
+func loadLocalUsers(path string) (*LocalUsers, error) {
 	if path == "" {
-		return &localUsers{byU: map[string]localUser{}}, nil
+		return &LocalUsers{byU: map[string]LocalUser{}}, nil
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	var wrap struct {
-		Users []localUser `json:"users" yaml:"users"`
+		Users []LocalUser `json:"users" yaml:"users"`
 	}
 	if yaml.Unmarshal(raw, &wrap) != nil && json.Unmarshal(raw, &wrap) != nil {
 		return nil, errors.New("local users: failed to parse yaml/json")
 	}
-	idx := make(map[string]localUser, len(wrap.Users))
+	idx := make(map[string]LocalUser, len(wrap.Users))
 	for _, u := range wrap.Users {
 		idx[u.Username] = u
 	}
-	return &localUsers{byU: idx, path: path}, nil
+	return &LocalUsers{byU: idx, path: path}, nil
 }
 
-func (l *localUsers) verify(username, password string) (*localUser, error) {
+func (l *LocalUsers) verify(username, password string) (*LocalUser, error) {
 	l.mu.RLock()
 	u, ok := l.byU[username]
 	l.mu.RUnlock()
