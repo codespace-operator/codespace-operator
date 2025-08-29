@@ -312,9 +312,7 @@ export function UserInfoPage() {
 
                   {/* Creatable namespaces list */}
                   <div className="permission-section">
-                    <div className="permission-header">
-                      <span>Creatable Namespaces</span>
-                    </div>
+                    <div className="permission-header"></div>
                     {Array.isArray(userInfo?.namespaces?.userCreatable) &&
                     userInfo!.namespaces!.userCreatable!.length > 0 ? (
                       <div

@@ -651,18 +651,17 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	// Start watching
 	var watcher watch.Interface
 	var err error
-	sel := labels.Set{"codespace.dev/instance-id": h.deps.instanceID}.AsSelector().String()
 
+	opts := metav1.ListOptions{Watch: true}
+	if !h.deps.config.ClusterScope {
+		opts.LabelSelector = labels.Set{InstanceIDLabel: h.deps.instanceID}.AsSelector().String()
+	}
+
+	// then use 'opts' in the watch calls
 	if allNamespaces {
-		watcher, err = h.deps.dyn.Resource(gvr).Watch(
-			r.Context(),
-			metav1.ListOptions{Watch: true, LabelSelector: sel},
-		)
+		watcher, err = h.deps.dyn.Resource(gvr).Watch(r.Context(), opts)
 	} else {
-		watcher, err = h.deps.dyn.Resource(gvr).Namespace(namespace).Watch(
-			r.Context(),
-			metav1.ListOptions{Watch: true, LabelSelector: sel},
-		)
+		watcher, err = h.deps.dyn.Resource(gvr).Namespace(namespace).Watch(r.Context(), opts)
 	}
 
 	if err != nil {

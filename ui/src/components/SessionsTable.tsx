@@ -136,7 +136,12 @@ export function SessionsTable({
                               )}
                               {m.instanceId && (
                                 <div>
-                                  <strong>Instance:</strong> {m.instanceId}
+                                  <strong>InstanceID:</strong> {m.instanceId}
+                                </div>
+                              )}
+                              {m.instanceId && (
+                                <div>
+                                  <strong>InstanceID:</strong> {m.instanceId}
                                 </div>
                               )}
                               {m.adoptedFrom && (

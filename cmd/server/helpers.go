@@ -431,7 +431,7 @@ func k8sHexHash(s string, bytes int) string {
 		bytes = 10 // 10 bytes -> 20 hex chars
 	}
 	sum := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(sum[:bytes]) // lowercase [0-9a-f]
+	return hex.EncodeToString(sum[:bytes])
 }
 
 // SubjectToLabelID returns a stable, label-safe ID for a user/subject.

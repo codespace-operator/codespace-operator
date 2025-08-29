@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,50 +23,70 @@ type ManagerMeta struct {
 	Name      string // release/app/deployment name (sanitized when used as label)
 	Namespace string // namespace where the manager runs
 }
+type AnchorMeta struct {
+	Kind, Namespace, Name string // e.g. Kind="helm", Name="my-release"
+}
 
-// ensureInstallationID creates/gets a per-instance ConfigMap and returns a stable id.
+func (a AnchorMeta) String() string {
+	// stable, parseable
+	return fmt.Sprintf("%s:%s:%s", a.Kind, a.Namespace, a.Name)
+}
+
+func getClusterUID(ctx context.Context, cl client.Client) string {
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, types.NamespacedName{Name: "kube-system"}, &ns); err == nil {
+		return string(ns.UID)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "default"}, &ns); err == nil {
+		return string(ns.UID)
+	}
+	return "unknown"
+}
+
+func instanceIDv1(clusterUID string, anchor AnchorMeta) string {
+	s := clusterUID + "|" + anchor.String()
+	sum := sha256.Sum256([]byte(s))
+	// 20 bytes -> 40 hex chars
+	return "i1-" + hex.EncodeToString(sum[:20])
+}
 func ensureInstallationID(ctx context.Context, cl client.Client) (string, error) {
 	ns := inClusterNamespace()
+	anchor := detectAnchor(ctx, cl, ns)
+	clusterUID := getClusterUID(ctx, cl)
+	id := instanceIDv1(clusterUID, anchor)
 
-	// Try deployment-aware anchoring strategies in order of preference
-	anchor := determineStableAnchor(ctx, cl, ns)
-
-	// Generate k8s-safe ConfigMap name
-	cmName := fmt.Sprintf("%s-%s", cmPrefixName, k8sHexHash(anchor, 10))
-
-	cm := &corev1.ConfigMap{}
+	// ConfigMap name derives from the (stable) anchor, like before
+	cmName := fmt.Sprintf("%s-%s", cmPrefixName, k8sHexHash(anchor.String(), 10))
 	key := client.ObjectKey{Namespace: ns, Name: cmName}
 
-	// Try to get existing ConfigMap
-	if err := cl.Get(ctx, key, cm); err == nil {
-		if id := cm.Data["id"]; id != "" {
-			return id, nil
+	// If CM exists, trust it (but if it has a legacy random id, we don't change it)
+	var cm corev1.ConfigMap
+	if err := cl.Get(ctx, key, &cm); err == nil {
+		if v := cm.Data["id"]; v != "" {
+			return v, nil
 		}
+		// backfill if present but missing 'id'
 	} else if !apierrors.IsNotFound(err) {
 		return "", err
 	}
 
-	// Create new ConfigMap with stable ID
-	id := randB64(18)
-	cm = &corev1.ConfigMap{
+	// (Re)create index CM with deterministic content
+	cm = corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cmName,
 			Namespace: ns,
 			Labels:    buildSafeLabels(ctx, cl, ns),
 		},
-		Data: map[string]string{"id": id},
+		Data: map[string]string{
+			"id":         id,
+			"anchor":     anchor.String(),
+			"clusterUID": clusterUID,
+			"version":    "1",
+		},
 	}
-
-	if err := cl.Create(ctx, cm); err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			// Race condition - try to get the existing one
-			if err := cl.Get(ctx, key, cm); err == nil && cm.Data["id"] != "" {
-				return cm.Data["id"], nil
-			}
-		}
+	if err := cl.Create(ctx, &cm); err != nil && !apierrors.IsAlreadyExists(err) {
 		return "", err
 	}
-
 	return id, nil
 }
 
@@ -112,29 +134,25 @@ func getSelfManagerMeta(ctx context.Context, cl client.Client) ManagerMeta {
 }
 
 // determineStableAnchor creates a stable identity based on deployment context
-func determineStableAnchor(ctx context.Context, cl client.Client, ns string) string {
-	// Strategy 1: Helm release (most stable for Helm deployments)
-	if helmAnchor := getHelmAnchor(ctx, cl, ns); helmAnchor != "" {
-		return helmAnchor
+func detectAnchor(ctx context.Context, cl client.Client, ns string) AnchorMeta {
+	if s := getHelmAnchor(ctx, cl, ns); s != "" {
+		// s looks like "helm:<ns>:<release>" or "helm:<ns>:<release>:<chart>"
+		parts := strings.Split(s, ":")
+		return AnchorMeta{Kind: "helm", Namespace: parts[1], Name: parts[2]}
 	}
-
-	// Strategy 2: ArgoCD application
-	if argoAnchor := getArgoAnchor(ctx, cl, ns); argoAnchor != "" {
-		return argoAnchor
+	if s := getArgoAnchor(ctx, cl, ns); s != "" {
+		parts := strings.Split(s, ":")
+		return AnchorMeta{Kind: "argo", Namespace: parts[1], Name: parts[2]}
 	}
-
-	// Strategy 3: Deployment name (stable across redeploys)
-	if deployAnchor := getDeploymentAnchor(ctx, cl, ns); deployAnchor != "" {
-		return deployAnchor
+	if s := getDeploymentAnchor(ctx, cl, ns); s != "" {
+		parts := strings.Split(s, ":")
+		return AnchorMeta{Kind: "deployment", Namespace: parts[1], Name: parts[2]}
 	}
-
-	// Strategy 4: StatefulSet name
-	if stsAnchor := getStatefulSetAnchor(ctx, cl, ns); stsAnchor != "" {
-		return stsAnchor
+	if s := getStatefulSetAnchor(ctx, cl, ns); s != "" {
+		parts := strings.Split(s, ":")
+		return AnchorMeta{Kind: "statefulset", Namespace: parts[1], Name: parts[2]}
 	}
-
-	// Fallback: namespace-based
-	return fmt.Sprintf("namespace:%s:server", ns)
+	return AnchorMeta{Kind: "namespace", Namespace: ns, Name: "server"}
 }
 
 // getHelmAnchor looks for Helm release information
@@ -149,10 +167,9 @@ func getHelmAnchor(ctx context.Context, cl client.Client, ns string) string {
 		return ""
 	}
 
-	// Check for Helm annotations/labels
 	if release, ok := pod.Labels["app.kubernetes.io/instance"]; ok {
 		if chart, ok := pod.Labels["helm.sh/chart"]; ok {
-			return fmt.Sprintf("helm:%s:%s:%s", ns, release, chart)
+			return fmt.Sprintf("helm:%s:%s:%s", ns, release, chart) // <-- versioned, unstable
 		}
 		return fmt.Sprintf("helm:%s:%s", ns, release)
 	}
@@ -172,6 +189,14 @@ func getHelmFromOwners(ctx context.Context, cl client.Client, ns string, owners 
 				}
 				// Check Deployment parent
 				return getHelmFromOwners(ctx, cl, ns, rs.OwnerReferences)
+			}
+		}
+		if owner.Kind == "StatefulSet" {
+			var dep appsv1.StatefulSet
+			if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: owner.Name}, &dep); err == nil {
+				if release, ok := dep.Labels["app.kubernetes.io/instance"]; ok {
+					return fmt.Sprintf("helm:%s:%s", ns, release)
+				}
 			}
 		}
 		if owner.Kind == "Deployment" {
@@ -288,8 +313,8 @@ func getStatefulSetAnchor(ctx context.Context, cl client.Client, ns string) stri
 func buildSafeLabels(ctx context.Context, cl client.Client, ns string) map[string]string {
 	labels := map[string]string{
 		"app.kubernetes.io/part-of":    APP_NAME,
-		"app.kubernetes.io/component":  "server",
 		"app.kubernetes.io/managed-by": APP_NAME,
+		"app.kubernetes.io/component":  "server",
 	}
 
 	// Add safe deployment context labels
@@ -354,9 +379,8 @@ func sanitizeLabelValue(value string) string {
 // buildInstanceMetaIndex scans per-instance ConfigMaps and returns instanceID -> ManagerMeta.
 func (h *handlers) buildInstanceMetaIndex(r *http.Request) map[string]ManagerMeta {
 	out := map[string]ManagerMeta{}
-	// Only cluster-scope needs this; keep it simple and cheap.
+
 	var cms corev1.ConfigMapList
-	// Best-effort label filters to narrow results
 	sel := client.MatchingLabels{
 		"app.kubernetes.io/part-of":   APP_NAME,
 		"app.kubernetes.io/component": "server",
@@ -365,22 +389,59 @@ func (h *handlers) buildInstanceMetaIndex(r *http.Request) map[string]ManagerMet
 		logger.Debug("buildInstanceMetaIndex: list configmaps failed", "err", err)
 		return out
 	}
+
 	for _, cm := range cms.Items {
 		id := cm.Data["id"]
 		if id == "" {
 			continue
 		}
-		method := cm.Labels["codespace.dev/method"] // helm|argo|kubectl
-		meta := ManagerMeta{Kind: method, Namespace: cm.Namespace}
-		if method == "helm" && cm.Labels["codespace.dev/release"] != "" {
-			meta.Name = cm.Labels["codespace.dev/release"]
-		} else if method == "argo" && cm.Labels["codespace.dev/argo-app"] != "" {
-			meta.Name = cm.Labels["codespace.dev/argo-app"]
+
+		var meta ManagerMeta
+
+		// 1) Prefer the stable anchor: "<kind>:<ns>:<name>"
+		if a := cm.Data["anchor"]; a != "" {
+			parts := strings.Split(a, ":")
+			if len(parts) >= 3 {
+				kind := parts[0]
+				ns := parts[1]
+				name := sanitizeLabelValue(parts[2])
+
+				// normalize anything unknown back to "namespace"
+				switch kind {
+				case "helm", "argo", "deployment", "statefulset", "namespace":
+					// ok
+				default:
+					kind = "unresolved"
+					if name == "" {
+						name = "unresolved"
+					}
+				}
+
+				meta = ManagerMeta{Kind: kind, Namespace: ns, Name: name}
+			}
 		}
+
+		// 2) Fallback for very old CMs that predate 'anchor'
 		if meta.Kind == "" {
-			meta.Kind = "namespace"
+			method := cm.Labels["codespace.dev/method"] // helm|argo|kubectl
+			switch method {
+			case "helm":
+				meta = ManagerMeta{Kind: "helm", Namespace: cm.Namespace, Name: sanitizeLabelValue(cm.Labels["codespace.dev/release"])}
+				if meta.Name == "" {
+					meta.Name = "release"
+				}
+			case "argo":
+				meta = ManagerMeta{Kind: "argo", Namespace: cm.Namespace, Name: sanitizeLabelValue(cm.Labels["codespace.dev/argo-app"])}
+				if meta.Name == "" {
+					meta.Name = "app"
+				}
+			default:
+				meta = ManagerMeta{Kind: "unresolved", Namespace: cm.Namespace, Name: "unresolved"}
+			}
 		}
+
 		out[id] = meta
 	}
+
 	return out
 }
