@@ -14,7 +14,7 @@ import { useFilteredSessions, useSessions } from "../hooks/useSessions";
 import type { components } from "../types/api.gen";
 
 import { useIntrospection } from "../hooks/useIntrospection";
-import type { UISession } from "../types";
+import type { UISession } from "../types/types";
 
 type SessionCreateRequest =
   components["schemas"]["cmd_server.SessionCreateRequest"];

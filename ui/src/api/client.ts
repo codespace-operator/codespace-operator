@@ -1,5 +1,15 @@
 import type { components } from "../types/api.gen";
-import type { UISession, SessionDeleteResponse, Introspection } from "../types";
+import type {
+  UISession,
+  SessionDeleteResponse,
+  Introspection,
+} from "../types/types";
+import type {
+  UIProject,
+  ProjectCreateRequest,
+  ProjectUpdateRequest,
+  ProjectDeleteResponse,
+} from "../types/projects";
 
 // OpenAPI-generated types (API wire format)
 type APISession =
@@ -272,5 +282,97 @@ export const introspectApi = {
       throw new Error(`server introspect failed: ${r.status}`);
     }
     return r.json();
+  },
+};
+
+export const projectsApi = {
+  async list(ns: string): Promise<UIProject[]> {
+    const url =
+      ns === "All"
+        ? `/api/v1/server/projects?all=true`
+        : `/api/v1/server/projects?namespace=${encodeURIComponent(ns)}`;
+    const r = await apiFetch(url);
+    const data = await r.json();
+
+    if (data.items) {
+      return data.items as UIProject[];
+    }
+    return normalizeList<UIProject>(data);
+  },
+
+  async get(ns: string, name: string): Promise<UIProject> {
+    const r = await apiFetch(
+      `/api/v1/server/projects/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
+    );
+    return normalizeObject<UIProject>(await r.json());
+  },
+
+  async create(body: ProjectCreateRequest): Promise<UIProject> {
+    const r = await apiFetch(`/api/v1/server/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return normalizeObject<UIProject>(await r.json());
+  },
+
+  async update(
+    ns: string,
+    name: string,
+    body: ProjectUpdateRequest,
+  ): Promise<UIProject> {
+    const r = await apiFetch(
+      `/api/v1/server/projects/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    return normalizeObject<UIProject>(await r.json());
+  },
+
+  async remove(ns: string, name: string): Promise<ProjectDeleteResponse> {
+    const r = await apiFetch(
+      `/api/v1/server/projects/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    if (r.headers.get("content-length") === "0" || r.status === 204) {
+      return { status: "deleted", name, namespace: ns };
+    }
+    return await r.json();
+  },
+
+  async addMember(
+    ns: string,
+    name: string,
+    member: { subject: string; role: string },
+  ): Promise<UIProject> {
+    const r = await apiFetch(
+      `/api/v1/server/projects/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/members`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(member),
+      },
+    );
+    return normalizeObject<UIProject>(await r.json());
+  },
+
+  async removeMember(
+    ns: string,
+    name: string,
+    subject: string,
+  ): Promise<UIProject> {
+    const r = await apiFetch(
+      `/api/v1/server/projects/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/members/${encodeURIComponent(subject)}`,
+      {
+        method: "DELETE",
+      },
+    );
+    return normalizeObject<UIProject>(await r.json());
   },
 };

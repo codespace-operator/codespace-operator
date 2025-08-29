@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import { useIx } from "../context/IntrospectionContext";
 import { can as canDo } from "../lib/cap";
 import type { components } from "../types/api.gen";
-import type { UISession, SessionEvent } from "../types";
+import type { UISession, SessionEvent } from "../types/types";
 
 type SessionCreateRequest =
   components["schemas"]["cmd_server.SessionCreateRequest"];

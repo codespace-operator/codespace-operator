@@ -1,3 +1,10 @@
+// 1. Add the import at the top with other page imports:
+import { ProjectsPage, ProjectsPageRef } from "./pages/ProjectsPage";
+
+// 2. Add projects ref alongside sessionsPageRef:
+const sessionsPageRef = useRef<SessionsPageRef>(null);
+const projectsPageRef = useRef<ProjectsPageRef>(null);
+
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Nav,
@@ -69,7 +76,11 @@ function AppChrome({
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
   // Namespace selection is allowed on pages
-  const ALLOW_NS_ON = [/^\/sessions(\/|$)/, /^\/workloads(\/|$)/];
+  const ALLOW_NS_ON = [
+    /^\/sessions(\/|$)/,
+    /^\/workloads(\/|$)/,
+    /^\/projects(\/|$)/,
+  ];
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <Header
@@ -91,9 +102,12 @@ function AppChrome({
           >
             <Nav>
               <NavList>
-                <NavGroup title="Sessions">
+                <NavGroup title="Development">
                   <NavItem>
                     <Link to="/sessions">Sessions</Link>
+                  </NavItem>
+                  <NavItem>
+                    <Link to="/projects">Projects</Link>
                   </NavItem>
                 </NavGroup>
 
@@ -240,6 +254,8 @@ export default function App() {
   const handleRefresh = () => {
     if (location.pathname.startsWith("/sessions")) {
       sessionsPageRef.current?.refresh();
+    } else if (location.pathname.startsWith("/projects")) {
+      projectsPageRef.current?.refresh();
     }
   };
 
@@ -298,6 +314,16 @@ export default function App() {
           element={
             <SessionsPage
               ref={sessionsPageRef}
+              namespace={namespace}
+              onAlert={(message, variant) => alerts.push(message, variant)}
+            />
+          }
+        />
+        <Route
+          path="projects"
+          element={
+            <ProjectsPage
+              ref={projectsPageRef}
               namespace={namespace}
               onAlert={(message, variant) => alerts.push(message, variant)}
             />

@@ -6,7 +6,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
 } from "@patternfly/react-icons";
-import type { UISession } from "../types";
+import type { UISession } from "../types/types";
 
 function PhaseLabel({ phase }: { phase?: string }) {
   const intent: Record<

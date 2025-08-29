@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from "react";
 import { useIntrospection } from "../hooks/useIntrospection";
-import type { Introspection } from "../types";
+import type { Introspection } from "../types/types";
 
 type Ctx = {
   data: Introspection | null;

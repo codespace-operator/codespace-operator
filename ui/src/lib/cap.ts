@@ -1,4 +1,4 @@
-import type { Introspection } from "../types";
+import type { Introspection } from "../types/types";
 
 export function can(
   ix: Introspection | null | undefined,

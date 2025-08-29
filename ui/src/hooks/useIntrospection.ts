@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { introspectApi } from "../api/client";
 import type { components } from "../types/api.gen";
-import type { Introspection } from "../types";
+import type { Introspection } from "../types/types";
 
 type UserIntrospectionResponse =
   components["schemas"]["cmd_server.UserIntrospectionResponse"];
