@@ -1,0 +1,1420 @@
+basePath: /
+definitions:
+  github_com_codespace-operator_codespace-operator_api_v1.AuthSpec:
+    properties:
+      mode:
+        description: |-
+          +kubebuilder:validation:Enum=oauth2proxy;none
+          +kubebuilder:default=none
+        type: string
+      oidc:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.OIDCRef'
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.NetSpec:
+    properties:
+      annotations:
+        additionalProperties:
+          type: string
+        type: object
+      host:
+        type: string
+      tlsSecretName:
+        type: string
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.OIDCRef:
+    properties:
+      clientIDSecret:
+        type: string
+      clientSecretRef:
+        type: string
+      issuerURL:
+        description: +kubebuilder:validation:Pattern=`^https?://`
+        type: string
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.PVCSpec:
+    properties:
+      mountPath:
+        description: +kubebuilder:validation:MinLength=1
+        type: string
+      size:
+        description: +kubebuilder:validation:Pattern=`^\d+(Gi|Mi)$`
+        type: string
+      storageClassName:
+        type: string
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec:
+    properties:
+      cmd:
+        items:
+          type: string
+        type: array
+      ide:
+        description: +kubebuilder:validation:Enum=jupyterlab;vscode;rstudio;custom
+        type: string
+      image:
+        description: +kubebuilder:validation:MinLength=1
+        type: string
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.Session:
+    properties:
+      apiVersion:
+        description: |-
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+          +optional
+        type: string
+      kind:
+        description: |-
+          Kind is a string value representing the REST resource this object represents.
+          Servers may infer this from the endpoint the client submits requests to.
+          Cannot be updated.
+          In CamelCase.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+          +optional
+        type: string
+      metadata:
+        $ref: '#/definitions/v1.ObjectMeta'
+      spec:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionSpec'
+      status:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.SessionStatus'
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.SessionSpec:
+    properties:
+      auth:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
+      home:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+      networking:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
+      profile:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
+      replicas:
+        type: integer
+      scratch:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+    type: object
+  github_com_codespace-operator_codespace-operator_api_v1.SessionStatus:
+    properties:
+      phase:
+        description: Pending | Ready | Error
+        type: string
+      reason:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta:
+    properties:
+      name:
+        description: release/app/deployment name (sanitized when used as label)
+        type: string
+      namespace:
+        description: namespace where the manager runs
+        type: string
+      type:
+        description: argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved
+        type: string
+    type: object
+  internal_server.AuthFeatures:
+    description: Available authentication features and endpoints
+    properties:
+      localLoginEnabled:
+        example: false
+        type: boolean
+      localLoginPath:
+        example: /auth/local/login
+        type: string
+      ssoEnabled:
+        example: true
+        type: boolean
+      ssoLoginPath:
+        example: /auth/sso/login
+        type: string
+    type: object
+  internal_server.CasbinPermissions:
+    properties:
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespacePermissions'
+    type: object
+  internal_server.ClusterInfo:
+    properties:
+      casbin:
+        $ref: '#/definitions/internal_server.CasbinPermissions'
+      serverServiceAccount:
+        $ref: '#/definitions/internal_server.ServiceAccountInfo'
+    type: object
+  internal_server.DomainPermissions:
+    properties:
+      session:
+        additionalProperties:
+          type: boolean
+        type: object
+    type: object
+  internal_server.ErrorResponse:
+    properties:
+      error:
+        example: Invalid request
+        type: string
+    type: object
+  internal_server.LocalLoginRequest:
+    description: Local login credentials
+    properties:
+      password:
+        example: secretpassword
+        type: string
+      username:
+        example: alice
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  internal_server.LoginResponse:
+    description: Successful authentication response
+    properties:
+      roles:
+        example:
+        - editor
+        - viewer
+        items:
+          type: string
+        type: array
+      token:
+        type: string
+      user:
+        example: alice
+        type: string
+    type: object
+  internal_server.NamespaceInfo:
+    properties:
+      userAllowed:
+        description: Namespaces user can access
+        items:
+          type: string
+        type: array
+      userCreatable:
+        description: Namespaces user can create sessions in
+        items:
+          type: string
+        type: array
+      userDeletable:
+        description: Namespaces user can delete sessions from
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.NamespacePermissions:
+    properties:
+      list:
+        type: boolean
+      watch:
+        type: boolean
+    type: object
+  internal_server.PermissionCheck:
+    properties:
+      action:
+        example: create
+        type: string
+      allowed:
+        example: true
+        type: boolean
+      namespace:
+        example: default
+        type: string
+      resource:
+        example: session
+        type: string
+    type: object
+  internal_server.ServerIntrospectionResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/internal_server.SystemCapabilities'
+      cluster:
+        $ref: '#/definitions/internal_server.ClusterInfo'
+      instanceID:
+        type: string
+      manager:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta'
+      namespaces:
+        $ref: '#/definitions/internal_server.ServerNamespaceInfo'
+      version:
+        $ref: '#/definitions/internal_server.ServerVersionInfo'
+    type: object
+  internal_server.ServerNamespaceInfo:
+    properties:
+      all:
+        description: All namespaces (if discoverable)
+        items:
+          type: string
+        type: array
+      withSessions:
+        description: Namespaces containing sessions
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.ServerVersionInfo:
+    properties:
+      buildDate:
+        type: string
+      gitCommit:
+        type: string
+      version:
+        type: string
+    type: object
+  internal_server.ServiceAccountInfo:
+    properties:
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespacePermissions'
+      session:
+        additionalProperties:
+          type: boolean
+        type: object
+    type: object
+  internal_server.SessionCreateRequest:
+    description: Request body for creating a new codespace session
+    properties:
+      auth:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.AuthSpec'
+      home:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+      name:
+        example: my-session
+        type: string
+      namespace:
+        example: default
+        type: string
+      networking:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.NetSpec'
+      profile:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.ProfileSpec'
+      replicas:
+        example: 1
+        type: integer
+      scratch:
+        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.PVCSpec'
+    required:
+    - name
+    - profile
+    type: object
+  internal_server.SessionListResponse:
+    description: Response containing list of sessions with metadata
+    properties:
+      filtered:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        type: array
+      namespaces:
+        example:
+        - default
+        - kube-system
+        items:
+          type: string
+        type: array
+      total:
+        example: 5
+        type: integer
+    type: object
+  internal_server.SessionScaleRequest:
+    description: Request body for scaling a session
+    properties:
+      replicas:
+        example: 2
+        minimum: 0
+        type: integer
+    type: object
+  internal_server.SystemCapabilities:
+    properties:
+      clusterScope:
+        description: 'Displays cluster_scope: true or false'
+        type: boolean
+      multiTenant:
+        description: Whether system supports multiple tenants
+        type: boolean
+    type: object
+  internal_server.UserCapabilities:
+    properties:
+      adminAccess:
+        description: Whether user has admin privileges
+        type: boolean
+      clusterScope:
+        description: Whether user has any cluster-level access
+        type: boolean
+      namespaceScope:
+        description: Effective namespace scope for user
+        items:
+          type: string
+        type: array
+    type: object
+  internal_server.UserInfo:
+    description: Current authenticated user information
+    properties:
+      email:
+        example: alice@company.com
+        type: string
+      exp:
+        example: 1641081600
+        type: integer
+      iat:
+        example: 1640995200
+        type: integer
+      implicitRoles:
+        example:
+        - inherited-role
+        items:
+          type: string
+        type: array
+      provider:
+        example: oidc
+        type: string
+      roles:
+        example:
+        - editor
+        - viewer
+        items:
+          type: string
+        type: array
+      subject:
+        example: alice@company.com
+        type: string
+      username:
+        example: alice
+        type: string
+    type: object
+  internal_server.UserIntrospectionResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/internal_server.UserCapabilities'
+      domains:
+        additionalProperties:
+          $ref: '#/definitions/internal_server.DomainPermissions'
+        type: object
+      namespaces:
+        $ref: '#/definitions/internal_server.NamespaceInfo'
+      user:
+        $ref: '#/definitions/internal_server.UserInfo'
+    type: object
+  internal_server.UserPermissions:
+    properties:
+      namespaces:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      permissions:
+        items:
+          $ref: '#/definitions/internal_server.PermissionCheck'
+        type: array
+      roles:
+        example:
+        - editor
+        - viewer
+        items:
+          type: string
+        type: array
+      subject:
+        example: alice@company.com
+        type: string
+    type: object
+  v1.FieldsV1:
+    type: object
+  v1.ManagedFieldsEntry:
+    properties:
+      apiVersion:
+        description: |-
+          APIVersion defines the version of this resource that this field set
+          applies to. The format is "group/version" just like the top-level
+          APIVersion field. It is necessary to track the version of a field
+          set because it cannot be automatically converted.
+        type: string
+      fieldsType:
+        description: |-
+          FieldsType is the discriminator for the different fields format and version.
+          There is currently only one possible value: "FieldsV1"
+        type: string
+      fieldsV1:
+        allOf:
+        - $ref: '#/definitions/v1.FieldsV1'
+        description: |-
+          FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
+          +optional
+      manager:
+        description: Manager is an identifier of the workflow managing these fields.
+        type: string
+      operation:
+        allOf:
+        - $ref: '#/definitions/v1.ManagedFieldsOperationType'
+        description: |-
+          Operation is the type of operation which lead to this ManagedFieldsEntry being created.
+          The only valid values for this field are 'Apply' and 'Update'.
+      subresource:
+        description: |-
+          Subresource is the name of the subresource used to update that object, or
+          empty string if the object was updated through the main resource. The
+          value of this field is used to distinguish between managers, even if they
+          share the same name. For example, a status update will be distinct from a
+          regular update using the same manager name.
+          Note that the APIVersion field is not related to the Subresource field and
+          it always corresponds to the version of the main resource.
+        type: string
+      time:
+        description: |-
+          Time is the timestamp of when the ManagedFields entry was added. The
+          timestamp will also be updated if a field is added, the manager
+          changes any of the owned fields value or removes a field. The
+          timestamp does not update when a field is removed from the entry
+          because another manager took it over.
+          +optional
+        type: string
+    type: object
+  v1.ManagedFieldsOperationType:
+    enum:
+    - Apply
+    - Update
+    type: string
+    x-enum-varnames:
+    - ManagedFieldsOperationApply
+    - ManagedFieldsOperationUpdate
+  v1.ObjectMeta:
+    properties:
+      annotations:
+        additionalProperties:
+          type: string
+        description: |-
+          Annotations is an unstructured key value map stored with a resource that may be
+          set by external tools to store and retrieve arbitrary metadata. They are not
+          queryable and should be preserved when modifying objects.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+          +optional
+        type: object
+      creationTimestamp:
+        description: |-
+          CreationTimestamp is a timestamp representing the server time when this object was
+          created. It is not guaranteed to be set in happens-before order across separate operations.
+          Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+
+          Populated by the system.
+          Read-only.
+          Null for lists.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+          +optional
+        type: string
+      deletionGracePeriodSeconds:
+        description: |-
+          Number of seconds allowed for this object to gracefully terminate before
+          it will be removed from the system. Only set when deletionTimestamp is also set.
+          May only be shortened.
+          Read-only.
+          +optional
+        type: integer
+      deletionTimestamp:
+        description: |-
+          DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
+          field is set by the server when a graceful deletion is requested by the user, and is not
+          directly settable by a client. The resource is expected to be deleted (no longer visible
+          from resource lists, and not reachable by name) after the time in this field, once the
+          finalizers list is empty. As long as the finalizers list contains items, deletion is blocked.
+          Once the deletionTimestamp is set, this value may not be unset or be set further into the
+          future, although it may be shortened or the resource may be deleted prior to this time.
+          For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react
+          by sending a graceful termination signal to the containers in the pod. After that 30 seconds,
+          the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup,
+          remove the pod from the API. In the presence of network partitions, this object may still
+          exist after this timestamp, until an administrator or automated process can determine the
+          resource is fully terminated.
+          If not set, graceful deletion of the object has not been requested.
+
+          Populated by the system when a graceful deletion is requested.
+          Read-only.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+          +optional
+        type: string
+      finalizers:
+        description: |-
+          Must be empty before the object is deleted from the registry. Each entry
+          is an identifier for the responsible component that will remove the entry
+          from the list. If the deletionTimestamp of the object is non-nil, entries
+          in this list can only be removed.
+          Finalizers may be processed and removed in any order.  Order is NOT enforced
+          because it introduces significant risk of stuck finalizers.
+          finalizers is a shared field, any actor with permission can reorder it.
+          If the finalizer list is processed in order, then this can lead to a situation
+          in which the component responsible for the first finalizer in the list is
+          waiting for a signal (field value, external system, or other) produced by a
+          component responsible for a finalizer later in the list, resulting in a deadlock.
+          Without enforced ordering finalizers are free to order amongst themselves and
+          are not vulnerable to ordering changes in the list.
+          +optional
+          +patchStrategy=merge
+          +listType=set
+        items:
+          type: string
+        type: array
+      generateName:
+        description: |-
+          GenerateName is an optional prefix, used by the server, to generate a unique
+          name ONLY IF the Name field has not been provided.
+          If this field is used, the name returned to the client will be different
+          than the name passed. This value will also be combined with a unique suffix.
+          The provided value has the same validation rules as the Name field,
+          and may be truncated by the length of the suffix required to make the value
+          unique on the server.
+
+          If this field is specified and the generated name exists, the server will return a 409.
+
+          Applied only if Name is not specified.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency
+          +optional
+        type: string
+      generation:
+        description: |-
+          A sequence number representing a specific generation of the desired state.
+          Populated by the system. Read-only.
+          +optional
+        type: integer
+      labels:
+        additionalProperties:
+          type: string
+        description: |-
+          Map of string keys and values that can be used to organize and categorize
+          (scope and select) objects. May match selectors of replication controllers
+          and services.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+          +optional
+        type: object
+      managedFields:
+        description: |-
+          ManagedFields maps workflow-id and version to the set of fields
+          that are managed by that workflow. This is mostly for internal
+          housekeeping, and users typically shouldn't need to set or
+          understand this field. A workflow can be the user's name, a
+          controller's name, or the name of a specific apply path like
+          "ci-cd". The set of fields is always in the version that the
+          workflow used when modifying the object.
+
+          +optional
+          +listType=atomic
+        items:
+          $ref: '#/definitions/v1.ManagedFieldsEntry'
+        type: array
+      name:
+        description: |-
+          Name must be unique within a namespace. Is required when creating resources, although
+          some resources may allow a client to request the generation of an appropriate name
+          automatically. Name is primarily intended for creation idempotence and configuration
+          definition.
+          Cannot be updated.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+          +optional
+        type: string
+      namespace:
+        description: |-
+          Namespace defines the space within which each name must be unique. An empty namespace is
+          equivalent to the "default" namespace, but "default" is the canonical representation.
+          Not all objects are required to be scoped to a namespace - the value of this field for
+          those objects will be empty.
+
+          Must be a DNS_LABEL.
+          Cannot be updated.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
+          +optional
+        type: string
+      ownerReferences:
+        description: |-
+          List of objects depended by this object. If ALL objects in the list have
+          been deleted, this object will be garbage collected. If this object is managed by a controller,
+          then an entry in this list will point to this controller, with the controller field set to true.
+          There cannot be more than one managing controller.
+          +optional
+          +patchMergeKey=uid
+          +patchStrategy=merge
+          +listType=map
+          +listMapKey=uid
+        items:
+          $ref: '#/definitions/v1.OwnerReference'
+        type: array
+      resourceVersion:
+        description: |-
+          An opaque value that represents the internal version of this object that can
+          be used by clients to determine when objects have changed. May be used for optimistic
+          concurrency, change detection, and the watch operation on a resource or set of resources.
+          Clients must treat these values as opaque and passed unmodified back to the server.
+          They may only be valid for a particular resource or set of resources.
+
+          Populated by the system.
+          Read-only.
+          Value must be treated as opaque by clients and .
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+          +optional
+        type: string
+      selfLink:
+        description: |-
+          Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.
+          +optional
+        type: string
+      uid:
+        description: |-
+          UID is the unique in time and space value for this object. It is typically generated by
+          the server on successful creation of a resource and is not allowed to change on PUT
+          operations.
+
+          Populated by the system.
+          Read-only.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
+          +optional
+        type: string
+    type: object
+  v1.OwnerReference:
+    properties:
+      apiVersion:
+        description: API version of the referent.
+        type: string
+      blockOwnerDeletion:
+        description: |-
+          If true, AND if the owner has the "foregroundDeletion" finalizer, then
+          the owner cannot be deleted from the key-value store until this
+          reference is removed.
+          See https://kubernetes.io/docs/concepts/architecture/garbage-collection/#foreground-deletion
+          for how the garbage collector interacts with this field and enforces the foreground deletion.
+          Defaults to false.
+          To set this field, a user needs "delete" permission of the owner,
+          otherwise 422 (Unprocessable Entity) will be returned.
+          +optional
+        type: boolean
+      controller:
+        description: |-
+          If true, this reference points to the managing controller.
+          +optional
+        type: boolean
+      kind:
+        description: |-
+          Kind of the referent.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+        type: string
+      name:
+        description: |-
+          Name of the referent.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+        type: string
+      uid:
+        description: |-
+          UID of the referent.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@codespace.dev
+    name: Codespace Operator Support
+    url: https://github.com/codespace-operator/codespace-operator
+  description: REST API for managing Codespace sessions with RBAC and multi-provider
+    authentication
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://github.com/codespace-operator/codespace-operator/blob/main/TERMS.md
+  title: Codespace Operator API
+  version: 2.0.0
+paths:
+  /api/v1/admin/rbac/reload:
+    post:
+      consumes:
+      - application/json
+      description: Force reload of RBAC policies (requires admin privileges)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Reload RBAC (Admin)
+      tags:
+      - admin
+  /api/v1/admin/sessions/adopt:
+    post:
+      consumes:
+      - application/json
+      description: Attempts to adopt a session resource by the current instance. If
+        the session is not orphaned, adoption is blocked unless 'force=1' is specified.
+      parameters:
+      - default: default
+        description: Namespace of the session
+        in: query
+        name: namespace
+        type: string
+      - description: Name of the session
+        in: query
+        name: name
+        required: true
+        type: string
+      - default: 0
+        description: If set to 1, returns the patched session without updating it
+        enum:
+        - 0
+        - 1
+        in: query
+        name: dryRun
+        type: integer
+      - default: 0
+        description: If set to 1, forces adoption even if the session is not orphaned
+        enum:
+        - 0
+        - 1
+        in: query
+        name: force
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Adopted session object
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "409":
+          description: Session is not orphaned; use force=1 to override
+          schema:
+            type: string
+      summary: Adopt an orphaned session
+      tags:
+      - admin
+      - sessions
+  /api/v1/admin/system/info:
+    get:
+      consumes:
+      - application/json
+      description: Check system information (requires admin privileges)
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: System Info
+      tags:
+      - admin
+  /api/v1/admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users in the system (requires admin privileges)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User list with admin info
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List users (Admin)
+      tags:
+      - admin
+  /api/v1/introspect:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      description: 'Deprecated: prefer /api/v1/introspect/user or /api/v1/introspect/server'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Combined user+server info
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Introspect (legacy combined)
+      tags:
+      - user
+  /api/v1/introspect/server:
+    get:
+      consumes:
+      - application/json
+      description: Get server and cluster information
+      parameters:
+      - description: Whether to discover namespaces (0 or 1)
+        in: query
+        name: discover
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.ServerIntrospectionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Server introspection
+      tags:
+      - user
+  /api/v1/introspect/user:
+    get:
+      consumes:
+      - application/json
+      description: Get user-specific permissions and capabilities
+      parameters:
+      - description: Comma-separated list of namespaces to check
+        in: query
+        name: namespaces
+        type: string
+      - description: Comma-separated list of actions to check
+        in: query
+        name: actions
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.UserIntrospectionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: User introspection
+      tags:
+      - user
+  /api/v1/me:
+    get:
+      consumes:
+      - application/json
+      description: Get information about the current authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.UserInfo'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get current user
+      tags:
+      - user
+  /api/v1/server/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of codespace sessions, optionally across all namespaces
+      operationId: listSessions
+      parameters:
+      - default: default
+        description: Target namespace
+        in: query
+        name: namespace
+        type: string
+      - description: List sessions across all namespaces
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.SessionListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List sessions
+      tags:
+      - sessions
+    post:
+      consumes:
+      - application/json
+      description: Create a new codespace session
+      operationId: createSession
+      parameters:
+      - description: Session creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server.SessionCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create session
+      tags:
+      - sessions
+  /api/v1/server/sessions/{namespace}/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a codespace session
+      operationId: deleteSession
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Delete session
+      tags:
+      - sessions
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific session
+      operationId: getSession
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get session
+      tags:
+      - sessions
+    put:
+      consumes:
+      - application/json
+      description: Update a session (full replacement)
+      operationId: updateSession
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Session update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server.SessionCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Update session
+      tags:
+      - sessions
+  /api/v1/server/sessions/{namespace}/{name}/scale:
+    post:
+      consumes:
+      - application/json
+      description: Scale the number of replicas for a session
+      operationId: scaleSession
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: Session name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Scale request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server.SessionScaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_codespace-operator_codespace-operator_api_v1.Session'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Scale session
+      tags:
+      - sessions
+  /api/v1/stream/sessions:
+    get:
+      description: Stream real-time session updates via Server-Sent Events
+      operationId: streamSessions
+      parameters:
+      - default: default
+        description: Target namespace
+        in: query
+        name: namespace
+        type: string
+      - description: Stream sessions from all namespaces
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Stream sessions
+      tags:
+      - sessions
+  /api/v1/user/permissions:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed user permissions matrix
+      parameters:
+      - description: Comma-separated list of namespaces
+        in: query
+        name: namespaces
+        type: string
+      - description: Comma-separated list of actions
+        in: query
+        name: actions
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detailed permission matrix
+          schema:
+            $ref: '#/definitions/internal_server.UserPermissions'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: User permissions
+      tags:
+      - user
+  /auth/features:
+    get:
+      consumes:
+      - application/json
+      description: Get available authentication methods and endpoints
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.AuthFeatures'
+      summary: Get authentication features
+      tags:
+      - authentication
+  /auth/local/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate using username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server.LocalLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      summary: Local login
+      tags:
+      - authentication
+  /auth/logout:
+    get:
+      description: Clears session and, if OIDC is configured, redirects to provider
+        end-session
+      responses:
+        "200":
+          description: 'JSON {status: logged_out} if local'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "302":
+          description: Redirect to provider end-session if available
+      summary: Logout
+      tags:
+      - authentication
+  /auth/sso/login:
+    get:
+      description: Redirects to OIDC provider for authentication
+      parameters:
+      - description: Post-login relative redirect (safe, same-origin)
+        in: query
+        name: next
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to provider
+      summary: Start OIDC login
+      tags:
+      - authentication
+  /healthz:
+    get:
+      description: Check if the service is healthy
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - health
+  /readyz:
+    get:
+      description: Check if the service is ready to accept traffic
+      parameters:
+      - default: default
+        description: Namespace to test connectivity
+        in: query
+        name: namespace
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: ready
+          schema:
+            type: string
+        "503":
+          description: not ready
+          schema:
+            type: string
+      summary: Readiness check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token authentication (JWT)
+    in: header
+    name: Authorization
+    type: apiKey
+  CookieAuth:
+    description: Session cookie authentication
+    in: cookie
+    name: codespace_session
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Authentication and authorization operations
+  name: authentication
+- description: Session management operations
+  name: sessions
+- description: Administrative operations (requires admin role)
+  name: admin
+- description: Health and readiness checks
+  name: health
+- description: User information and permissions
+  name: user

@@ -1,4 +1,5 @@
 # Server configuration (ServerConfig)
+cluster_scope: true
 
 # Network
 host: "" # empty = bind all interfaces

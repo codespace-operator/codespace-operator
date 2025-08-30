@@ -13,17 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package controllers
+package controller
 
 import (
 	"context"
 	"fmt"
 
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 func (r *SessionReconciler) applyDefaults(sess *codespacev1.Session) {
@@ -52,12 +53,12 @@ func (r *SessionReconciler) applyDefaults(sess *codespacev1.Session) {
 }
 
 func (r *SessionReconciler) handleDelete(ctx context.Context, sess *codespacev1.Session) (ctrl.Result, error) {
-	controllerutil.RemoveFinalizer(sess, finalizer)
+	controllerutil.RemoveFinalizer(sess, sessionFinalizer)
 	return ctrl.Result{}, r.Update(ctx, sess)
 }
 
 func (r *SessionReconciler) ensureFinalizer(ctx context.Context, sess *codespacev1.Session) error {
-	if controllerutil.AddFinalizer(sess, finalizer) {
+	if controllerutil.AddFinalizer(sess, sessionFinalizer) {
 		return r.Update(ctx, sess)
 	}
 	return nil

@@ -162,7 +162,7 @@ See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-opera
 ## Architecture
 
 - **Session Controller** (`cmd/session-controller/`, `internal/controller/`) - reconciles `Session` CRs into `Deployment`/`Service`/`Ingress`/PVC.
-- **Server** (`cmd/server/`) - small JSON API used by the UI; serves the built UI from `/static`.
+- **Server** (`internal/server/`) - small JSON API used by the UI; serves the built UI from `/static`.
 - **Web UI** (`ui/`) - PatternFly + React admin console.
 - **CRDs** (`api/`, generated into `config/crd/bases/`).
 

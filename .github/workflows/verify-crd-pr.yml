@@ -1,0 +1,57 @@
+name: Verify CRD (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "api/**"
+      - "config/crd/**"
+      - "hack/**"
+      - "!CHANGELOG.*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  crd-pack:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Mirrors release.crd prepare commands
+      - name: Generate & package CRDs
+        run: |
+          set -euo pipefail
+          make manifests
+          make kustomize
+          mkdir -p dist
+          VERSION="0.0.0-pr.${{ github.event.number }}+sha.${{ github.sha }}"
+          ./bin/kustomize build config/crd > "dist/codespace-operator-${VERSION}-crds.yaml"
+          tar -czf "dist/codespace-operator-crds-${VERSION}.tgz" -C config/crd bases
+          (cd dist && sha256sum "codespace-operator-${VERSION}-crds.yaml" "codespace-operator-crds-${VERSION}.tgz" > SHA256SUMS.txt)
+
+      - name: Upload CRD artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: crd-bundle
+          path: |
+            dist/codespace-operator-*-crds.yaml
+            dist/codespace-operator-crds-*.tgz
+            dist/SHA256SUMS.txt
+
+      # Optional: preview next release notes/version (dry-run)
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm i -D semantic-release @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github
+      - run: npx semantic-release -e ./.github/release-config/release.crd.cjs --dry-run

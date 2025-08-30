@@ -4,6 +4,7 @@ KIND_CONFIG="${KIND_CONFIG:-misc/tests/manifests/kind.yaml}"
 BUILD_SCRIPT="${BUILD_SCRIPT:-misc/tests/build.sh}"
 DEPLOY_SCRIPT="${DEPLOY_SCRIPT:-misc/tests/deploy.sh}"
 SETUP_CONFIG="${SETUP_CONFIG:-misc/tests/config.sh}"
+CREATE_SESSION_SCRIPT="${CREATE_SESSION_SCRIPT:-misc/tests/create-session.sh}"
 
 NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator}"
 NAMESPACE_KEYCLOAK="${NAMESPACE_KEYCLOAK:-keycloak}"

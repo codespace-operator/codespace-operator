@@ -20,4 +20,13 @@ resources:
   kind: Session
   path: github.com/codespace-operator/codespace-operator/api/v1
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: codespace.dev
+  group: codespace
+  kind: Project
+  path: github.com/codespace-operator/codespace-operator/api/v1
+  version: v1
 version: "3"
