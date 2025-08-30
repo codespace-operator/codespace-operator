@@ -56,8 +56,8 @@ fi
 echo ">>> Deploying Codespace Operator & Server..."
 helm upgrade --install codespace-operator ${HELM_CHART} \
 	--namespace "${NAMESPACE_SYS}" --create-namespace \
-	--set image.repository="${IMG%:*}" \
-	--set image.tag="${IMG##*:}" \
+	--set operator.image.repository="${IMG%:*}" \
+	--set operator.image.tag="${IMG##*:}" \
 	--set server.enabled=true \
 	--set server.image.repository="${SERVER_IMG%:*}" \
 	--set server.image.tag="${SERVER_IMG##*:}" \
