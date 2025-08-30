@@ -34,7 +34,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # NEW: Node + UI deps (needed by `make build-server`)
       - name: Setup Node for UI build
         uses: actions/setup-node@v4
         with:
@@ -42,7 +41,10 @@ jobs:
           cache: "npm"
           cache-dependency-path: ui/package-lock.json
 
-      # Mirrors release.operator prepare step
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
       - name: Build server binary
         run: make build-server
 
