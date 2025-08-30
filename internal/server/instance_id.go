@@ -29,7 +29,7 @@ func ensureInstallationID(ctx context.Context, cl client.Client, cfg *ServerConf
 	}
 	// ConfigMap name derives from the (stable) anchor, like before
 	cmName := fmt.Sprintf("%s-%s", cmPrefixName, common.K8sHexHash(anchor.String(), 10))
-	key := client.ObjectKey{Namespace: ns, Name: cmName}
+	key := client.ObjectKey{Namespace: anchor.Namespace, Name: cmName}
 
 	// If CM exists, trust it (but if it has a legacy random id, we don't change it)
 	var cm corev1.ConfigMap

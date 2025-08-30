@@ -62,14 +62,10 @@ func recognizedAnchorType(anchorType string) bool {
 		return false
 	}
 }
-func GetSelfAnchorMeta(ctx context.Context, cl client.Client) (AnchorMeta, bool, bool /*rbacLimited*/) {
+func GetSelfAnchorMeta(ctx context.Context, cl client.Client) (anchorMeta AnchorMeta, rbacLimited bool, isKubernetes bool) {
 	ns, isKubernetes := ResolveAnchorNamespace()
 	if !isKubernetes {
-		return localBinaryAnchor(), false, isKubernetes
-	}
-
-	if !isKubernetes {
-		return localBinaryAnchor(ns), false, false
+		return localBinaryAnchor(ns), false, isKubernetes
 	}
 
 	pod, err := GetCurrentPod(ctx, cl, ns)
