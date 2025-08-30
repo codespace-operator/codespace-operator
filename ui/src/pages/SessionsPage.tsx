@@ -61,11 +61,19 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
     }, [ix]);
 
     // Sessions data (hook already guards actions; will error if forbidden)
-    const { rows, loading, refresh, create, remove, scale, pendingTargets } =
-      useSessions(
-        namespace,
-        (msg) => onAlert(msg, "danger"), // Convert single string to our callback format
-      );
+    const {
+      rows,
+      loading,
+      refresh,
+      create,
+      remove,
+      scale,
+      pendingTargets,
+      can,
+    } = useSessions(
+      namespace,
+      (msg) => onAlert(msg, "danger"), // Convert single string to our callback format
+    );
     const filtered = useFilteredSessions(rows, query);
 
     // Expose refresh function to parent component
@@ -161,6 +169,8 @@ export const SessionsPage = forwardRef<SessionsPageRef, Props>(
                 onScale={handleScale}
                 onDelete={doDelete}
                 onOpen={openURL}
+                canScale={can.scale}
+                canDelete={can.delete}
               />
             </CardBody>
           </Card>
