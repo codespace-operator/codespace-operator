@@ -173,10 +173,11 @@ func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 	localEnabled := cfg.EnableLocalLogin && h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
 
 	writeJSON(w, map[string]any{
-		"ssoEnabled":        ssoEnabled,
-		"localLoginEnabled": localEnabled,
-		"ssoLoginPath":      "/auth/sso/login",
-		"localLoginPath":    "/auth/local/login",
+		"ssoEnabled":            ssoEnabled,
+		"localLoginEnabled":     localEnabled,
+		"bootstrapLoginAllowed": cfg.BootstrapLoginAllowed,
+		"ssoLoginPath":          "/auth/sso/login",
+		"localLoginPath":        "/auth/local/login",
 	})
 }
 

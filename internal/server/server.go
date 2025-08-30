@@ -266,10 +266,11 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 	// Setup local auth if configured
 	if cfg.EnableLocalLogin {
 		authConfig.Local = &auth.LocalConfig{
-			Enabled:         true,
-			UsersPath:       cfg.LocalUsersPath,
-			BootstrapUser:   cfg.BootstrapUser,
-			BootstrapPasswd: cfg.BootstrapPassword,
+			Enabled:               true,
+			UsersPath:             cfg.LocalUsersPath,
+			BootstrapLoginAllowed: cfg.BootstrapLoginAllowed,
+			BootstrapUser:         cfg.BootstrapUser,
+			BootstrapPasswd:       cfg.BootstrapPassword,
 		}
 	}
 

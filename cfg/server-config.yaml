@@ -23,6 +23,7 @@ jwt_secret: "change-me" # HS256 key for server-issued session cookie
 # Local login (username/password)
 enable_local_login: true
 local_users_path: ./cfg/server-users.yaml
+bootstrap_login_allowed: true
 bootstrap_user: "admin"
 bootstrap_password: "admin"
 

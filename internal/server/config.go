@@ -40,9 +40,10 @@ type ServerConfig struct {
 	JWTSecret string `mapstructure:"jwt_secret"`
 
 	// Local login
-	EnableLocalLogin  bool   `mapstructure:"enable_local_login"`
-	BootstrapUser     string `mapstructure:"bootstrap_user"`
-	BootstrapPassword string `mapstructure:"bootstrap_password"`
+	EnableLocalLogin      bool   `mapstructure:"enable_local_login"`
+	BootstrapLoginAllowed bool   `mapstructure:"bootstrap_login_allowed"`
+	BootstrapUser         string `mapstructure:"bootstrap_user"`
+	BootstrapPassword     string `mapstructure:"bootstrap_password"`
 
 	// Session cookie
 	SessionCookieName string `mapstructure:"session_cookie_name"`

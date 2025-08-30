@@ -12,7 +12,7 @@ g, codespace-operator:viewer, viewer
 p, admin, *, *, *, allow
 
 # p, admin, session, *, *, allow
-p, admin, namespaces, *, *, allow
+# p, admin, namespaces, *, *, allow
 
 # Editor permissions (CRUD sessions)
 p, editor, session, get, *, allow

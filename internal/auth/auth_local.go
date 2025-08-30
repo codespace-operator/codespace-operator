@@ -33,16 +33,18 @@ type LocalProvider struct {
 	users  *LocalUsers
 
 	// Bootstrap user configuration
-	bootstrapUser   string
-	bootstrapPasswd string
+	bootstrapLoginAllowed bool
+	bootstrapUser         string
+	bootstrapPasswd       string
 }
 
 // LocalConfig holds local authentication configuration
 type LocalConfig struct {
-	Enabled         bool
-	UsersPath       string
-	BootstrapUser   string
-	BootstrapPasswd string
+	Enabled               bool
+	UsersPath             string
+	BootstrapLoginAllowed bool
+	BootstrapUser         string
+	BootstrapPasswd       string
 }
 
 // LocalUser represents a local user account
@@ -168,11 +170,12 @@ func NewLocalProvider(config *LocalConfig, tokenManager TokenManager, logger *sl
 	}
 
 	return &LocalProvider{
-		ProviderBase:    NewProviderBase(tokenManager, logger),
-		config:          config,
-		users:           users,
-		bootstrapUser:   config.BootstrapUser,
-		bootstrapPasswd: config.BootstrapPasswd,
+		ProviderBase:          NewProviderBase(tokenManager, logger),
+		config:                config,
+		users:                 users,
+		bootstrapLoginAllowed: config.BootstrapLoginAllowed,
+		bootstrapUser:         config.BootstrapUser,
+		bootstrapPasswd:       config.BootstrapPasswd,
 	}, nil
 }
 
@@ -217,7 +220,7 @@ func (lp *LocalProvider) Authenticate(username, password string) (*TokenClaims, 
 	}
 
 	// Fallback to bootstrap user
-	if lp.bootstrapUser != "" && lp.bootstrapPasswd != "" {
+	if lp.bootstrapLoginAllowed && lp.bootstrapUser != "" && lp.bootstrapPasswd != "" {
 		if username == lp.bootstrapUser && lp.constantTimePasswordCompare(password, lp.bootstrapPasswd) {
 			user = &LocalUser{
 				Username: lp.bootstrapUser,
