@@ -1,3 +1,8 @@
+
+const releaseScope = /(^|,|\s)(crds|crd)(?=,|\s|$)/
+const releaseType = /^(docs|chore|build|ci|test|refactor)$/
+const notReleaseScope = /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|repo|ci|ui)(?=,|\s|$)/
+
 module.exports = {
   branches: ['main'],
   tagFormat: 'crd-v${version}',
@@ -6,13 +11,13 @@ module.exports = {
       preset: 'conventionalcommits',
       parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
       releaseRules: [
-        { breaking: true, scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'major' },
-        { type: 'feat',   scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'minor' },
-        { type: 'fix',    scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
-        { type: 'perf',   scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
-        { type: 'revert', scope: /(^|,|\s)(crds|crd)(?=,|\s|$)/, release: 'patch' },
-        { scope: /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|repo|ci|ui)(?=,|\s|$)/, release: false },
-        { type: /^(docs|chore|build|ci|test|refactor)$/,                            release: false }
+        { breaking: true, scope: releaseScope, release: 'major' },
+        { type: 'feat',   scope: releaseScope, release: 'minor' },
+        { type: 'fix',    scope: releaseScope, release: 'patch' },
+        { type: 'perf',   scope: releaseScope, release: 'patch' },
+        { type: 'revert', scope: releaseScope, release: 'patch' },
+        { scope: notReleaseScope, release: false },
+        { type: releaseType, release: false }
       ]
     }],
     '@semantic-release/release-notes-generator',
