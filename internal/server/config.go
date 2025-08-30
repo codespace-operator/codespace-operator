@@ -19,7 +19,7 @@ import (
 type ServerConfig struct {
 	ClusterScope bool `mapstructure:"cluster_scope"`
 	// Network
-	APP_NAME string `mapstructure:"APP_NAME"`
+	AppName string `mapstructure:"app_name"`
 
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
@@ -64,33 +64,6 @@ type ServerConfig struct {
 	LocalUsersPath string `mapstructure:"local_users_path"`
 }
 
-// ControllerConfig holds configuration for the session controller
-type ControllerConfig struct {
-	// Controller settings
-	MetricsAddr          string `mapstructure:"metrics_addr"`
-	ProbeAddr            string `mapstructure:"probe_addr"`
-	EnableLeaderElection bool   `mapstructure:"enable_leader_election"`
-	LeaderElectionID     string `mapstructure:"leader_election_id"`
-	// Certificate settings
-	MetricsCertPath string `mapstructure:"metrics_cert_path"`
-	MetricsCertName string `mapstructure:"metrics_cert_name"`
-	MetricsCertKey  string `mapstructure:"metrics_cert_key"`
-	WebhookCertPath string `mapstructure:"webhook_cert_path"`
-	WebhookCertName string `mapstructure:"webhook_cert_name"`
-	WebhookCertKey  string `mapstructure:"webhook_cert_key"`
-
-	// Security settings
-	SecureMetrics bool `mapstructure:"secure_metrics"`
-	EnableHTTP2   bool `mapstructure:"enable_http2"`
-
-	// Session settings
-	SessionNamePrefix string `mapstructure:"session_name_prefix"`
-	FieldOwner        string `mapstructure:"field_owner"`
-
-	// Logging
-	Debug bool `mapstructure:"debug"`
-}
-
 // -----------------------------
 // Loader entry points
 // -----------------------------
@@ -105,7 +78,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("port", 8080)
 	v.SetDefault("read_timeout", 0)
 	v.SetDefault("write_timeout", 0)
-	v.SetDefault("app_name", APP_NAME)
+	v.SetDefault("app_name", "codespace-server")
 
 	v.SetDefault("allow_origin", "")
 
@@ -116,6 +89,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("jwt_secret", "change-me")
 
 	v.SetDefault("enable_local_login", false)
+	v.SetDefault("bootstrap_login_allowed", false)
 	v.SetDefault("bootstrap_user", "")
 	v.SetDefault("bootstrap_password", "")
 
@@ -148,41 +122,6 @@ func LoadServerConfig() (*ServerConfig, error) {
 		}
 	}
 
-	return &cfg, nil
-}
-
-// LoadControllerConfig reads controller-config.yaml + env (CODESPACE_CONTROLLER_*) into ControllerConfig.
-func LoadControllerConfig() (*ControllerConfig, error) {
-	v := viper.New()
-
-	// Defaults (unchanged from previous)
-	v.SetDefault("metrics_addr", "0")
-	v.SetDefault("probe_addr", ":8081")
-	v.SetDefault("enable_leader_election", false)
-	v.SetDefault("leader_election_id", "a51c5837.codespace.dev")
-
-	v.SetDefault("metrics_cert_path", "")
-	v.SetDefault("metrics_cert_name", "tls.crt")
-	v.SetDefault("metrics_cert_key", "tls.key")
-
-	v.SetDefault("webhook_cert_path", "")
-	v.SetDefault("webhook_cert_name", "tls.crt")
-	v.SetDefault("webhook_cert_key", "tls.key")
-
-	v.SetDefault("secure_metrics", true)
-	v.SetDefault("enable_http2", false)
-
-	v.SetDefault("session_name_prefix", "cs-")
-	v.SetDefault("field_owner", "codespace-operator")
-
-	v.SetDefault("debug", false)
-
-	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
-
-	var cfg ControllerConfig
-	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal controller config: %w", err)
-	}
 	return &cfg, nil
 }
 

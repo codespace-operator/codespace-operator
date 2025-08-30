@@ -47,7 +47,7 @@ func ensureInstallationID(ctx context.Context, cl client.Client, cfg *ServerConf
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cmName,
 			Namespace: anchor.Namespace,
-			Labels:    common.BuildConfigMapSafeLabels(ctx, cl, anchor.Namespace, cfg.APP_NAME),
+			Labels:    common.BuildConfigMapSafeLabels(ctx, cl, anchor.Namespace, cfg.AppName),
 		},
 		Data: map[string]string{
 			"id":         id,

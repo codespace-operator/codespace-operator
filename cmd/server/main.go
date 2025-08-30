@@ -56,7 +56,7 @@ import (
 
 var logger = common.GetLogger()
 
-const APP_NAME = "codespace-server"
+const DEFAULT_APP_NAME = "codespace-server"
 
 func main() {
 	var rootCmd = &cobra.Command{
@@ -77,12 +77,13 @@ func main() {
 	rootCmd.Flags().Bool("cluster-scope", false, "Enable cluster-scoped mode")
 
 	// Authentication flags
-	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
-	rootCmd.Flags().String("oidc-issuer", "", "OIDC issuer URL (e.g., https://dev-xxxx.okta.com)")
+	rootCmd.Flags().String("oidc-issuer-url", "", "OIDC issuer URL (e.g., https://dev-xxxx.okta.com)")
 	rootCmd.Flags().String("oidc-client-id", "", "OIDC client ID")
 	rootCmd.Flags().String("oidc-client-secret", "", "OIDC client secret")
 	rootCmd.Flags().String("oidc-redirect-url", "", "OIDC redirect URL (https://host/auth/callback)")
 	rootCmd.Flags().StringSlice("oidc-scopes", []string{}, "OIDC scopes (default: openid profile email)")
+	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
+
 	rootCmd.Flags().Bool("enable-local-login", false, "Enable local users login)")
 	rootCmd.Flags().Bool("enable-bootstrap-login", false, "Enable bootstrap login (dev only)")
 	rootCmd.Flags().Bool("allow-token-param", false, "Allow ?access_token=... on URLs (NOT recommended)")
@@ -92,7 +93,7 @@ func main() {
 	// RBAC flags
 	rootCmd.Flags().String("rbac-model-path", "", "Path to Casbin model.conf (overrides default/env)")
 	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
-	rootCmd.Flags().String("app-name", APP_NAME, "Override application name")
+	rootCmd.Flags().String("app-name", DEFAULT_APP_NAME, "Override application name")
 
 	if err := rootCmd.Execute(); err != nil {
 		logger.Error("Command execution failed", "err", err)
@@ -147,7 +148,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	overrideString(&cfg.Host, "host")
 	overrideString(&cfg.AllowOrigin, "allow-origin")
 	overrideString(&cfg.LogLevel, "log-level")
-	overrideString(&cfg.APP_NAME, "app-name")
+	overrideString(&cfg.AppName, "app-name")
 
 	if cmd.Flags().Changed("kube-qps") {
 		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")
@@ -157,7 +158,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	}
 
 	// Authentication overrides
-	overrideString(&cfg.OIDCIssuerURL, "oidc-issuer")
+	overrideString(&cfg.OIDCIssuerURL, "oidc-issuer-url")
 	overrideString(&cfg.OIDCClientID, "oidc-client-id")
 	overrideString(&cfg.OIDCClientSecret, "oidc-client-secret")
 	overrideString(&cfg.OIDCRedirectURL, "oidc-redirect-url")
@@ -169,7 +170,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	overrideBool(&cfg.AllowTokenParam, "allow-token-param")
 	overrideInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
 	overrideString(&cfg.SessionCookieName, "session-cookie-name")
-
+	overrideBool(&cfg.BootstrapLoginAllowed, "enable-bootstrap-login")
 	// RBAC overrides
 	overrideString(&cfg.RBACModelPath, "rbac-model-path")
 	overrideString(&cfg.RBACPolicyPath, "rbac-policy-path")

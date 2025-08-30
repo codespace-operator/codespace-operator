@@ -32,10 +32,6 @@ var logger = common.GetLogger()
 //go:embed all:static
 var staticFS embed.FS
 
-// ! todo -> set the label/annotations system clearly
-// set upon config load -> optional explicit labels for the controller (not server!)
-var APP_NAME string
-
 var (
 	gvr = schema.GroupVersionResource{
 		Group:    codespacev1.GroupVersion.Group,

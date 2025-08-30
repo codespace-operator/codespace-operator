@@ -118,7 +118,7 @@ func (r *SessionReconciler) buildContainers(sess *codespacev1.Session, port int3
 			Image: "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0",
 			Args: []string{
 				"--provider=oidc",
-				"--oidc-issuer-url=$(OIDC_ISSUER)",
+				"--oidc-issuer-url=$(OIDC_ISSUER_URL)",
 				"--client-id=$(OIDC_CLIENT_ID)",
 				"--client-secret=$(OIDC_CLIENT_SECRET)",
 				"--upstream=http://127.0.0.1:" + fmt.Sprint(port),
@@ -130,7 +130,7 @@ func (r *SessionReconciler) buildContainers(sess *codespacev1.Session, port int3
 		}
 		// Only set issuer env if present to avoid nil deref
 		if sess.Spec.Auth.OIDC != nil {
-			sidecar.Env = append(sidecar.Env, corev1.EnvVar{Name: "OIDC_ISSUER", Value: sess.Spec.Auth.OIDC.IssuerURL})
+			sidecar.Env = append(sidecar.Env, corev1.EnvVar{Name: "OIDC_ISSUER_URL", Value: sess.Spec.Auth.OIDC.IssuerURL})
 		}
 		containers = append(containers, sidecar)
 	}

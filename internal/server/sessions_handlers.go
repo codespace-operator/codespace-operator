@@ -176,7 +176,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	// otherwise we fall back to the server's own manager identity.
 	var idx map[string]common.AnchorMeta
 	if h.deps.config.ClusterScope {
-		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
+		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.AppName)
 	} else {
 		idx = map[string]common.AnchorMeta{}
 	}
@@ -280,8 +280,8 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 			Labels: map[string]string{
 				"app.kubernetes.io/name":       "codespace-session",
 				"app.kubernetes.io/instance":   req.Name,
-				"app.kubernetes.io/part-of":    APP_NAME,
-				"app.kubernetes.io/managed-by": APP_NAME,
+				"app.kubernetes.io/part-of":    h.deps.config.AppName,
+				"app.kubernetes.io/managed-by": h.deps.config.AppName,
 				common.LabelCreatedBy:          creatorID,
 				common.InstanceIDLabel:         h.deps.instanceID,
 				common.LabelManagerType:        h.deps.manager.Type,
@@ -687,7 +687,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	// Optional enrichment index for cluster-scope
 	var idx map[string]common.AnchorMeta
 	if h.deps.config.ClusterScope {
-		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
+		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.AppName)
 	}
 
 	// Keep-alive
@@ -825,7 +825,7 @@ func (h *handlers) handleAdoptSession(w http.ResponseWriter, r *http.Request) {
 	if s.Labels != nil {
 		oldID = s.Labels[common.InstanceIDLabel]
 	}
-	idx := common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
+	idx := common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.AppName)
 	_, known := idx[oldID]
 	orphan := oldID == "" || !known
 

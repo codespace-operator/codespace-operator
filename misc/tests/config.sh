@@ -27,12 +27,11 @@ OIDC_SCOPES="${OIDC_SCOPES:-openid,profile,email}"
 
 # ----- Determine scheme & hosts -----
 SCHEME="http"
-[[ "${WITH_TLS}" == "true" ]] && SCHEME="https"
 CONSOLE_HOST="console.${HOST_DOMAIN}"
 KEYCLOAK_HOST="keycloak.${HOST_DOMAIN}"
 KEYCLOAK_INTERNAL_HOST="keycloak-keycloakx-http.keycloak.svc.cluster.local"
 REDIRECT_URL="${SCHEME}://${CONSOLE_HOST}/auth/sso/callback"
-ISSUER="https://${KEYCLOAK_INTERNAL_HOST}/realms/codespace"
+ISSUER_URL="${SCHEME}://${KEYCLOAK_INTERNAL_HOST}/realms/Codespace-DEV"
 HOSTNAME_URL="${SCHEME}://${KEYCLOAK_HOST}"
 
 # ----- Keycloak manifests/templates -----
