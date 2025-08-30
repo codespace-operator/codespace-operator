@@ -13,23 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package controllers
+package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	"encoding/json"
-
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	appsv1apply "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*appsv1.Deployment, error) {
@@ -64,7 +63,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 			WithImage("quay.io/oauth2-proxy/oauth2-proxy:v7.6.0").
 			WithArgs(
 				"--provider=oidc",
-				"--oidc-issuer-url=$(OIDC_ISSUER)",
+				"--oidc-issuer-url=$(OIDC_ISSUER_URL)",
 				"--client-id=$(OIDC_CLIENT_ID)",
 				"--client-secret=$(OIDC_CLIENT_SECRET)",
 				fmt.Sprintf("--upstream=http://127.0.0.1:%d", port),
@@ -76,7 +75,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 		if sess.Spec.Auth.OIDC != nil {
 			sidecar = sidecar.
 				WithEnv(
-					corev1apply.EnvVar().WithName("OIDC_ISSUER").WithValue(sess.Spec.Auth.OIDC.IssuerURL),
+					corev1apply.EnvVar().WithName("OIDC_ISSUER_URL").WithValue(sess.Spec.Auth.OIDC.IssuerURL),
 					corev1apply.EnvVar().WithName("OIDC_CLIENT_ID").WithValueFrom(
 						corev1apply.EnvVarSource().WithSecretKeyRef(
 							corev1apply.SecretKeySelector().WithName(sess.Spec.Auth.OIDC.ClientIDSecret).WithKey("clientID"),

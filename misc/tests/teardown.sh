@@ -5,7 +5,7 @@ SETUP_CONFIG="${SETUP_CONFIG:-misc/tests/config.sh}"
 [[ -f "${SETUP_CONFIG}" ]] && source "${SETUP_CONFIG}"
 
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"
-NAMESPACE_SYS="${NAMESPACE_SYS:-codespace-operator}"
+NAMESPACE_SYS="${NAMESPACE_SYS:-codespace}"
 DEMO_NAME="${DEMO_NAME:-demo}"
 APPLY_DEMO="${APPLY_DEMO:-true}"
 

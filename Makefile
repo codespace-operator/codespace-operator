@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.1
+VERSION ?= 1.0.0
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -162,11 +162,11 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/session-controller cmd/session-controller/session-controller.go
+	go build -ldflags "-X main.Version=$(VERSION)" -o bin/session-controller cmd/session-controller/session_controller.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/session-controller/session-controller.go
+	go run ./cmd/session-controller/session_controller.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -175,6 +175,11 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
 
+.PHONY: docker-build-server
+docker-build-server:
+	docker build -t $(SERVER_IMG) -f ui/Dockerfile .
+
+
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
@@ -182,15 +187,14 @@ docker-push: ## Push docker image with the manager.
 .PHONY: build-server
 build-server:
 	cd ui && npm run build
-	rm -rf ./cmd/server/static && mkdir -p ./cmd/server/static/
-	cp -r ./ui/dist/* cmd/server/static/
-	touch ./cmd/server/static/.gitkeep
-	go build -o ./bin/codespace-server ./cmd/server
+	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
+	cp -r ./ui/dist/* internal/server/static/
+	touch ./internal/server/static/.gitkeep
+	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
 
-.PHONY: docker-build-server
-docker-build-server:
-	docker build -t $(SERVER_IMG) -f ui/Dockerfile .
-
+.PHONY: build-server-docs
+build-server-docs:
+	$(MAKE) build-server GO_BUILD_TAGS=docs
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -206,6 +210,16 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
 	$(CONTAINER_TOOL) buildx use codespace-operator-builder
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
+	rm Dockerfile.cross
+
+.PHONY: docker-buildx-server
+docker-buildx-server: ## Build and push docker image for the server for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' ui/Dockerfile > ui/Dockerfile.cross
+	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
+	$(CONTAINER_TOOL) buildx use codespace-operator-builder
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${SERVER_IMG} -f ui/Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
 	rm Dockerfile.cross
 
@@ -233,6 +247,54 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+
+# --- tools ---
+SWAG ?= swag
+SWAG_FLAGS ?= -g cmd/server/main.go -o gen/api --parseDependency --parseInternal -ot json,yaml
+
+OAPI_JSON ?= gen/api/openapi.json
+SWAGGER_YAML ?= gen/api/swagger.yaml
+TS_TYPES ?= ui/src/types/api.gen.ts
+
+# Generate Swagger 2.0 (yaml/json) from comments
+.PHONY: swagger
+swagger:
+	@which $(SWAG) >/dev/null || go install github.com/swaggo/swag/cmd/swag@latest
+	@$(SWAG) init $(SWAG_FLAGS)
+
+# Convert to OpenAPI 3
+.PHONY: openapi
+openapi: swagger
+	npx --yes swagger2openapi -o $(OAPI_JSON) $(SWAGGER_YAML)
+
+# Generate TS types for the UI
+.PHONY: api-types
+api-types: openapi
+	npx --yes openapi-typescript $(OAPI_JSON) --output $(TS_TYPES)
+
+# One-stop target used by CI and the UI
+.PHONY: api
+api: api-types
+
+# Optional cleanup
+.PHONY: clean-api
+clean-api:
+	rm -f $(OAPI_JSON) $(TS_TYPES) gen/api/swagger.json $(SWAGGER_YAML)
+
+# Fix build-server to honor tags (so you can ship docs only when desired)
+.PHONY: build-server
+build-server: api  #! Enforces ./ui/src/types/api.gen.ts regeneration during development
+	cd ui && npm run build
+	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
+	cp -r ./ui/dist/* internal/server/static/
+	touch ./internal/server/static/.gitkeep
+	go build -ldflags "-X main.Version=$(VERSION)" \
+	  -o ./bin/codespace-server ./cmd/server
+
+.PHONY: build-server-docs
+build-server-docs:
+	$(MAKE) build-server GO_BUILD_TAGS=docs
+
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
