@@ -17,6 +17,14 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -25,6 +33,8 @@ import (
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
+
+const DEFAULT_NAMESPACE = "default"
 
 // retryOnConflict runs fn with standard backoff if a 409 occurs.
 func RetryOnConflict(fn func() error) error {
@@ -77,10 +87,11 @@ func TestKubernetesConnection(c client.Client) error {
 
 	var sessionList codespacev1.SessionList
 	// It would make more sense to test to its own namespace
-	if err := c.List(ctx, &sessionList, client.InNamespace("default"), client.Limit(1)); err != nil {
+	ns, _ := ResolveAnchorNamespace()
+	if err := c.List(ctx, &sessionList, client.InNamespace(ns), client.Limit(1)); err != nil {
 		return fmt.Errorf("failed to connect to Kubernetes API: %w", err)
 	}
-	log.Printf("✅ Successfully connected to Kubernetes API (found %d sessions in default namespace)", len(sessionList.Items))
+	log.Printf("✅ Successfully connected to Kubernetes API (found %d sessions in %s namespace)", len(sessionList.Items), ns)
 	return nil
 }
 func Itoa(i int32) string { return fmt.Sprintf("%d", i) }
@@ -283,4 +294,194 @@ func SubjectToLabelID(sub string) string {
 	}
 	sum := sha256.Sum256([]byte(sub))
 	return "s256-" + hex.EncodeToString(sum[:20]) // 160-bit truncation; label-safe; <=63
+}
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
+func readFileTrim(p string) string {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+func GetDefaultContextNamespace() string {
+	loader := clientcmd.NewDefaultClientConfigLoadingRules() // respects $KUBECONFIG and ~/.kube/config
+	cfg, err := loader.Load()
+	if err != nil || cfg == nil || cfg.CurrentContext == "" {
+		return DEFAULT_NAMESPACE
+	}
+	ctx := cfg.Contexts[cfg.CurrentContext]
+	if ctx == nil || ctx.Namespace == "" {
+		return DEFAULT_NAMESPACE
+	}
+	return ctx.Namespace
+}
+func ResolveAnchorNamespace() (ns string, isKubernetes bool) {
+	if inKubernetes() {
+		return GetInClusterNamespace(), true
+	}
+	return GetDefaultContextNamespace(), false
+}
+
+// returns the single controller owner (if any)
+func controllerOf(obj metav1.Object) *metav1.OwnerReference {
+	for i := range obj.GetOwnerReferences() {
+		or := obj.GetOwnerReferences()[i]
+		if or.Controller != nil && *or.Controller {
+			return &or
+		}
+	}
+	return nil
+}
+
+// ResolveTopController walks up controller refs to the top controller it can see.
+// It never errors out: it returns the best it can and a signal if RBAC likely limited us.
+// - top: the best top object we could determine (labels/annos only present if fetched)
+// - ok:  true if the pod had a controller (false => top is the pod)
+// - rbacLimited: true if we hit Forbidden/Unauthorized anywhere during the walk
+func ResolveTopController(ctx context.Context, cl client.Client, ns string, pod *corev1.Pod) (top topMeta, ok bool, rbacLimited bool) {
+	if pod == nil {
+		return topMeta{"pod", "", nil, nil}, false, false
+	}
+	ref := controllerOf(pod)
+	if ref == nil {
+		return topMeta{"pod", pod.Name, pod.Labels, pod.Annotations}, false, false
+	}
+	return followController(ctx, cl, ns, *ref)
+}
+
+func followController(ctx context.Context, cl client.Client, ns string, ref metav1.OwnerReference) (top topMeta, ok bool, rbacLimited bool) {
+	switch ref.Kind {
+
+	case "ReplicaSet":
+		var rs appsv1.ReplicaSet
+		if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &rs); err != nil {
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: lowerKind(ref.Kind), Name: ref.Name}, true, true
+			}
+			// best-effort even on NotFound or other errors
+			return topMeta{Kind: lowerKind(ref.Kind), Name: ref.Name}, true, false
+		}
+		// promote to its controller if present (Deployment, Rollout, etc.)
+		if parent := controllerOf(&rs); parent != nil {
+			// known fast-path: Deployment
+			if parent.Kind == "Deployment" {
+				var dep appsv1.Deployment
+				err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: parent.Name}, &dep)
+				if err == nil {
+					return topMeta{"deployment", dep.Name, dep.Labels, dep.Annotations}, true, false
+				}
+				if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+					return topMeta{Kind: "deployment", Name: parent.Name}, true, true
+				}
+				return topMeta{Kind: "deployment", Name: parent.Name}, true, false
+			}
+			// generic for CRDs (e.g., argoproj.io Rollout)
+			return followGeneric(ctx, cl, ns, *parent)
+		}
+		return topMeta{"replicaset", rs.Name, rs.Labels, rs.Annotations}, true, false
+
+	case "StatefulSet":
+		var ss appsv1.StatefulSet
+		if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &ss); err != nil {
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: "statefulset", Name: ref.Name}, true, true
+			}
+			return topMeta{Kind: "statefulset", Name: ref.Name}, true, false
+		}
+		return topMeta{"statefulset", ss.Name, ss.Labels, ss.Annotations}, true, false
+
+	case "DaemonSet":
+		var ds appsv1.DaemonSet
+		if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &ds); err != nil {
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: "daemonset", Name: ref.Name}, true, true
+			}
+			return topMeta{Kind: "daemonset", Name: ref.Name}, true, false
+		}
+		return topMeta{"daemonset", ds.Name, ds.Labels, ds.Annotations}, true, false
+
+	case "Job":
+		var job batchv1.Job
+		if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &job); err != nil {
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: "job", Name: ref.Name}, true, true
+			}
+			return topMeta{Kind: "job", Name: ref.Name}, true, false
+		}
+		// promote to CronJob when applicable
+		if parent := controllerOf(&job); parent != nil && parent.Kind == "CronJob" {
+			var cj batchv1.CronJob
+			err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: parent.Name}, &cj)
+			if err == nil {
+				return topMeta{"cronjob", cj.Name, cj.Labels, cj.Annotations}, true, false
+			}
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: "cronjob", Name: parent.Name}, true, true
+			}
+			return topMeta{Kind: "cronjob", Name: parent.Name}, true, false
+		}
+		return topMeta{"job", job.Name, job.Labels, job.Annotations}, true, false
+
+	case "ReplicationController":
+		var rc corev1.ReplicationController
+		err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &rc)
+		if err != nil {
+			if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+				return topMeta{Kind: "replicationcontroller", Name: ref.Name}, true, true
+			}
+			return topMeta{Kind: "replicationcontroller", Name: ref.Name}, true, false
+		}
+		return topMeta{"replicationcontroller", rc.Name, rc.Labels, rc.Annotations}, true, false
+
+	default:
+		// unknown kind (CRD) → best-effort generic
+		return followGeneric(ctx, cl, ns, ref)
+	}
+}
+
+func followGeneric(ctx context.Context, cl client.Client, ns string, ref metav1.OwnerReference) (top topMeta, ok bool, rbacLimited bool) {
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(schema.FromAPIVersionAndKind(ref.APIVersion, ref.Kind))
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, u); err != nil {
+		if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+			return topMeta{Kind: lowerKind(ref.Kind), Name: ref.Name}, true, true
+		}
+		return topMeta{Kind: lowerKind(ref.Kind), Name: ref.Name}, true, false
+	}
+	// If it has a controller, keep walking
+	if parent := controllerOf(u); parent != nil {
+		return followGeneric(ctx, cl, ns, *parent)
+	}
+	return topMeta{Kind: lowerKind(ref.Kind), Name: u.GetName(), Labels: u.GetLabels(), Annotations: u.GetAnnotations()}, true, false
+}
+
+func GetCurrentPod(ctx context.Context, cl client.Client, ns string) (*corev1.Pod, error) {
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		var err error
+		podName, err = os.Hostname()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var pod corev1.Pod
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, &pod); err != nil {
+		return nil, err
+	}
+	return &pod, nil
+}
+func GetInClusterNamespace() string {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns
+	}
+	if b, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		if s := strings.TrimSpace(string(b)); s != "" {
+			return s
+		}
+	}
+	return DEFAULT_NAMESPACE
 }

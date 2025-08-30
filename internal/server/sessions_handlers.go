@@ -176,7 +176,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	// otherwise we fall back to the server's own manager identity.
 	var idx map[string]common.AnchorMeta
 	if h.deps.config.ClusterScope {
-		idx = h.buildInstanceMetaIndex(r)
+		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
 	} else {
 		idx = map[string]common.AnchorMeta{}
 	}
@@ -687,7 +687,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	// Optional enrichment index for cluster-scope
 	var idx map[string]common.AnchorMeta
 	if h.deps.config.ClusterScope {
-		idx = h.buildInstanceMetaIndex(r)
+		idx = common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
 	}
 
 	// Keep-alive
@@ -825,7 +825,7 @@ func (h *handlers) handleAdoptSession(w http.ResponseWriter, r *http.Request) {
 	if s.Labels != nil {
 		oldID = s.Labels[common.InstanceIDLabel]
 	}
-	idx := h.buildInstanceMetaIndex(r)
+	idx := common.BuildInstanceMetaIndex(r.Context(), h.deps.client, h.deps.config.APP_NAME)
 	_, known := idx[oldID]
 	orphan := oldID == "" || !known
 

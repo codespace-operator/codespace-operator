@@ -149,19 +149,17 @@ func RunServer(cfg *ServerConfig, args []string) {
 	}
 
 	// Get instance and manager identity
-	instanceID, err := ensureInstallationID(context.Background(), k8sClient)
+	manager, instanceID, err := ensureInstallationID(context.Background(), k8sClient, cfg)
 	if err != nil {
 		logger.Error("Failed to ensure server installation ID", "error", err)
 		logger.Warn("This instance will not guarantee correct instance separation")
 	} else {
 		logger.Info("Server installation ID ensured", "instanceID", instanceID)
+		logger.Info("Detected manager identity",
+			"type", manager.Type,
+			"name", manager.Name,
+			"namespace", manager.Namespace)
 	}
-
-	manager, _ := common.GetSelfAnchorMeta(context.Background(), k8sClient)
-	logger.Info("Detected manager identity",
-		"type", manager.Type,
-		"name", manager.Name,
-		"namespace", manager.Namespace)
 
 	// Create server dependencies with proper interfaces
 	deps := &serverDeps{
