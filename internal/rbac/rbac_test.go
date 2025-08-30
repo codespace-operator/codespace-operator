@@ -1,20 +1,97 @@
-package main
+package rbac
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+
+	"github.com/codespace-operator/codespace-operator/internal/auth"
+	"github.com/codespace-operator/codespace-operator/internal/common"
 )
+
+var logger = common.GetLogger()
+
+func NewRBACFromEnv(ctx context.Context) (*RBAC, error) {
+	modelPath := strings.TrimSpace(os.Getenv(envModelPath))
+	if modelPath == "" {
+		modelPath = defaultModelPath
+	}
+	policyPath := strings.TrimSpace(os.Getenv(envPolicyPath))
+	if policyPath == "" {
+		policyPath = defaultPolicyPath
+	}
+
+	r := &RBAC{modelPath: modelPath, policyPath: policyPath}
+	if err := r.reload(); err != nil {
+		return nil, err
+	}
+
+	// Watch both files + their parent dir (K8s ConfigMap mounts replace symlinks)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	watchPaths := uniqueNonEmpty([]string{
+		modelPath,
+		policyPath,
+		filepath.Dir(modelPath),
+		filepath.Dir(policyPath),
+	})
+
+	for _, p := range watchPaths {
+		_ = watcher.Add(p) // best-effort
+	}
+
+	go func() {
+		defer watcher.Close()
+
+		// Simple debounce to coalesce flurries of writes from kubelet
+		var last time.Time
+		const debounce = 250 * time.Millisecond
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev := <-watcher.Events:
+				// React to any change on either file path or their dirs
+				if ev.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename|fsnotify.Chmod) == 0 {
+					continue
+				}
+				now := time.Now()
+				if now.Sub(last) < debounce {
+					continue
+				}
+				last = now
+				if err := r.reload(); err != nil && logger != nil {
+					logger.Info("rbac reload failed: %v", err)
+				} else if logger != nil {
+					logger.Info("rbac reloaded after fsnotify: %s", ev.Name)
+				}
+			case err := <-watcher.Errors:
+				if logger != nil && err != nil {
+					logger.Info("rbac watcher error: %v", err)
+				}
+			}
+		}
+	}()
+
+	return r, nil
+}
 
 // Example: shows how to use the RBAC system in HTTP handlers
 /*
 func demonstrateAPIUsage() {
 		Example HTTP handler usage:
 
-		func handleCreateSession(deps *serverDeps) http.HandlerFunc {
+		func (h *handlers) handleCreateSession(deps *serverDeps) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				// Extract session creation request
 				var req SessionCreateRequest
@@ -33,7 +110,7 @@ func demonstrateAPIUsage() {
 		}
 
 		// For operations requiring multiple permissions:
-		func handleBulkDelete(deps *serverDeps) http.HandlerFunc {
+		func (h *handlers) handleBulkDelete(deps *serverDeps) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				var req BulkDeleteRequest
 				json.NewDecoder(r.Body).Decode(&req)
@@ -120,6 +197,11 @@ func TestPolicyBasics(t *testing.T) {
 		t.Fatal("admin should be allowed")
 	}
 
+	ok, _ = r.Enforce("developer", nil, "session", "create", "dev-frontend")
+	if !ok {
+		t.Fatal("dev-* should match dev-frontend")
+	}
+
 	// Viewer: read-only
 	ok, _ = r.Enforce("viewer", nil, "session", "get", "team-a")
 	if !ok {
@@ -190,13 +272,12 @@ func ExampleRBACUsage() {
 	// This example shows how the RBAC system works in practice
 
 	// 1. User Authentication (handled by auth handlers)
-	user := &claims{
-		Sub:      "alice@company.com",
+	user := &auth.TokenClaims{
 		Username: "alice",
+		Sub:      "abcd123-efgh5678",
 		Email:    "alice@company.com",
 		Roles:    []string{"codespace-editor"},
-		Groups:   []string{"/team-alpha"},
-		Provider: "oidc",
+		Provider: auth.OIDC_PROVIDER,
 	}
 
 	// 2. RBAC Enforcement Examples
@@ -323,39 +404,6 @@ func TestRBACScenarios(t *testing.T) {
 
 			if result != tc.expected {
 				t.Errorf("%s: expected %v, got %v", tc.description, tc.expected, result)
-			}
-		})
-	}
-}
-
-// BenchmarkRBACPerformance tests RBAC performance under load
-func BenchmarkRBACPerformance(b *testing.B) {
-	dir := b.TempDir()
-	rbac := newRBACForTest(b, dir)
-
-	// Test different scenarios
-	scenarios := []struct {
-		name      string
-		subject   string
-		roles     []string
-		resource  string
-		action    string
-		namespace string
-	}{
-		{"admin_access", "admin", []string{"admin"}, "session", "delete", "production"},
-		{"editor_access", "editor", []string{"editor"}, "session", "create", "dev-team"},
-		{"viewer_access", "viewer", []string{"viewer"}, "session", "get", "any-ns"},
-		{"user_specific", "alice@company.com", []string{}, "session", "create", "team-alpha"},
-	}
-
-	for _, scenario := range scenarios {
-		b.Run(scenario.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				_, err := rbac.Enforce(scenario.subject, scenario.roles,
-					scenario.resource, scenario.action, scenario.namespace)
-				if err != nil {
-					b.Fatalf("RBAC enforcement failed: %v", err)
-				}
 			}
 		})
 	}

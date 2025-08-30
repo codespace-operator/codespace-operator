@@ -9,14 +9,16 @@ import {
   FormSelect,
   FormSelectOption,
 } from "@patternfly/react-core";
-import type { Session } from "../types";
+import type { components } from "../types/api.gen";
+type SessionCreateRequest =
+  components["schemas"]["internal_server.SessionCreateRequest"];
 
 type Props = {
   isOpen: boolean;
   /** The currently selected listing namespace from Header (can be "All") */
   namespace: string;
   onClose: () => void;
-  onCreate: (body: Partial<Session>) => Promise<void>;
+  onCreate: (body: SessionCreateRequest) => Promise<void>;
   /** RBAC-filtered namespaces where the user can CREATE sessions */
   writableNamespaces: string[];
 };
@@ -66,19 +68,17 @@ export function CreateSessionModal({
 
   const submit = async () => {
     if (!cName || !cNamespace) return;
-    const body: Partial<Session> = {
-      metadata: { name: cName, namespace: cNamespace },
-      spec: {
-        replicas: cReplicas,
-        profile: {
-          ide: cIDE,
-          image: cImage,
-          cmd: cCmd.trim() ? cCmd.split(/\s+/) : undefined,
-        },
-        networking: cHost ? { host: cHost } : undefined,
+    const body: SessionCreateRequest = {
+      name: cName,
+      namespace: cNamespace,
+      replicas: cReplicas,
+      profile: {
+        ide: cIDE,
+        image: cImage,
+        cmd: cCmd.trim() ? cCmd.split(/\s+/) : undefined,
       },
-    } as any;
-
+      networking: cHost ? { host: cHost } : undefined,
+    };
     await onCreate(body);
 
     // Reset form after successful creation
@@ -133,7 +133,7 @@ export function CreateSessionModal({
             id="name"
             value={cName}
             onChange={(_, v) => setCName(v)}
-            placeholder="Enter session name"
+            placeholder="Session name"
           />
         </FormGroup>
 
@@ -210,8 +210,9 @@ export function CreateSessionModal({
         }}
       >
         <Button
-          variant="primary"
+          type="button"
           onClick={submit}
+          variant="primary"
           isDisabled={!cName || !cNamespace || writableNamespaces.length === 0}
           style={{
             backgroundColor: "#0066cc",

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { authApi, userApi } from "../api/client";
 
-const base = import.meta.env.VITE_API_BASE || "";
 const USER_KEY = "co_user";
-const TOKEN_KEY = "co_token"; // kept for SSE/headers fallback; cookie is primary.
+const TOKEN_KEY = "co_token";
 
 function decodeJwtPayload(token: string): any | null {
   const parts = token.split(".");
@@ -36,37 +36,37 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(getToken());
   const [isLoading, setLoading] = useState(true);
 
-  // Try to restore from cookie session (OIDC/local) via /introspect
+  // Try to restore from cookie session (OIDC/local) via /api/v1/me
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const resp = await fetch("/api/v1/introspect", {
-          credentials: "include",
-        });
-        if (resp.status === 401) {
-          // Not authenticated. Clear local state and finish loading.
-          if (!cancelled) {
-            localStorage.removeItem(USER_KEY);
-            localStorage.removeItem(TOKEN_KEY);
-            setUser(null);
-            setRoles([]);
-            setToken(null);
-          }
-          return;
-        }
-        const data = await resp.json();
+        // Use the new userApi instead of direct introspect call
+        const userData = await userApi.getCurrentUser();
         if (cancelled) return;
-        const display = data?.user?.username ?? data?.user?.subject ?? null;
-        const rs: string[] = Array.isArray(data?.user?.roles)
-          ? data.user.roles
+
+        const display = userData?.username ?? userData?.subject ?? null;
+        const rs: string[] = Array.isArray(userData?.roles)
+          ? userData.roles
           : [];
+
         setUser(display);
         setRoles(rs);
-        // Optionally set token if backend returns one
-      } catch {
+
+        // Update localStorage if we got valid user data
+        if (display) {
+          localStorage.setItem(USER_KEY, display);
+        }
+      } catch (error: any) {
         // Treat like unauth
         if (!cancelled) {
+          if (
+            error?.message?.includes("401") ||
+            error?.message?.includes("unauthorized")
+          ) {
+            localStorage.removeItem(USER_KEY);
+            localStorage.removeItem(TOKEN_KEY);
+          }
           setUser(null);
           setRoles([]);
           setToken(null);
@@ -82,45 +82,34 @@ export function useAuth() {
 
   // Local login using the dedicated endpoint
   async function loginLocal(username: string, password: string) {
-    const body = JSON.stringify({ username, password });
-    const r = await fetch(`${base}/auth/local/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body,
-      credentials: "include",
-    });
+    try {
+      const data = await authApi.localLogin(username, password);
 
-    if (!r.ok) {
-      const errorText = await r.text();
-      throw new Error(errorText || "Local login failed");
+      const display = data?.user ?? username;
+      if (display) localStorage.setItem(USER_KEY, display);
+      if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+
+      setUser(display);
+      setRoles(Array.isArray(data.roles) ? data.roles : []);
+      setToken(data.token || null);
+    } catch (error: any) {
+      throw new Error(error?.message || "Local login failed");
     }
-
-    const data = await r.json();
-    const display = data?.username ?? data?.user ?? username;
-    if (display) localStorage.setItem(USER_KEY, display);
-    if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(display);
-    setRoles(Array.isArray(data.roles) ? data.roles : []);
-    setToken(data.token || null);
   }
 
   // SSO login - redirect to the SSO endpoint
   function loginSSO(next?: string) {
     const params = new URLSearchParams();
     if (next) params.set("next", next);
+    const base = import.meta.env.VITE_API_BASE || "";
     window.location.href = `${base}/auth/sso/login${params.toString() ? "?" + params.toString() : ""}`;
   }
 
   async function logout() {
     try {
-      await fetch(`${base}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await authApi.logout();
     } catch {}
+
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);

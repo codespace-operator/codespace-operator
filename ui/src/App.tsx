@@ -1,5 +1,3 @@
-// Updated ui/src/App.tsx - Key changes for split introspection
-
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Nav,
@@ -11,16 +9,16 @@ import {
   AlertActionCloseButton,
 } from "@patternfly/react-core";
 import { Header } from "./components/Header";
-import { InfoPage } from "./pages/InfoPage";
+import { ClusterSettingsPage } from "./pages/ClusterSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
-import { UserInfoPage } from "./pages/UserInfo";
+import { UserInfoPage } from "./pages/UserInfoPage";
 import { SessionsPage, SessionsPageRef } from "./pages/SessionsPage";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAuth } from "./hooks/useAuth";
 import {
   useUserIntrospection,
   useServerIntrospection,
-} from "./hooks/useIntrospection"; // Updated import
+} from "./hooks/useIntrospection";
 import {
   Routes,
   Route,
@@ -70,7 +68,8 @@ function AppChrome({
 }) {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
-
+  // Namespace selection is allowed on pages
+  const ALLOW_NS_ON = [/^\/sessions(\/|$)/, /^\/workloads(\/|$)/];
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <Header
@@ -79,6 +78,9 @@ function AppChrome({
         onRefresh={onRefresh}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         user={user}
+        showNamespaceSelect={ALLOW_NS_ON.some((pattern) =>
+          pattern.test(location.pathname),
+        )}
       />
 
       <div style={{ flex: 1, display: "flex" }}>
@@ -138,6 +140,7 @@ export default function App() {
 
   // Use the new split introspection hooks
   const { data: userIx, error: userIxError } = useUserIntrospection({
+    discover: true,
     enabled: ixEnabled,
   });
 
@@ -163,40 +166,76 @@ export default function App() {
   const navigate = useNavigate();
   const sessionsPageRef = useRef<SessionsPageRef>(null);
 
-  const [namespace, setNamespace] = useState(
-    localStorage.getItem("co_ns") || "All",
-  );
+  // Smart namespace management with RBAC awareness
+  const [namespace, setNamespace] = useState(() => {
+    // Try to get from localStorage, but don't rely on it completely
+    return localStorage.getItem("co_ns") || "default";
+  });
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Button gating: hide "All" if user can't watch across "*"
-  const allowAll = !!userIx?.domains?.["*"]?.session?.watch;
+  const allowAll = useMemo(() => {
+    return !!userIx?.domains?.["*"]?.session?.watch;
+  }, [userIx]);
+
+  // Derive user's accessible namespaces
+  const userAccessibleNamespaces = useMemo(() => {
+    if (!userIx?.namespaces?.userAllowed) return [""];
+    return userIx.namespaces.userAllowed;
+  }, [userIx]);
 
   // Derive creatable namespaces for fallback logic
   const creatableNamespaces = useMemo(() => {
-    if (!userIx) return [];
-    return Object.entries(userIx.domains || {})
-      .filter(([ns, perms]) => ns !== "*" && perms?.session?.create)
-      .map(([ns]) => ns)
-      .sort();
+    if (!userIx?.namespaces?.userCreatable) return [];
+    return userIx.namespaces.userCreatable.sort();
   }, [userIx]);
 
-  // Persist namespace selection
+  // Smart namespace validation and fallback
   useEffect(() => {
-    if (namespace === "All" && !allowAll) {
-      const fallback =
-        creatableNamespaces[0] ||
-        userIx?.namespaces?.userAllowed?.[0] ||
-        "default";
-      setNamespace(fallback);
-      return;
+    if (!userIx) return; // Wait for user data
+
+    const isCurrentNamespaceValid =
+      namespace === "All"
+        ? allowAll
+        : userAccessibleNamespaces.includes(namespace);
+
+    if (!isCurrentNamespaceValid) {
+      // Current namespace is not accessible, find a fallback
+      let fallback: string = "";
+
+      if (allowAll) {
+        fallback = "All";
+      } else if (userAccessibleNamespaces.length > 0) {
+        // Prefer namespaces where user can create sessions
+        const preferredNamespace = creatableNamespaces.find((ns) =>
+          userAccessibleNamespaces.includes(ns),
+        );
+        fallback = preferredNamespace || userAccessibleNamespaces[0];
+      }
+
+      if (fallback !== namespace) {
+        console.log(
+          `Switching namespace from ${namespace} to ${fallback} due to RBAC restrictions`,
+        );
+        setNamespace(fallback);
+      }
     }
-    localStorage.setItem("co_ns", namespace);
   }, [
     namespace,
     allowAll,
+    userAccessibleNamespaces,
     creatableNamespaces,
-    userIx?.namespaces?.userAllowed,
+    userIx,
   ]);
+
+  // Persist namespace selection (but validate it on load)
+  useEffect(() => {
+    if (userIx) {
+      // Only persist after we have user data
+      localStorage.setItem("co_ns", namespace);
+    }
+  }, [namespace, userIx]);
 
   const handleRefresh = () => {
     if (location.pathname.startsWith("/sessions")) {
@@ -265,7 +304,7 @@ export default function App() {
           }
         />
         <Route path="user-info" element={<UserInfoPage />} />
-        <Route path="info" element={<InfoPage />} />
+        <Route path="info" element={<ClusterSettingsPage />} />
 
         {/* Default "home" → sessions */}
         <Route index element={<Navigate to="/sessions" replace />} />

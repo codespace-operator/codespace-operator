@@ -31,5 +31,6 @@ ui/dist/*
 dist/*
 local/*
 .env
+internal/server/static/*
 cmd/server/static/*
 node_modules/*

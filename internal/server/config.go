@@ -1,14 +1,14 @@
-// config/config.go
-package config
+package server
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/viper"
+
+	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 // -----------------------------
@@ -17,7 +17,10 @@ import (
 
 // ServerConfig holds all configuration for the codespace server
 type ServerConfig struct {
+	ClusterScope bool `mapstructure:"cluster_scope"`
 	// Network
+	APP_NAME string `mapstructure:"APP_NAME"`
+
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
 	ReadTimeout  int    `mapstructure:"read_timeout"`
@@ -67,7 +70,6 @@ type ControllerConfig struct {
 	ProbeAddr            string `mapstructure:"probe_addr"`
 	EnableLeaderElection bool   `mapstructure:"enable_leader_election"`
 	LeaderElectionID     string `mapstructure:"leader_election_id"`
-
 	// Certificate settings
 	MetricsCertPath string `mapstructure:"metrics_cert_path"`
 	MetricsCertName string `mapstructure:"metrics_cert_name"`
@@ -97,10 +99,12 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v := viper.New()
 
 	// Defaults (match prior behavior)
+	v.SetDefault("cluster_scope", false)
 	v.SetDefault("host", "")
 	v.SetDefault("port", 8080)
 	v.SetDefault("read_timeout", 0)
 	v.SetDefault("write_timeout", 0)
+	v.SetDefault("app_name", APP_NAME)
 
 	v.SetDefault("allow_origin", "")
 
@@ -128,7 +132,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("rbac_model_path", "")
 	v.SetDefault("rbac_policy_path", "")
 
-	setupViper(v, "CODESPACE_SERVER", "server-config")
+	common.SetupViper(v, "CODESPACE_SERVER", "server-config")
 
 	var cfg ServerConfig
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -139,7 +143,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	// (e.g., CODESPACE_SERVER_OIDC_SCOPES="openid,profile,email")
 	if len(cfg.OIDCScopes) == 0 {
 		if raw := strings.TrimSpace(os.Getenv("CODESPACE_SERVER_OIDC_SCOPES")); raw != "" {
-			cfg.OIDCScopes = splitCSV(raw)
+			cfg.OIDCScopes = common.SplitCSV(raw)
 		}
 	}
 
@@ -172,7 +176,7 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 
 	v.SetDefault("debug", false)
 
-	setupViper(v, "CODESPACE_CONTROLLER", "controller-config")
+	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
 
 	var cfg ControllerConfig
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -198,71 +202,4 @@ func (c *ServerConfig) SessionTTL() time.Duration {
 		min = 60
 	}
 	return time.Duration(min) * time.Minute
-}
-
-// setupViper configures common Viper settings.
-// envPrefix: e.g. "CODESPACE_SERVER"
-// fileBase:  e.g. "server-config" (-> server-config.yaml)
-// setupViper configures common Viper settings.
-// envPrefix: e.g. "CODESPACE_SERVER"
-// fileBase:  e.g. "server-config" (-> server-config.yaml)
-func setupViper(v *viper.Viper, envPrefix, fileBase string) {
-	// --- Environment (UPPER_SNAKE with prefix) ---
-	v.SetEnvPrefix(envPrefix)
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-	v.AutomaticEnv()
-
-	// Logging helper (default logger only after logger is setup)
-	now := func() string { return time.Now().Format(time.RFC3339) }
-	log := func(f string, a ...any) {
-		fmt.Fprintf(os.Stderr, now()+" "+f+"\n", a...)
-	}
-
-	// --- Single knob: <PREFIX>_CONFIG_DEFAULT_PATH (file OR directory) ---
-	var dirOverride string
-	if raw := strings.TrimSpace(os.Getenv(envPrefix + "_CONFIG_DEFAULT_PATH")); raw != "" {
-		p := os.ExpandEnv(raw)
-
-		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-			// IMPORTANT: pass the DIRECTORY to AddConfigPath, not a file path.
-			dirOverride = p // remember to search here first
-		} else {
-			// Treat as a FILE path (relative or absolute)
-			if !filepath.IsAbs(p) {
-				if abs, err := filepath.Abs(p); err == nil {
-					p = abs
-				}
-			}
-			if _, err := os.Stat(p); err != nil {
-				panic(fmt.Errorf("%s_CONFIG_DEFAULT_PATH points to missing file: %s (err=%w)", envPrefix, p, err))
-			}
-			v.SetConfigFile(p)
-			if err := v.ReadInConfig(); err != nil {
-				panic(fmt.Errorf("failed to read %s_CONFIG_DEFAULT_PATH=%s: %w", envPrefix, p, err))
-			}
-			log("loaded config override (file): %s", v.ConfigFileUsed())
-			return
-		}
-	}
-
-	// --- Directory search mode ---
-	v.SetConfigName(fileBase)
-	v.SetConfigType("yaml")
-
-	// If a dir override was provided, search it FIRST (can be relative)
-	if dirOverride != "" {
-		v.AddConfigPath(dirOverride)
-	}
-
-	// Default search locations (in order)
-	v.AddConfigPath(".")
-	v.AddConfigPath("/etc/codespace-operator/")
-	v.AddConfigPath("$HOME/.codespace-operator/")
-
-	// Optional file - ignore if missing
-	if err := v.ReadInConfig(); err == nil {
-		log("loaded config (search): %s", v.ConfigFileUsed())
-	} else {
-		log("no config file found via search (env-only is fine)")
-	}
 }

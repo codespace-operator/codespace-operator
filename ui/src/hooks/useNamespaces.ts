@@ -1,37 +1,148 @@
-import { useEffect, useState } from "react";
-import { introspectApi } from "../api/client";
+import { useEffect, useState, useMemo } from "react";
+import {
+  useUserIntrospection,
+  useServerIntrospection,
+} from "./useIntrospection";
 
 export function useNamespaces() {
-  const [sessionNamespaces, setSessionNamespaces] = useState<string[]>([]);
-  const [writableNamespaces, setWritableNamespaces] = useState<string[]>([]);
+  const [sessionNamespaces, setSessionNamespaces] = useState<string[]>([]); // Namespaces containing sessions
+  const [allNamespaces, setAllNamespaces] = useState<string[]>([]); // All accessible namespaces
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get user permissions using new split API
+  const { data: userInfo, loading: userLoading } = useUserIntrospection({
+    discover: true, // Enable namespace discovery
+    enabled: true,
+  });
+
+  // Get server capabilities using new split API
+  const { data: serverInfo, loading: serverLoading } = useServerIntrospection({
+    discover: true, // Enable namespace discovery
+    enabled: true, // Always try, will gracefully handle permission errors
+  });
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        // One call to rule them all
-        const ix = await introspectApi.get({ discover: true });
-        if (cancelled) return;
-        const uniq = (arr?: string[]) => Array.from(new Set(arr || [])).sort();
+    if (userLoading || serverLoading) {
+      setLoading(true);
+      return;
+    }
 
-        setSessionNamespaces(uniq(ix?.namespaces?.withSessions));
-        // "writable" = namespaces the *server* can list, but if to list user-centric "where can I act",
-        // use ix.namespaces.userAllowed instead (or expose a separate list from the backend).
-        setWritableNamespaces(uniq(ix?.namespaces?.all));
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Failed to load namespaces");
-      } finally {
-        if (!cancelled) setLoading(false);
+    try {
+      setError(null);
+
+      // Start with user's accessible namespaces
+      let userAccessible: string[] = [];
+      let serverDiscovered: string[] = [];
+      let sessionsDiscovered: string[] = [];
+
+      // Extract user-accessible namespaces
+      if (userInfo?.namespaces?.userAllowed) {
+        userAccessible = [...userInfo.namespaces.userAllowed];
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
-  return { sessionNamespaces, writableNamespaces, loading, error };
+      // Extract server-discovered namespaces (if available)
+      if (serverInfo?.namespaces) {
+        serverDiscovered = [...(serverInfo.namespaces.all || [])];
+        sessionsDiscovered = [...(serverInfo.namespaces.withSessions || [])];
+      }
+
+      // Merge and filter namespaces based on user permissions
+      let finalAllNamespaces: string[];
+      let finalSessionNamespaces: string[];
+
+      if (userInfo?.capabilities?.clusterScope) {
+        // User has cluster access - include all discovered namespaces
+        const combined = new Set([...userAccessible, ...serverDiscovered]);
+        finalAllNamespaces = Array.from(combined).sort();
+
+        // For session namespaces, prefer server data if available, otherwise user data
+        finalSessionNamespaces =
+          sessionsDiscovered.length > 0
+            ? sessionsDiscovered.sort()
+            : userAccessible.sort();
+      } else {
+        // User has limited access - only show namespaces they can access
+        finalAllNamespaces = userAccessible.sort();
+
+        // Filter session namespaces to only those user can access
+        const userAllowedSet = new Set(userAccessible);
+        finalSessionNamespaces = sessionsDiscovered
+          .filter((ns) => userAllowedSet.has(ns))
+          .sort();
+
+        // If no session namespaces after filtering, use user accessible
+        if (finalSessionNamespaces.length === 0) {
+          finalSessionNamespaces = userAccessible.sort();
+        }
+      }
+
+      // Ensure we always have at least default
+      if (finalAllNamespaces.length === 0) {
+        finalAllNamespaces = ["default"];
+      }
+      if (finalSessionNamespaces.length === 0) {
+        finalSessionNamespaces = ["default"];
+      }
+
+      setAllNamespaces(finalAllNamespaces);
+      setSessionNamespaces(finalSessionNamespaces);
+    } catch (err: any) {
+      console.error("Failed to process namespaces:", err);
+      setError(err?.message || "Failed to load namespaces");
+
+      // Fallback to user data or default
+      const fallback = userInfo?.namespaces?.userAllowed?.sort() || ["default"];
+      setAllNamespaces(fallback);
+      setSessionNamespaces(fallback);
+    } finally {
+      setLoading(false);
+    }
+  }, [userInfo, serverInfo, userLoading, serverLoading]);
+
+  // Computed properties based on user permissions
+  const writableNamespaces = useMemo(() => {
+    return userInfo?.namespaces?.userCreatable?.sort() || [];
+  }, [userInfo]);
+
+  const deletableNamespaces = useMemo(() => {
+    return userInfo?.namespaces?.userDeletable?.sort() || [];
+  }, [userInfo]);
+
+  // Helper to check if user can perform action in namespace
+  const canPerformAction = useMemo(() => {
+    return (
+      action:
+        | "create"
+        | "delete"
+        | "list"
+        | "get"
+        | "update"
+        | "watch"
+        | "scale",
+      namespace: string,
+    ) => {
+      if (!userInfo?.domains) return false;
+
+      // Check specific namespace permissions
+      const nsPerms = userInfo.domains[namespace];
+      if (nsPerms?.session?.[action]) return true;
+
+      // Check cluster-wide permissions
+      const clusterPerms = userInfo.domains["*"];
+      if (clusterPerms?.session?.[action]) return true;
+
+      return false;
+    };
+  }, [userInfo]);
+
+  return {
+    sessionNamespaces, // Namespaces containing sessions
+    allNamespaces, // All accessible namespaces
+    writableNamespaces, // Namespaces user can create in
+    deletableNamespaces, // Namespaces user can delete from
+    loading,
+    error,
+    canPerformAction,
+  };
 }

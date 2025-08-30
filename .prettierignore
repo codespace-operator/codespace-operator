@@ -1,0 +1,4 @@
+gen/api/
+ui/src/types/*.gen.ts
+# usually good to ignore built artifacts too
+ui/dist/
