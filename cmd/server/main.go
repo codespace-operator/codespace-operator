@@ -85,6 +85,7 @@ func main() {
 	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
 
 	rootCmd.Flags().Bool("enable-local-login", false, "Enable local users login)")
+	rootCmd.Flags().Bool("local-users-path", false, "Path to local users file")
 	rootCmd.Flags().Bool("enable-bootstrap-login", false, "Enable bootstrap login (dev only)")
 	rootCmd.Flags().Bool("allow-token-param", false, "Allow ?access_token=... on URLs (NOT recommended)")
 	rootCmd.Flags().Int("session-ttl-minutes", 60, "Session cookie TTL in minutes")
@@ -167,6 +168,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	}
 	overrideBool(&cfg.OIDCInsecureSkipVerify, "oidc-insecure-skip-verify")
 	overrideBool(&cfg.EnableLocalLogin, "enable-local-login")
+	overrideString(&cfg.LocalUsersPath, "local-users-path")
 	overrideBool(&cfg.AllowTokenParam, "allow-token-param")
 	overrideInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
 	overrideString(&cfg.SessionCookieName, "session-cookie-name")

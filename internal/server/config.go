@@ -89,10 +89,10 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("jwt_secret", "change-me")
 
 	v.SetDefault("enable_local_login", false)
+	v.SetDefault("local_users_path", "/etc/codespace-operator/local-users.yaml")
 	v.SetDefault("bootstrap_login_allowed", false)
 	v.SetDefault("bootstrap_user", "")
 	v.SetDefault("bootstrap_password", "")
-
 	v.SetDefault("session_cookie_name", "")
 	v.SetDefault("session_ttl_minutes", 60)
 	v.SetDefault("allow_token_param", false)
