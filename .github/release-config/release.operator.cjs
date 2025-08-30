@@ -24,10 +24,6 @@ module.exports = {
     '@semantic-release/release-notes-generator',
     ['@semantic-release/changelog', { changelogFile: 'CHANGELOG.app.md' }],
     ['@semantic-release/exec', {
-      prepareCmd: [
-        'set -e',
-        'make build-server'
-      ].join(' && '),
       publishCmd: [
         'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version}',
         'docker tag ghcr.io/codespace-operator/codespace-operator:${nextRelease.version} ghcr.io/codespace-operator/codespace-operator:latest',
