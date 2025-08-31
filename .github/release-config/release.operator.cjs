@@ -1,33 +1,29 @@
+
+const releaseScope = /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|ui)(?=,|\s|$)/
+const releaseType = /^(docs|chore|build|ci|test|refactor)$/
+const notReleaseScope = /(^|,|\s)(crds|crd|repo|ci)(?=,|\s|$)/
+
+
 module.exports = {
   branches: ['main'],
-  tagFormat: 'app-v${version}',
+  tagFormat: 'codespace-${version}',
   plugins: [
-    // release.operator.cjs
     ['@semantic-release/commit-analyzer', {
       preset: 'conventionalcommits',
       parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
       releaseRules: [
-        // multi-scope aware: matches "feat(operator, server): ..." etc
-        { breaking: true, scope: '/(^|,|\\s)(operator|controller|server|ui)(?=,|\\s|$)/', release: 'major' },
-        { type: 'feat',   scope: '/(^|,|\\s)(operator|controller|server|ui)(?=,|\\s|$)/', release: 'minor' },
-        { type: 'fix',    scope: '/(^|,|\\s)(operator|controller|server|ui)(?=,|\\s|$)/', release: 'patch' },
-        { type: 'perf',   scope: '/(^|,|\\s)(operator|controller|server|ui)(?=,|\\s|$)/', release: 'patch' },
-        { type: 'revert', scope: '/(^|,|\\s)(operator|controller|server|ui)(?=,|\\s|$)/', release: 'patch' },
-
-        // explicitly ignore other lanes + noise
-        { scope: '/(^|,|\\s)(chart|helm|crd|api)(?=,|\\s|$)/', release: false },
-        { type: '/^(docs|chore|build|ci|test|refactor)$/',     release: false }
+        { breaking: true, scope: releaseScope, release: 'major' },
+        { type: 'feat',   scope: releaseScope, release: 'minor' },
+        { type: 'fix',    scope: releaseScope, release: 'patch' },
+        { type: 'perf',   scope: releaseScope, release: 'patch' },
+        { type: 'revert', scope: releaseScope, release: 'patch' },
+        { scope: notReleaseScope, release: false },
+        { type: releaseType,     release: false }
       ]
     }],
     '@semantic-release/release-notes-generator',
-    ['@semantic-release/changelog', { changelogFile: 'CHANGELOG.app.md' }],
+    ['@semantic-release/changelog', { changelogFile: 'changelogs/CHANGELOG.codespace.md' }],
     ['@semantic-release/exec', {
-      prepareCmd: [
-        'set -e',
-        'make build-ui',
-        // keep chart appVersion in sync with app release
-        `sed -i -E 's/^appVersion:.*/appVersion: \${nextRelease.version}/' helm/Chart.yaml || true`
-      ].join(' && '),
       publishCmd: [
         'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version}',
         'docker tag ghcr.io/codespace-operator/codespace-operator:${nextRelease.version} ghcr.io/codespace-operator/codespace-operator:latest',
@@ -39,7 +35,7 @@ module.exports = {
       ].join(' && ')
     }],
     ['@semantic-release/git', {
-      assets: ['CHANGELOG.app.md', 'helm/Chart.yaml'],
+      assets: ['changelogs/CHANGELOG.codespace.md'],
       message: 'chore(release): app ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
     }],
     '@semantic-release/github'

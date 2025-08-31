@@ -1,5 +1,5 @@
 # Release lanes
-release-lane:operator:
+"release-lane:operator":
   - changed-files:
       - any-glob-to-any-file:
           - "internal/**"
@@ -10,60 +10,49 @@ release-lane:operator:
           - "go.mod"
           - "go.sum"
 
-release-lane:chart:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "helm/**"
-
-release-lane:crd:
+"release-lane:crd":
   - changed-files:
       - any-glob-to-any-file:
           - "api/**"
           - "config/crd/**"
 
 # Areas
-area:operator:
+"area:operator":
   - changed-files:
       - any-glob-to-any-file:
           - "internal/**"
           - "cmd/session-controller/**"
 
-area:server:
+"area:server":
   - changed-files:
       - any-glob-to-any-file:
-          - "cmd/server/**"
+          - "internal/server/**"
 
-area:ui:
+"area:ui":
   - changed-files:
       - any-glob-to-any-file:
           - "ui/**"
 
-area:chart:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "helm/**"
-
-area:crd:
+"area:crd":
   - changed-files:
       - any-glob-to-any-file:
           - "api/**"
           - "config/crd/**"
 
-area:config:
+"area:config":
   - changed-files:
       - any-glob-to-any-file:
           - "config/default/**"
           - "config/manager/**"
           - "config/manifests/**"
 
-area:tests:
+"area:tests":
   - changed-files:
       - any-glob-to-any-file:
           - "test/**"
           - "internal/**/**_test.go"
-          - "hack/tests/**"
 
-area:docs:
+"area:docs":
   - changed-files:
       - any-glob-to-any-file:
           - "*.md"

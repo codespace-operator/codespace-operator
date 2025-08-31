@@ -29,6 +29,5 @@ jobs:
             server
             ui
             chart
-            helm
             crd
             api

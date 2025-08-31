@@ -1,20 +1,24 @@
+// commitlint.config.js
 module.exports = {
   extends: ['@commitlint/config-conventional'],
   rules: {
-    'scope-empty': [2, 'never'],
-    'scope-enum': [
-      2,
-      'always',
-      [
-        // operator lane
-        'operator', 'controller', 'server', 'ui',
-        // helm lane
-        'chart', 'helm',
-        // crd lane
-        'crd', 'api',
-        // misc (no release)
-        'repo', 'readme', 'docs', 'build', 'ci', 'deps', 'release', 'test'
-      ]
-    ]
+    'scope-enum': [2, 'always', [
+      'operator',
+      'controller',
+      'server',
+      'ui',
+      'crd',
+      'crds',
+      'oidc',
+      'ldap',
+      'rbac',
+      'api',
+      'repo',  // release, repo workflow rules etc
+      'ci',     // ci workflow rules etc
+      'test'
+    ]],
+    'type-enum': [2, 'always', [
+      'feat', 'fix', 'perf', 'refactor', 'docs', 'chore', 'ci', 'build', 'test'
+    ]]
   }
 };

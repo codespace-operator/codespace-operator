@@ -1,10 +1,11 @@
 name: Lint
-
-# on:
-#   push:
-#   pull_request:
-# Temporarily disabled: golangci-lint-action does not support Go 1.25 yet.
-
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "**/*.go"
+      - ".golangci.yml"
+      - "go.*"
 jobs:
   lint:
     name: Run on Ubuntu

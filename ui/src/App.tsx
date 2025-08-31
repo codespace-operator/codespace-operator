@@ -1,325 +1,317 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  PageSidebar,
   Nav,
   NavList,
   NavItem,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
-  TextInput,
+  NavGroup,
   Alert,
   AlertGroup,
   AlertActionCloseButton,
-  Button,
-  Card,
-  CardBody,
 } from "@patternfly/react-core";
-import { PlusCircleIcon } from "@patternfly/react-icons";
 import { Header } from "./components/Header";
-import { SessionsTable } from "./components/SessionsTable";
-import { CreateSessionModal } from "./components/CreateSessionModal";
-import { useAlerts, useFilteredSessions, useSessions } from "./hooks/useSessions";
-import type { Session } from "./types";
-import { InfoPage } from "./pages/InfoPage";
+import { ClusterSettingsPage } from "./pages/ClusterSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
-import { UserInfoPage } from "./pages/UserInfo";
+import { UserInfoPage } from "./pages/UserInfoPage";
+import { SessionsPage, SessionsPageRef } from "./pages/SessionsPage";
+import { useAlerts } from "./hooks/useAlerts";
 import { useAuth } from "./hooks/useAuth";
-import { useNamespaces } from "./hooks/useNamespaces";
-import { Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
+import {
+  useUserIntrospection,
+  useServerIntrospection,
+} from "./hooks/useIntrospection";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  Link,
+  Outlet,
+} from "react-router-dom";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-
-  if (isLoading) {
-    return <div style={{ padding: 24 }}>Loading...</div>;
-  }
-  if (!isAuthenticated) {
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated)
     return <Navigate to="/login" state={{ from: location }} replace />;
-  }
   return <>{children}</>;
 }
 
 // Full-screen login layout without sidebars
 function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--pf-v6-c-page--BackgroundColor, var(--pf-c-page--BackgroundColor))',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      {children}
+    <div style={{ height: "100vh", display: "flex" }}>
+      <div style={{ flex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * AppChrome: header + (auth-gated) sidebar + alert area +
+ * This renders only for "app" routes, not for /login (which uses LoginLayout).
+ */
+function AppChrome({
+  namespace,
+  setNamespace,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  onRefresh,
+  alerts,
+}: {
+  namespace: string;
+  setNamespace: (ns: string) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (v: boolean) => void;
+  onRefresh: () => void;
+  alerts: ReturnType<typeof useAlerts>;
+}) {
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
+  // Namespace selection is allowed on pages
+  const ALLOW_NS_ON = [/^\/sessions(\/|$)/, /^\/workloads(\/|$)/];
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <Header
+        namespace={namespace}
+        onNamespace={setNamespace}
+        onRefresh={onRefresh}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        user={user}
+        showNamespaceSelect={ALLOW_NS_ON.some((pattern) =>
+          pattern.test(location.pathname),
+        )}
+      />
+
+      <div style={{ flex: 1, display: "flex" }}>
+        {/* Sidebar only when authenticated */}
+        {isAuthenticated && (
+          <div
+            style={{ width: isSidebarOpen ? "250px" : "0", overflow: "hidden" }}
+          >
+            <Nav>
+              <NavList>
+                <NavGroup title="Sessions">
+                  <NavItem>
+                    <Link to="/sessions">Sessions</Link>
+                  </NavItem>
+                </NavGroup>
+
+                <NavGroup title="Management">
+                  <NavItem>
+                    <Link to="/user-info">User Management</Link>
+                  </NavItem>
+                  <NavItem>
+                    <Link to="/info">Cluster Settings</Link>
+                  </NavItem>
+                </NavGroup>
+              </NavList>
+            </Nav>
+          </div>
+        )}
+
+        {/* Main content */}
+        <div style={{ flex: 1, overflow: "auto" }}>
+          <AlertGroup isToast>
+            {alerts.list.map((a) => (
+              <Alert
+                key={a.key}
+                variant={a.variant}
+                title={a.title}
+                actionClose={
+                  <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
+                }
+              />
+            ))}
+          </AlertGroup>
+
+          {/* Child route outlet */}
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function App() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const ixEnabled = isAuthenticated && !isLoading;
+
+  // Use the new split introspection hooks
+  const { data: userIx, error: userIxError } = useUserIntrospection({
+    discover: true,
+    enabled: ixEnabled,
+  });
+
+  const { data: serverIx, error: serverIxError } = useServerIntrospection({
+    discover: true,
+    enabled: ixEnabled,
+  });
+
   const alerts = useAlerts();
+
+  useEffect(() => {
+    // Toast errors once we *expect* introspection to work
+    if (userIxError && ixEnabled) alerts.push(userIxError, "danger");
+    if (serverIxError && ixEnabled) {
+      // Don't show permission errors as critical alerts
+      if (!serverIxError.includes("Insufficient permissions")) {
+        alerts.push(serverIxError, "danger");
+      }
+    }
+  }, [userIxError, serverIxError, ixEnabled]);
+
   const location = useLocation();
   const navigate = useNavigate();
+  const sessionsPageRef = useRef<SessionsPageRef>(null);
 
-  const [namespace, setNamespace] = useState<string>(
-    localStorage.getItem("co_ns") || "All"
-  );
-  const [query, setQuery] = useState("");
-  const [isNavOpen, setNavOpen] = useState(true);
-  const [isCreateOpen, setCreateOpen] = useState(false);
+  // Smart namespace management with RBAC awareness
+  const [namespace, setNamespace] = useState(() => {
+    // Try to get from localStorage, but don't rely on it completely
+    return localStorage.getItem("co_ns") || "default";
+  });
 
-  const { rows, loading, refresh, create, remove, scale, pendingTargets } = useSessions(
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Button gating: hide "All" if user can't watch across "*"
+  const allowAll = useMemo(() => {
+    return !!userIx?.domains?.["*"]?.session?.watch;
+  }, [userIx]);
+
+  // Derive user's accessible namespaces
+  const userAccessibleNamespaces = useMemo(() => {
+    if (!userIx?.namespaces?.userAllowed) return [""];
+    return userIx.namespaces.userAllowed;
+  }, [userIx]);
+
+  // Derive creatable namespaces for fallback logic
+  const creatableNamespaces = useMemo(() => {
+    if (!userIx?.namespaces?.userCreatable) return [];
+    return userIx.namespaces.userCreatable.sort();
+  }, [userIx]);
+
+  // Smart namespace validation and fallback
+  useEffect(() => {
+    if (!userIx) return; // Wait for user data
+
+    const isCurrentNamespaceValid =
+      namespace === "All"
+        ? allowAll
+        : userAccessibleNamespaces.includes(namespace);
+
+    if (!isCurrentNamespaceValid) {
+      // Current namespace is not accessible, find a fallback
+      let fallback: string = "";
+
+      if (allowAll) {
+        fallback = "All";
+      } else if (userAccessibleNamespaces.length > 0) {
+        // Prefer namespaces where user can create sessions
+        const preferredNamespace = creatableNamespaces.find((ns) =>
+          userAccessibleNamespaces.includes(ns),
+        );
+        fallback = preferredNamespace || userAccessibleNamespaces[0];
+      }
+
+      if (fallback !== namespace) {
+        console.log(
+          `Switching namespace from ${namespace} to ${fallback} due to RBAC restrictions`,
+        );
+        setNamespace(fallback);
+      }
+    }
+  }, [
     namespace,
-    (msg) => alerts.push(msg, "danger")
-  );
-  const filtered = useFilteredSessions(rows, query);
-  const { writableNamespaces, sessionNamespaces, loading: nsLoading, error: nsError } = useNamespaces();
-  useEffect(() => { if (nsError) alerts.push(nsError, "danger"); }, [nsError]);
-  useEffect(() => localStorage.setItem("co_ns", namespace), [namespace]);
+    allowAll,
+    userAccessibleNamespaces,
+    creatableNamespaces,
+    userIx,
+  ]);
 
-  const openURL = (s: Session) => {
-    const url =
-      s.status?.url ||
-      (s.spec.networking?.host ? `https://${s.spec.networking.host}` : "");
-    if (!url) return alerts.push("No URL yet", "info");
-    window.open(url, "_blank");
-  };
+  // Persist namespace selection (but validate it on load)
+  useEffect(() => {
+    if (userIx) {
+      // Only persist after we have user data
+      localStorage.setItem("co_ns", namespace);
+    }
+  }, [namespace, userIx]);
 
-  const doDelete = async (s: Session) => {
-    if (!confirm(`Delete ${s.metadata.name}?`)) return;
-    try {
-      await remove(s.metadata.namespace, s.metadata.name);
-      alerts.push("Deleted", "success");
-      refresh();
-    } catch (e: any) {
-      alerts.push(e?.message || "Delete failed", "danger");
+  const handleRefresh = () => {
+    if (location.pathname.startsWith("/sessions")) {
+      sessionsPageRef.current?.refresh();
     }
   };
 
-  // Navigation items - only show when authenticated
-  const getNavItems = () => {
-    if (!isAuthenticated) return [];
-
-    return [
-      {
-        id: "workloads",
-        title: "Workloads",
-        children: [
-          { id: "sessions", title: "Sessions", to: "/sessions" }
-        ]
-      },
-      {
-        id: "administration",
-        title: "Administration",
-        children: [
-          { id: "user-info", title: "User Management", to: "/user-info" },
-          { id: "cluster-info", title: "Cluster Settings", to: "/info" }
-        ]
-      }
-    ];
-  };
-
-  // IMPORTANT: In PF v6, use the `nav` prop (not `sidebarContent`)
-  const Sidebar = (
-    <PageSidebar
-      isSidebarOpen={isNavOpen}
-      nav={
-        <Nav aria-label="Primary nav" theme="dark">
-          <NavList>
-            {getNavItems().map((section) => (
-              <React.Fragment key={section.id}>
-                <NavItem className="pf-c-nav__section-title">
-                  {section.title}
-                </NavItem>
-                {section.children.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    isActive={location.pathname.startsWith(item.to)}
-                    className="pf-m-indent"
-                  >
-                    <Link className="pf-c-nav__link" to={item.to}>
-                      {item.title}
-                    </Link>
-                  </NavItem>
-                ))}
-              </React.Fragment>
-            ))}
-          </NavList>
-        </Nav>
-      }
-    />
-  );
-
-  // If on login page, show full-screen login layout
-  if (location.pathname === "/login") {
+  // Helper component so we can keep Login fullscreen + alerts + navigate-after-login.
+  const LoginRoute = () => {
+    const loc = useLocation();
+    const nav = useNavigate();
     return (
       <LoginLayout>
-        <AlertGroup isToast isLiveRegion>
+        <AlertGroup isToast>
           {alerts.list.map((a) => (
             <Alert
               key={a.key}
-              title={a.title}
               variant={a.variant}
-              timeout={6000}
-              actionClose={<AlertActionCloseButton onClose={() => alerts.close(a.key)} />}
+              title={a.title}
+              actionClose={
+                <AlertActionCloseButton onClose={() => alerts.close(a.key)} />
+              }
             />
           ))}
         </AlertGroup>
 
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <LoginPage
-                onLoggedIn={() => {
-                  const from = (location.state as any)?.from?.pathname || "/sessions";
-                  navigate(from, { replace: true });
-                }}
-              />
-            }
-          />
-        </Routes>
+        <LoginPage
+          onLoggedIn={() => {
+            const from = (loc.state as any)?.from?.pathname || "/sessions";
+            nav(from, { replace: true });
+          }}
+        />
       </LoginLayout>
     );
-  }
+  };
 
-  // Main application layout with sidebar
   return (
-    <Page
-      masthead={
-        <Header
-          namespace={namespace}
-          onNamespace={setNamespace}
-          onRefresh={refresh}
-          onToggleSidebar={() => setNavOpen((v) => !v)}
-          user={user}
-        />
-      }
-      sidebar={isAuthenticated ? Sidebar : undefined}
-      isManagedSidebar
-    >
-      <AlertGroup isToast isLiveRegion>
-        {alerts.list.map((a) => (
-          <Alert
-            key={a.key}
-            title={a.title}
-            variant={a.variant}
-            timeout={6000}
-            actionClose={<AlertActionCloseButton onClose={() => alerts.close(a.key)} />}
-          />
-        ))}
-      </AlertGroup>
+    <Routes>
+      {/* Public, full-screen login */}
+      <Route path="/login" element={<LoginRoute />} />
 
-      <Routes>
+      {/* App chrome wraps protected routes */}
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <AppChrome
+              namespace={namespace}
+              setNamespace={setNamespace}
+              isSidebarOpen={isSidebarOpen}
+              setIsSidebarOpen={setIsSidebarOpen}
+              onRefresh={handleRefresh}
+              alerts={alerts}
+            />
+          </RequireAuth>
+        }
+      >
         <Route
-          path="/sessions"
+          path="sessions"
           element={
-            <RequireAuth>
-              <>
-                <PageSection variant={PageSectionVariants.light} isWidthLimited>
-                  <div className="pf-u-display-flex pf-u-justify-content-space-between pf-u-align-items-center">
-                    <div>
-                      <h1 className="pf-c-title pf-m-2xl">Sessions</h1>
-                      <p className="pf-u-color-200">
-                        Manage your development environments and IDE sessions
-                      </p>
-                    </div>
-                  </div>
-                  <Toolbar>
-                    <ToolbarContent>
-                      <ToolbarItem>
-                        <TextInput
-                          aria-label="Search sessions"
-                          value={query}
-                          onChange={(_, v) => setQuery(v)}
-                          placeholder="Filter by name, image, or host..."
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<PlusCircleIcon />}
-                          variant="primary"
-                          onClick={() => setCreateOpen(true)}
-                        >
-                          Create Session
-                        </Button>
-                      </ToolbarItem>
-                    </ToolbarContent>
-                  </Toolbar>
-                </PageSection>
-
-                <PageSection isFilled isWidthLimited>
-                  <Card>
-                    <CardBody>
-                      <SessionsTable
-                        loading={loading}
-                        rows={filtered}
-                        pendingTargets={pendingTargets}
-                        onScale={async (s, d) => {
-                          const current =
-                            typeof s.spec.replicas === "number" ? s.spec.replicas : 1;
-                          const next = Math.max(0, current + d);
-                          try {
-                            await scale(s.metadata.namespace, s.metadata.name, next);
-                            alerts.push(`Scaled to ${next}`, "success");
-                            refresh();
-                          } catch (e: any) {
-                            alerts.push(e?.message || "Scale failed", "danger");
-                          }
-                        }}
-                        onDelete={doDelete}
-                        onOpen={openURL}
-                      />
-                    </CardBody>
-                  </Card>
-
-                  <CreateSessionModal
-                    isOpen={isCreateOpen}
-                    namespace={namespace}
-                    writableNamespaces={writableNamespaces}
-                    onClose={() => setCreateOpen(false)}
-                    onCreate={async (body) =>{
-                      try {
-                        await create(body);
-                        alerts.push(`Session ${body?.metadata?.name} created`, "success");
-                        setCreateOpen(false);
-                        refresh();
-                      } catch (e: any) {
-                        alerts.push(e?.message || "Create failed", "danger");
-                      }
-                    }}
-                  />
-                </PageSection>
-              </>
-            </RequireAuth>
+            <SessionsPage
+              ref={sessionsPageRef}
+              namespace={namespace}
+              onAlert={(message, variant) => alerts.push(message, variant)}
+            />
           }
         />
+        <Route path="user-info" element={<UserInfoPage />} />
+        <Route path="info" element={<ClusterSettingsPage />} />
 
-        <Route
-          path="/user-info"
-          element={
-            <RequireAuth>
-              <UserInfoPage />
-            </RequireAuth>
-          }
-        />
+        {/* Default "home" → sessions */}
+        <Route index element={<Navigate to="/sessions" replace />} />
+      </Route>
 
-        <Route
-          path="/info"
-          element={
-            <RequireAuth>
-              <InfoPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route path="/" element={<Navigate to="/sessions" replace />} />
-        <Route path="*" element={<Navigate to="/sessions" replace />} />
-      </Routes>
-    </Page>
+      {/* Fallbacks */}
+      <Route path="*" element={<Navigate to="/sessions" replace />} />
+    </Routes>
   );
 }

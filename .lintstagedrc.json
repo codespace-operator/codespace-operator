@@ -1,6 +1,5 @@
 {
   "*.go": "gofmt -w",
-  "helm/**/*.{yaml,yml}": "npx prettier -w",
   "ui/**/*.{ts,tsx,js,css,html,json,md}": "npx prettier -w",
   "*.{md,json,yml,yaml}": "npx prettier -w"
 }

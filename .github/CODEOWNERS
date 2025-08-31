@@ -6,11 +6,8 @@
 /test/ @codespace-operator
 
 # Server/UI
-/cmd/server/ @codespace-operator
+/internal/server/ @codespace-operator
 /ui/ @codespace-operator
-
-# Chart
-/helm/ @codespace-operator
 
 # CRDs
 /api/ @codespace-operator

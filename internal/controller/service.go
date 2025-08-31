@@ -13,28 +13,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package controllers
+package controller
 
 import (
 	"context"
-
 	"encoding/json"
 
-	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
-	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
-
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	corev1apply "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1apply "k8s.io/client-go/applyconfigurations/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 func (r *SessionReconciler) reconcileService(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*corev1.Service, error) {
 	ns := sess.Namespace
 	target := 4180
-	if !(sess.Spec.Auth.Mode == "oauth2proxy" && sess.Spec.Networking != nil && sess.Spec.Networking.Host != "") {
+	if sess.Spec.Auth.Mode != "oauth2proxy" || sess.Spec.Networking == nil || sess.Spec.Networking.Host == "" {
 		if sess.Spec.Profile.IDE == "vscode" {
 			target = 8080
 		} else {

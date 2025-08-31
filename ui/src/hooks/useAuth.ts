@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { authApi, userApi } from "../api/client";
 
 const USER_KEY = "co_user";
-const TOKEN_KEY = "co_token"; // kept for SSE/headers fallback; cookie is primary.
+const TOKEN_KEY = "co_token";
 
 function decodeJwtPayload(token: string): any | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
   const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  try { return JSON.parse(atob(b64)); } catch { return null; }
+  try {
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
 }
 
 function isExpired(token: string | null): boolean {
@@ -19,88 +24,109 @@ function isExpired(token: string | null): boolean {
   return now >= exp;
 }
 
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<string | null>(
+    localStorage.getItem(USER_KEY),
+  );
   const [roles, setRoles] = useState<string[]>([]);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const expiryTimer = useRef<number | null>(null);
+  const [token, setToken] = useState<string | null>(getToken());
+  const [isLoading, setLoading] = useState(true);
 
-  // Initialize from storage (token is optional because cookie is primary)
+  // Try to restore from cookie session (OIDC/local) via /api/v1/me
   useEffect(() => {
-    const u = localStorage.getItem(USER_KEY);
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (u && t && !isExpired(t)) {
-      setUser(u);
-      setToken(t);
-    } else {
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-    }
-    setIsLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        // Use the new userApi instead of direct introspect call
+        const userData = await userApi.getCurrentUser();
+        if (cancelled) return;
 
-    const onAuthRequired = () => logout();
-    window.addEventListener("co:auth:required" as any, onAuthRequired);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === TOKEN_KEY && e.newValue === null) logout();
-    };
-    window.addEventListener("storage", onStorage);
+        const display = userData?.username ?? userData?.subject ?? null;
+        const rs: string[] = Array.isArray(userData?.roles)
+          ? userData.roles
+          : [];
+
+        setUser(display);
+        setRoles(rs);
+
+        // Update localStorage if we got valid user data
+        if (display) {
+          localStorage.setItem(USER_KEY, display);
+        }
+      } catch (error: any) {
+        // Treat like unauth
+        if (!cancelled) {
+          if (
+            error?.message?.includes("401") ||
+            error?.message?.includes("unauthorized")
+          ) {
+            localStorage.removeItem(USER_KEY);
+            localStorage.removeItem(TOKEN_KEY);
+          }
+          setUser(null);
+          setRoles([]);
+          setToken(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("co:auth:required" as any, onAuthRequired);
+      cancelled = true;
     };
   }, []);
 
-  useEffect(() => {
-    if (expiryTimer.current) window.clearTimeout(expiryTimer.current);
-    if (!token) return;
-    const payload = decodeJwtPayload(token);
-    const exp = payload?.exp;
-    if (!exp) return;
-    const ms = Math.max(0, exp * 1000 - Date.now());
-    expiryTimer.current = window.setTimeout(() => logout(), ms) as unknown as number;
-  }, [token]);
+  // Local login using the dedicated endpoint
+  async function loginLocal(username: string, password: string) {
+    try {
+      const data = await authApi.localLogin(username, password);
 
-  const base = import.meta.env.VITE_API_BASE || "";
+      const display = data?.user ?? username;
+      if (display) localStorage.setItem(USER_KEY, display);
+      if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
 
-  const login = async (username: string, password: string): Promise<void> => {
-    if (!username.trim() || !password.trim()) {
-      throw new Error("Username and password are required");
+      setUser(display);
+      setRoles(Array.isArray(data.roles) ? data.roles : []);
+      setToken(data.token || null);
+    } catch (error: any) {
+      throw new Error(error?.message || "Local login failed");
     }
-    const res = await fetch(`${base}/api/v1/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // receive HttpOnly cookie
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) throw new Error((await res.text()) || "Login failed");
-    const data = await res.json();
-    // Keep a copy to support Authorization header and SSE fallback; cookie remains source of truth.
-    localStorage.setItem(USER_KEY, data.user || username);
-    if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data.user || username);
-    setRoles(Array.isArray(data.roles) ? data.roles : []);
-    setToken(data.token || null);
-  };
+  }
 
-  const logout = () => {
-    // Just drop local state + cookies (cookie is session-lifetime JWT; let it expire)
+  // SSO login - redirect to the SSO endpoint
+  function loginSSO(next?: string) {
+    const params = new URLSearchParams();
+    if (next) params.set("next", next);
+    const base = import.meta.env.VITE_API_BASE || "";
+    window.location.href = `${base}/auth/sso/login${params.toString() ? "?" + params.toString() : ""}`;
+  }
+
+  async function logout() {
+    try {
+      await authApi.logout();
+    } catch {}
+
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setRoles([]);
     setToken(null);
-  };
+  }
 
-  const isAuthenticated = useMemo(() => !!(user && (token ? !isExpired(token) : true)), [user, token]);
+  const isAuthenticated = useMemo(() => !!user, [user]);
 
   return {
     user,
     roles,
     token,
-    login,
-    logout,
     isAuthenticated,
     isLoading,
+    loginLocal,
+    loginSSO,
+    logout,
   };
 }

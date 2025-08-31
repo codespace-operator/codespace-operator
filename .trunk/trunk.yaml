@@ -31,6 +31,14 @@ lint:
     - shfmt@3.6.0
     - trufflehog@3.90.5
     - yamllint@1.37.1
+  ignore:
+    - linters: [ALL]
+      paths:
+        - gen/api/**
+        - ui/src/types/*.gen.ts
+        # any other gen patterns you might add later
+        - "**/*.gen.*"
+
 actions:
   disabled:
     - trunk-announce

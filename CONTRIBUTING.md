@@ -8,7 +8,7 @@ Thanks for helping improve **codespace-operator**! This project is a mono‑repo
 
 1. Fork → feature branch → small, focused MR/PR.
 2. Use **Conventional Commits** with a **required scope** (see below).
-3. Run `make build` (Go), `make build-ui` (UI), and `make manifests` (CRDs) locally as needed.
+3. Run `make build` (Go), `make build-server` (UI), and `make manifests` (CRDs) locally as needed.
 4. Ensure hooks/linters pass (`prettier`, `gofmt`, commitlint).
 5. Open an MR/PR with the template and checklist. Prefer **squash merge**.
 
@@ -18,16 +18,10 @@ Thanks for helping improve **codespace-operator**! This project is a mono‑repo
 
 ## Repo Areas & Release Lanes
 
-- **Operator Images ("App" lane)** — operator/controller/server/UI
+- **Operator Images ("App" lane)** - operator/controller/server/UI
   - Tag prefix: `app-vX.Y.Z`
   - Config: `release.operator.cjs`
   - Scope(s): `operator`, `controller`, `server`, `ui`
-
-- **Helm Chart ("Chart" lane)**
-  - Tag prefix: `chart-vX.Y.Z`
-  - Config: `release.helm.cjs`
-  - Scope(s): `chart`, `helm`
-  - `Chart.yaml:appVersion` is auto‑synced by the App lane. Don’t edit manually.
 
 - **CRDs ("CRD" lane)**
   - Tag prefix: `crd-vX.Y.Z`
@@ -46,7 +40,6 @@ Each lane uses `releaseRules` so it **only** versions on matching scopes. A sing
 **Scopes (required)**:
 
 - App: `operator`, `controller`, `server`, `ui`
-- Chart: `chart`, `helm`
 - CRDs: `crd`, `api`
 - Misc (no release): `docs`, `build`, `ci`, `deps`, `release`, `test`
 
@@ -81,7 +74,7 @@ Each lane uses `releaseRules` so it **only** versions on matching scopes. A sing
 
 - **UI**: under `ui/`
   - `npm ci && npm run build`
-  - Or repo root: `make build-ui` (builds UI and server binary)
+  - Or repo root: `make build-server` (builds UI and server binary)
 
 - **CRDs**:
   - `make manifests` → regenerate CRDs
@@ -112,16 +105,10 @@ See `commitlint.config.cjs`, `.lintstagedrc.json`, and `.husky/*` for details.
 
   ```bash
   make build            # Go
-  make build-ui         # UI + server
+  make build-server         # UI + server
   ```
 
 - Tests: `make test` (unit), `make test-e2e` (kind-based e2e)
-
-### Helm Chart
-
-- Use scopes: `chart`, `helm`.
-- **Do not** change `Chart.yaml:appVersion` manually; it is set by App releases.
-- If adding values, provide sane defaults, schema comments, and update README usage snippets.
 
 ### CRDs
 
@@ -136,7 +123,6 @@ See `commitlint.config.cjs`, `.lintstagedrc.json`, and `.husky/*` for details.
 - CI runs on every MR/PR: build + lint + tests + commit‑message checks.
 - After merge to `main`, semantic‑release runs per lane:
   - **Operator**: `release.operator.cjs` builds & pushes images; syncs `Chart.yaml:appVersion`; tag `app-v*`; writes `CHANGELOG.app.md`.
-  - **Chart**: `release.helm.cjs` bumps chart `version` and publishes to GHCR (OCI); tag `chart-v*`; writes `CHANGELOG.chart.md`.
   - **CRDs**: `release.crd.cjs` regenerates and publishes `dist/codespace-operator-crds.yaml` + tarball; tag `crd-v*`; writes `CHANGELOG.crd.md`.
 
 > Lanes only bump versions when at least one commit in the release range has a matching scope per `releaseRules`.
@@ -193,7 +179,6 @@ Use one or more:
 - [ ] controller
 - [ ] server
 - [ ] ui
-- [ ] chart / helm
 - [ ] crd / api
 
 ### Breaking changes
