@@ -1,23 +1,27 @@
+// CRD release configuration
+// Example commits:
+//   feat(crd): add new field to Spec
+//   fix(crds): correct validation schema
+//   perf(crd): optimize generated CRD
+//   chore(crd): update kustomize version  <-- no release
 
-const releaseScope = /(^|,|\s)(crds|crd)(?=,|\s|$)/
-const releaseType = /^(docs|chore|build|ci|test|refactor)$/
-const notReleaseScope = /(^|,|\s)(repo|ci)(?=,|\s|$)/
+const crdScopes = /^(crd|crds)$/;
+const nonReleasingTypes = /^(docs|chore|build|ci|test|refactor)$/;
 
 module.exports = {
   branches: ['main'],
   tagFormat: 'crd-${version}',
   plugins: [
-      ['@semantic-release/commit-analyzer', {
+    ['@semantic-release/commit-analyzer', {
       preset: 'conventionalcommits',
       parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
       releaseRules: [
-        { breaking: true, scope: releaseScope, release: 'major' },
-        { type: 'feat',   scope: releaseScope, release: 'minor' },
-        { type: 'fix',    scope: releaseScope, release: 'patch' },
-        { type: 'perf',   scope: releaseScope, release: 'patch' },
-        { type: 'revert', scope: releaseScope, release: 'patch' },
-        { scope: notReleaseScope, release: false },
-        { type: releaseType, release: false }
+        { breaking: true, scope: crdScopes, release: 'major' }, // BREAKING in crd scope → major
+        { type: 'feat',   scope: crdScopes, release: 'minor' }, // feat(crd) → minor
+        { type: 'fix',    scope: crdScopes, release: 'patch' }, // fix(crds) → patch
+        { type: 'perf',   scope: crdScopes, release: 'patch' }, // perf(crd) → patch
+        { type: 'revert', scope: crdScopes, release: 'patch' }, // revert(crd) → patch
+        { type: nonReleasingTypes, release: false }             // docs/chore/ci/etc. → no release
       ]
     }],
     '@semantic-release/release-notes-generator',
@@ -38,7 +42,7 @@ module.exports = {
       message: 'chore(release): crd ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
     }],
     ['@semantic-release/github', {
-  assets: [
+      assets: [
         'dist/codespace-operator-*-crds.yaml',
         'dist/codespace-operator-crds-*.tgz',
         'dist/SHA256SUMS.txt'
