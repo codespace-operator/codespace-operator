@@ -1,7 +1,7 @@
 
 const releaseScope = /(^|,|\s)(crds|crd)(?=,|\s|$)/
 const releaseType = /^(docs|chore|build|ci|test|refactor)$/
-const notReleaseScope = /(^|,|\s)(operator|controller|server|ui|rbac|oidc|ldap|api|repo|ci|ui)(?=,|\s|$)/
+const notReleaseScope = /(^|,|\s)(repo|ci)(?=,|\s|$)/
 
 module.exports = {
   branches: ['main'],
