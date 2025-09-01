@@ -1,0 +1,29 @@
+# Controller configuration (ControllerConfig)
+
+# Metrics & health
+metrics_addr: "0" # "0" disables metrics; use ":8080" (HTTP) or ":8443" (HTTPS)
+probe_addr: ":8081"
+
+# Leader election
+enable_leader_election: false
+leader_election_id: "a51c5837.codespace.dev"
+
+# TLS certs for metrics & webhooks (optional)
+metrics_cert_path: ""
+metrics_cert_name: "tls.crt"
+metrics_cert_key: "tls.key"
+
+webhook_cert_path: ""
+webhook_cert_name: "tls.crt"
+webhook_cert_key: "tls.key"
+
+# Security/features
+secure_metrics: true # if true and metrics_addr != "0", serve metrics over HTTPS with authn/z filter
+enable_http2: false # if false, force HTTP/1.1 on TLS listeners
+
+# Controller behavior
+session_name_prefix: "cs-"
+field_owner: "codespace-operator"
+
+# Logging
+debug: false

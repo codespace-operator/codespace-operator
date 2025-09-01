@@ -1,0 +1,13 @@
+apiVersion: codespace.codespace.dev/v1
+kind: Session
+metadata:
+  name: __DEMO_NAME__
+  namespace: default
+spec:
+  profile:
+    ide: jupyterlab
+    image: jupyter/minimal-notebook:latest
+    cmd: ["start-notebook.sh", "--NotebookApp.token="]
+  networking:
+    host: __HOST__
+    # tlsSecretName: __TLS_SECRET__

@@ -1,0 +1,82 @@
+# codecentric/keycloakx values for local testing (single pod, no clustering)
+replicas: 1
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: "26.0.7"
+  pullPolicy: IfNotPresent
+
+# Serve at root so issuer = http(s)://keycloak.<domain>/realms/<realm>
+http:
+  relativePath: "/"
+
+# Use HTTP behind nginx; relaxed host checks for local dev
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start"
+  - "--http-enabled=true"
+  - "--hostname-strict=false"
+  - "--import-realm"
+
+# Disable chart-managed proxy/clustering env to avoid duplicates with extraEnv
+proxy:
+  enabled: false
+cache:
+  stack: custom # prevents the chart from setting KC_CACHE/KC_CACHE_STACK
+
+# Admin creds from Secret we create in deploy.sh (or already present)
+extraEnvFrom: |
+  - secretRef:
+      name: keycloak-admin
+
+# Modern hostname + reverse proxy headers; local cache (no clustering)
+# Keep the order stable; no duplicates w/ chart knobs above.
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: "keycloak.__HOST_DOMAIN__"
+  - name: KC_PROXY_HEADERS
+    value: "xforwarded"
+  - name: KC_CACHE
+    value: "local"
+  - name: JAVA_OPTS
+    value: "-XX:MaxRAMPercentage=75.0"
+  - name: KEYCLOAK_IMPORT
+    value: /opt/keycloak/data/import/realm.json
+
+# Import our realm.json from a ConfigMap (created in deploy.sh)
+extraVolumes: |
+  - name: realm-import
+    configMap:
+      name: keycloak-realm
+      items:
+        - key: realm.json
+          path: realm.json
+
+extraVolumeMounts: |
+  - name: realm-import
+    mountPath: /opt/keycloak/data/import
+    readOnly: true
+
+# Expose via nginx ingress on keycloak.__HOST_DOMAIN__
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+  rules:
+    - host: keycloak.__HOST_DOMAIN__
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: ["keycloak.__HOST_DOMAIN__"]
+      secretName: keycloak-tls
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 640Mi
+  limits:
+    memory: 1024Mi
+
+service:
+  type: ClusterIP

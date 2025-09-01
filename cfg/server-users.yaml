@@ -1,0 +1,10 @@
+# to generate mkpasswd -m argon2id 'password' htpasswd from package `apache2-utils`
+# htpasswd -nbBC 12 user 'password' | cut -d: -f2
+
+# assign roles by using policy.csv
+# i.e. if user is testuser then:
+# p, local:testuser, *, *, *, *
+users:
+  - username: user
+    passwordHash: $2y$12$nrT3P8qWNMR0ODZLvnn10eP/lgj2oSnh2vofHh4MzkoV9eUaz/WFG
+    email: user@localhost
