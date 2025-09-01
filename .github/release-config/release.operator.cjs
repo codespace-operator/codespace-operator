@@ -1,59 +1,49 @@
-// .github/release-config/release.operator.cjs
-const { buildTypeRules, buildBreakingRules } = require('./utils');
-
-const OPERATOR_TOKENS = ['operator', 'controller', 'server', 'ui', 'rbac', 'oidc', 'ldap', 'api'];
 const nonReleasingTypes = /^(docs|chore|build|ci|test|refactor)$/;
+
+// Regex that matches if 'crd' or 'crds' appears anywhere in comma-separated scopes
+const crdScopes = /(?:^|,)\s*(crd|crds)\s*(?:,|$)/;
 
 module.exports = {
   branches: ['main'],
-  tagFormat: 'codespace-${version}',
+  tagFormat: 'crd-${version}',
   plugins: [
-    [
-      '@semantic-release/commit-analyzer',
-      {
-        preset: 'conventionalcommits',
-        parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
-        releaseRules: [
-          // breaking scopes → major
-          ...buildBreakingRules(OPERATOR_TOKENS, 'major'),
-
-          // feat/fix/perf/revert for operator scopes
-          ...buildTypeRules(OPERATOR_TOKENS, 'feat',   'minor'),
-          ...buildTypeRules(OPERATOR_TOKENS, 'fix',    'patch'),
-          ...buildTypeRules(OPERATOR_TOKENS, 'perf',   'patch'),
-          ...buildTypeRules(OPERATOR_TOKENS, 'revert', 'patch'),
-
-          // never release on these types
-          { type: nonReleasingTypes, release: false },
-
-          // default: do not release if not matched above
-          { type: /.*/, release: false },
-        ],
-      },
-    ],
+    ['@semantic-release/commit-analyzer', {
+      preset: 'conventionalcommits',
+      parserOpts: { noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES', 'BREAKING'] },
+      releaseRules: [
+        { breaking: true, scope: crdScopes, release: 'major' },
+        { type: 'feat',   scope: crdScopes, release: 'minor' },
+        { type: 'fix',    scope: crdScopes, release: 'patch' },
+        { type: 'perf',   scope: crdScopes, release: 'patch' },
+        { type: 'revert', scope: crdScopes, release: 'patch' },
+        { type: nonReleasingTypes, release: false },
+        // Prevent preset defaults from releasing on unrelated scopes
+        { type: /.*/, release: false }
+      ]
+    }],
     '@semantic-release/release-notes-generator',
-    ['@semantic-release/changelog', { changelogFile: 'changelogs/CHANGELOG.codespace.md' }],
-    [
-      '@semantic-release/exec',
-      {
-        publishCmd: [
-          'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version}',
-          'docker tag ghcr.io/codespace-operator/codespace-operator:${nextRelease.version} ghcr.io/codespace-operator/codespace-operator:latest',
-          'docker push ghcr.io/codespace-operator/codespace-operator:latest',
-          'make docker-build-server SERVER_IMG=ghcr.io/codespace-operator/codespace-server:${nextRelease.version}',
-          'docker push ghcr.io/codespace-operator/codespace-server:${nextRelease.version}',
-          'docker tag ghcr.io/codespace-operator/codespace-server:${nextRelease.version} ghcr.io/codespace-operator/codespace-server:latest',
-          'docker push ghcr.io/codespace-operator/codespace-server:latest',
-        ].join(' && '),
-      },
-    ],
-    [
-      '@semantic-release/git',
-      {
-        assets: ['changelogs/CHANGELOG.codespace.md'],
-        message: 'chore(release): operator ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
-      },
-    ],
-    '@semantic-release/github',
-  ],
+    ['@semantic-release/changelog', { changelogFile: 'changelogs/CHANGELOG.crd.md' }],
+    ['@semantic-release/exec', {
+      prepareCmd: [
+        'set -e',
+        'make manifests',
+        'make kustomize',
+        'mkdir -p dist',
+        './bin/kustomize build config/crd > dist/codespace-operator-${nextRelease.version}-crds.yaml',
+        'tar -czf dist/codespace-operator-crds-${nextRelease.version}.tgz -C config/crd bases',
+        'cd dist && sha256sum codespace-operator-${nextRelease.version}-crds.yaml codespace-operator-crds-${nextRelease.version}.tgz > SHA256SUMS.txt'
+      ].join(' && ')
+    }],
+    ['@semantic-release/git', {
+      assets: ['changelogs/CHANGELOG.crd.md'],
+      message: 'chore(release): crd ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
+    }],
+    ['@semantic-release/github', {
+      assets: [
+        'dist/codespace-operator-*-crds.yaml',
+        'dist/codespace-operator-crds-*.tgz',
+        'dist/SHA256SUMS.txt'
+      ]
+    }]
+  ]
 };

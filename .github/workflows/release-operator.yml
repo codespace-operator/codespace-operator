@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      # - .github/release-config/release.operator.cjs
+      - .github/release-config/release.operator.cjs
       - internal/**
       - cmd/**
       - ui/**
