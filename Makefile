@@ -203,23 +203,24 @@ build-server-docs:
 # - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+IMG_LATEST ?= ghcr.io/codespace-operator/codespace-operator:latest
+SERVER_IMG_LATEST ?= ghcr.io/codespace-operator/codespace-server:latest
+
 .PHONY: docker-buildx
-docker-buildx: ## Build and push docker image for the manager for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+docker-buildx:
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
 	$(CONTAINER_TOOL) buildx use codespace-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} --tag $(IMG_LATEST) -f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
 	rm Dockerfile.cross
 
 .PHONY: docker-buildx-server
-docker-buildx-server: ## Build and push docker image for the server for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+docker-buildx-server:
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' ui/Dockerfile > ui/Dockerfile.cross
 	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
 	$(CONTAINER_TOOL) buildx use codespace-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${SERVER_IMG} -f ui/Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${SERVER_IMG} --tag $(SERVER_IMG_LATEST) -f ui/Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
 	rm Dockerfile.cross
 

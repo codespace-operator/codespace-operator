@@ -27,13 +27,8 @@ module.exports = {
       '@semantic-release/exec',
       {
         publishCmd: [
-          'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version}',
-          'docker tag ghcr.io/codespace-operator/codespace-operator:${nextRelease.version} ghcr.io/codespace-operator/codespace-operator:latest',
-          'docker push ghcr.io/codespace-operator/codespace-operator:latest',
-          'make docker-build-server SERVER_IMG=ghcr.io/codespace-operator/codespace-server:${nextRelease.version}',
-          'docker push ghcr.io/codespace-operator/codespace-server:${nextRelease.version}',
-          'docker tag ghcr.io/codespace-operator/codespace-server:${nextRelease.version} ghcr.io/codespace-operator/codespace-server:latest',
-          'docker push ghcr.io/codespace-operator/codespace-server:latest',
+          'make docker-buildx IMG=ghcr.io/codespace-operator/codespace-operator:${nextRelease.version} IMG_LATEST=ghcr.io/codespace-operator/codespace-operator:latest',
+          'make docker-buildx-server SERVER_IMG=ghcr.io/codespace-operator/codespace-server:${nextRelease.version} SERVER_IMG_LATEST=ghcr.io/codespace-operator/codespace-server:latest',
         ].join(' && '),
       },
     ],
