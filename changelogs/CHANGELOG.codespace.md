@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/codespace-operator/codespace-operator/compare/operator-1.0.0...operator-1.0.1) (2025-09-02)
+
+
+### Bug Fixes
+
+* **server:** release builds fix ([5067e83](https://github.com/codespace-operator/codespace-operator/commit/5067e83f4f8e0bac75cd4e43bfc137c6a0fc93a0))
+
 # 1.0.0 (2025-09-02)
 
 
