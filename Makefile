@@ -202,27 +202,45 @@ build-server-docs:
 # - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 # - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
-PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
-IMG_LATEST ?= ghcr.io/codespace-operator/codespace-operator:latest
-SERVER_IMG_LATEST ?= ghcr.io/codespace-operator/codespace-server:latest
+.PHONY: docker-builder
+docker-builder:
+	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder --use
+	- $(CONTAINER_TOOL) run --privileged --rm tonistiigi/binfmt --install all
+
+CACHE_FLAGS ?= --cache-to=type=registry,ref=ghcr.io/codespace-operator/buildcache:operator,mode=max \
+               --cache-from=type=registry,ref=ghcr.io/codespace-operator/buildcache:operator
+
+PLATFORMS ?= linux/amd64,linux/arm64
+IMG       ?= ghcr.io/codespace-operator/codespace-operator:dev
+IMG_LATEST?= ghcr.io/codespace-operator/codespace-operator:latest
 
 .PHONY: docker-buildx
-docker-buildx:
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
-	$(CONTAINER_TOOL) buildx use codespace-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} --tag $(IMG_LATEST) -f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
-	rm Dockerfile.cross
+docker-buildx: docker-builder
+	$(CONTAINER_TOOL) buildx build \
+	  --builder=codespace-operator-builder \
+	  --platform=$(PLATFORMS) \
+	  --push \
+	  --provenance=true \
+	  --sbom=true \
+	  $(CACHE_FLAGS) \
+	  -t $(IMG) -t $(IMG_LATEST) \
+	  -f Dockerfile .
+
+SERVER_IMG ?= ghcr.io/codespace-operator/codespace-server:dev
+SERVER_IMG_LATEST ?= ghcr.io/codespace-operator/codespace-server:latest
 
 .PHONY: docker-buildx-server
-docker-buildx-server:
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' ui/Dockerfile > ui/Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder
-	$(CONTAINER_TOOL) buildx use codespace-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${SERVER_IMG} --tag $(SERVER_IMG_LATEST) -f ui/Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm codespace-operator-builder
-	rm Dockerfile.cross
+docker-buildx-server: docker-builder
+	$(CONTAINER_TOOL) buildx build \
+	  --builder=codespace-operator-builder \
+	  --platform=$(PLATFORMS) \
+	  --push \
+	  --provenance=true \
+	  --sbom=true \
+	  $(CACHE_FLAGS) \
+	  -t $(SERVER_IMG) -t $(SERVER_IMG_LATEST) \
+	  -f ui/Dockerfile .
+
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

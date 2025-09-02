@@ -1,6 +1,5 @@
 const nonReleasingTypes = /^(docs|chore|build|ci|test|refactor)$/;
 
-// Regex that matches if 'crd' or 'crds' appears anywhere in comma-separated scopes
 const operatorScopes = /(?:^|,)\s*(operator|server|ui)\s*(?:,|$)/;
 
 module.exports = {
