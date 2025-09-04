@@ -1,3 +1,12 @@
-# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
-# Ignore build and test binaries.
+.git
+.gitignore
+README.md
+.env
+.env.example
 bin/
+test-uploads/
+ui/node_modules/
+ui/dist/
+scripts/
+*.log
+*.tmp

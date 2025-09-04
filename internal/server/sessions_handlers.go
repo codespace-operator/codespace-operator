@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -15,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/auth"
 	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
@@ -145,7 +145,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		nsSet := make(map[string]struct{})
 		for _, s := range sl.Items {
 			// keep RBAC namespace filter for non-admins
-			if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, s.Namespace); err != nil || !canAccess {
+			if canAccess, err := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", s.Namespace); err != nil || !canAccess {
 				continue
 			}
 			sessions = append(sessions, s)
@@ -727,7 +727,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 
 			// Apply namespace-level filtering for cross-namespace watches
 			if allNamespaces {
-				if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, session.Namespace); err != nil || !canAccess {
+				if canAccess, err := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", session.Namespace); err != nil || !canAccess {
 					continue
 				}
 			}

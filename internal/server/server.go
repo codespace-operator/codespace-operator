@@ -11,6 +11,8 @@ import (
 	"path"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,9 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/auth"
 	"github.com/codespace-operator/codespace-operator/internal/common"
-	"github.com/codespace-operator/codespace-operator/internal/rbac"
 )
 
 // available for all
@@ -125,7 +125,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 	}
 
 	// Test Kubernetes connectivity
-	if err := common.TestKubernetesConnection(k8sClient); err != nil {
+	if err := testKubernetesConnection(k8sClient); err != nil {
 		logger.Error("Kubernetes connection test failed", "error", err)
 		os.Exit(1)
 	}

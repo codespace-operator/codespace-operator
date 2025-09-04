@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/codespace-operator/codespace-operator/internal/auth"
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
 )
 
 // AuthFeatures represents available authentication methods

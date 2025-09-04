@@ -30,8 +30,6 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
 )
 
 const DEFAULT_NAMESPACE = "default"
@@ -80,20 +78,6 @@ func RandB64(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-// TestKubernetesConnection verifies that we can connect to the Kubernetes API
-func TestKubernetesConnection(c client.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var sessionList codespacev1.SessionList
-	// It would make more sense to test to its own namespace
-	ns, _ := ResolveAnchorNamespace()
-	if err := c.List(ctx, &sessionList, client.InNamespace(ns), client.Limit(1)); err != nil {
-		return fmt.Errorf("failed to connect to Kubernetes API: %w", err)
-	}
-	log.Printf("✅ Successfully connected to Kubernetes API (found %d sessions in %s namespace)", len(sessionList.Items), ns)
-	return nil
-}
 func Itoa(i int32) string { return fmt.Sprintf("%d", i) }
 
 // setupViper configures common Viper settings.
