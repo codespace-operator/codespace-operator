@@ -93,7 +93,18 @@ export function useAuth() {
       setRoles(Array.isArray(data.roles) ? data.roles : []);
       setToken(data.token || null);
     } catch (error: any) {
-      throw new Error(error?.message || "Local login failed");
+      // LDAP might return more specific error codes
+      const message = error?.message || "Authentication failed";
+      //!TODO: use centralized constants
+      if (message.includes("account locked")) {
+        throw new Error("Account is locked. Contact your administrator.");
+      }
+      if (message.includes("password expired")) {
+        throw new Error(
+          "Password has expired. Please contact your administrator."
+        );
+      }
+      throw new Error(message);
     }
   }
 
