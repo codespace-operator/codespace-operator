@@ -726,6 +726,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh session
+         * @description Refresh session token if valid
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content on success */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sso/login": {
         parameters: {
             query?: never;
@@ -860,6 +906,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        "common.AnchorMeta": {
+            /** @description release/app/deployment name (sanitized when used as label) */
+            name?: string;
+            /** @description namespace where the manager runs */
+            namespace?: string;
+            /** @description argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved */
+            type?: string;
+        };
         "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
             /** @description +kubebuilder:validation:Enum=oauth2proxy;none
              *     +kubebuilder:default=none */
@@ -924,14 +978,6 @@ export interface components {
             phase?: string;
             reason?: string;
             url?: string;
-        };
-        "github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta": {
-            /** @description release/app/deployment name (sanitized when used as label) */
-            name?: string;
-            /** @description namespace where the manager runs */
-            namespace?: string;
-            /** @description argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved */
-            type?: string;
         };
         /** @description Available authentication features and endpoints */
         "internal_server.AuthFeatures": {
@@ -1004,7 +1050,7 @@ export interface components {
             capabilities?: components["schemas"]["internal_server.SystemCapabilities"];
             cluster?: components["schemas"]["internal_server.ClusterInfo"];
             instanceID?: string;
-            manager?: components["schemas"]["github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta"];
+            manager?: components["schemas"]["common.AnchorMeta"];
             namespaces?: components["schemas"]["internal_server.ServerNamespaceInfo"];
             version?: components["schemas"]["internal_server.ServerVersionInfo"];
         };

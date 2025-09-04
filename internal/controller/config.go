@@ -3,7 +3,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/codespace-operator/codespace-operator/internal/common"
+	"github.com/codespace-operator/common/common/pkg/common"
 	"github.com/spf13/viper"
 )
 

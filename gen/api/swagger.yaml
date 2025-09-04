@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  common.AnchorMeta:
+    properties:
+      name:
+        description: release/app/deployment name (sanitized when used as label)
+        type: string
+      namespace:
+        description: namespace where the manager runs
+        type: string
+      type:
+        description: argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved
+        type: string
+    type: object
   github_com_codespace-operator_codespace-operator_api_v1.AuthSpec:
     properties:
       mode:
@@ -104,18 +116,6 @@ definitions:
       reason:
         type: string
       url:
-        type: string
-    type: object
-  github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta:
-    properties:
-      name:
-        description: release/app/deployment name (sanitized when used as label)
-        type: string
-      namespace:
-        description: namespace where the manager runs
-        type: string
-      type:
-        description: argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved
         type: string
     type: object
   internal_server.AuthFeatures:
@@ -237,7 +237,7 @@ definitions:
       instanceID:
         type: string
       manager:
-        $ref: '#/definitions/github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta'
+        $ref: '#/definitions/common.AnchorMeta'
       namespaces:
         $ref: '#/definitions/internal_server.ServerNamespaceInfo'
       version:
@@ -1341,6 +1341,23 @@ paths:
         "302":
           description: Redirect to provider end-session if available
       summary: Logout
+      tags:
+      - authentication
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh session token if valid
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content on success
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_server.ErrorResponse'
+      summary: Refresh session
       tags:
       - authentication
   /auth/sso/login:

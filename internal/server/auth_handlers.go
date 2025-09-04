@@ -1,3 +1,18 @@
+// Package server provides HTTP handlers for authentication endpoints,
+// including local login, OIDC SSO login, logout, session refresh, and
+// feature detection. It defines request/response types for authentication
+// flows and registers handlers based on configuration and available providers.
+//
+// Handlers include:
+//   - /auth/features: Returns available authentication methods and endpoints.
+//   - /auth/local/login: Authenticates users via username/password.
+//   - /auth/sso/login: Initiates OIDC SSO login flow.
+//   - /auth/sso/callback: Handles OIDC provider callback and session creation.
+//   - /auth/logout: Logs out user, clearing session and optionally redirecting to OIDC end-session.
+//   - /auth/refresh: Refreshes session token if valid.
+//
+// The package supports both local and OIDC authentication, with feature
+// detection and endpoint registration based on runtime configuration.
 package server
 
 import (
@@ -52,24 +67,25 @@ type UserInfo struct {
 func registerAuthHandlers(mux *http.ServeMux, h *handlers) {
 
 	// Public feature probe
-	mux.HandleFunc("/auth/features", h.handleAuthFeatures)
+	mux.HandleFunc(h.deps.config.AuthPath+"/features", h.handleAuthFeatures)
 
 	// Local login (if enabled)
 	if h.deps.config.EnableLocalLogin {
-		mux.HandleFunc("/auth/local/login", h.handleLocalLogin)
-		// If no OIDC is configured, local logout handles /auth/logout
+		mux.HandleFunc(h.deps.config.AuthPath+"/local/login", h.handleLocalLogin)
+		// If no OIDC is configured, local logout handlesh.deps.config.AuthPath +  /logout
 		if h.deps.config.OIDCIssuerURL == "" {
-			mux.HandleFunc("/auth/logout", h.handleLocalLogout)
+			mux.HandleFunc(h.deps.config.AuthPath+"/logout", h.handleLocalLogout)
 		}
 	}
 
 	// OIDC (if provider exists)
 	if p := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER); p != nil {
-		mux.HandleFunc("/auth/sso/login", h.handleOIDCStart)
-		mux.HandleFunc("/auth/sso/callback", h.handleOIDCCallback)
+		mux.HandleFunc(h.deps.config.AuthPath+"/sso/login", h.handleOIDCStart)
+		mux.HandleFunc(h.deps.config.AuthPath+"/sso/callback", h.handleOIDCCallback)
 		// OIDC logout wins if both local+OIDC exist
-		mux.HandleFunc("/auth/logout", h.handleLogout)
+		mux.HandleFunc(h.deps.config.AuthPath+"/logout", h.handleLogout)
 	}
+	mux.HandleFunc(h.deps.config.AuthPath+"/refresh", h.handleRefresh)
 }
 
 // --- OIDC handlers (provider-based) ---
@@ -176,8 +192,8 @@ func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 		"ssoEnabled":            ssoEnabled,
 		"localLoginEnabled":     localEnabled,
 		"bootstrapLoginAllowed": cfg.BootstrapLoginAllowed,
-		"ssoLoginPath":          "/auth/sso/login",
-		"localLoginPath":        "/auth/local/login",
+		"ssoLoginPath":          cfg.AuthPath + "/sso/login",
+		"localLoginPath":        cfg.AuthPath + "/local/login",
 	})
 }
 
@@ -222,4 +238,30 @@ func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, LoginResponse{Token: token, User: claims.Username, Roles: claims.Roles})
+}
+
+// POST /auth/refresh
+// @Summary Refresh session
+// @Description Refresh session token if valid
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Success 204 "No Content on success"
+// @Failure 401 {object} ErrorResponse
+// @Router /auth/refresh [post]
+func (h *handlers) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	claims, err := h.deps.authManager.ValidateRequest(r) // read current cookie/header
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if _, err := h.deps.authManager.IssueSession(w, r, claims); err != nil {
+		http.Error(w, "failed to refresh session", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

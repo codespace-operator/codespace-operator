@@ -1147,6 +1147,30 @@
                 ]
             }
         },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refresh session token if valid",
+                "responses": {
+                    "204": {
+                        "description": "No Content on success"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Refresh session",
+                "tags": [
+                    "authentication"
+                ]
+            }
+        },
         "/auth/sso/login": {
             "get": {
                 "description": "Redirects to OIDC provider for authentication",
@@ -1278,6 +1302,23 @@
             }
         },
         "schemas": {
+            "common.AnchorMeta": {
+                "properties": {
+                    "name": {
+                        "description": "release/app/deployment name (sanitized when used as label)",
+                        "type": "string"
+                    },
+                    "namespace": {
+                        "description": "namespace where the manager runs",
+                        "type": "string"
+                    },
+                    "type": {
+                        "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
                 "properties": {
                     "mode": {
@@ -1412,23 +1453,6 @@
                         "type": "string"
                     },
                     "url": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta": {
-                "properties": {
-                    "name": {
-                        "description": "release/app/deployment name (sanitized when used as label)",
-                        "type": "string"
-                    },
-                    "namespace": {
-                        "description": "namespace where the manager runs",
-                        "type": "string"
-                    },
-                    "type": {
-                        "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
                         "type": "string"
                     }
                 },
@@ -1606,7 +1630,7 @@
                         "type": "string"
                     },
                     "manager": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta"
+                        "$ref": "#/components/schemas/common.AnchorMeta"
                     },
                     "namespaces": {
                         "$ref": "#/components/schemas/internal_server.ServerNamespaceInfo"

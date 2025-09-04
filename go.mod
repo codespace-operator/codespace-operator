@@ -3,9 +3,9 @@ module github.com/codespace-operator/codespace-operator
 go 1.25.0
 
 require (
-	github.com/codespace-operator/common/auth v1.1.0
-	github.com/codespace-operator/common/rbac v1.1.0
-	github.com/lmittmann/tint v1.1.2
+	github.com/codespace-operator/common/auth v1.3.1
+	github.com/codespace-operator/common/common v1.0.1
+	github.com/codespace-operator/common/rbac v1.2.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/spf13/cobra v1.9.1
@@ -60,6 +60,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect

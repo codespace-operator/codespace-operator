@@ -48,9 +48,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/codespace-operator/common/common/pkg/common"
 	"github.com/spf13/cobra"
 
-	"github.com/codespace-operator/codespace-operator/internal/common"
 	server "github.com/codespace-operator/codespace-operator/internal/server"
 )
 
@@ -77,6 +77,10 @@ func main() {
 	rootCmd.Flags().Bool("cluster-scope", false, "Enable cluster-scoped mode")
 
 	// Authentication flags
+	rootCmd.Flags().String("auth-path", "", "Authentication endpoint path")
+	rootCmd.Flags().String("auth-logout-path", "", "Authentication logout endpoint path")
+
+	// OIDC flags
 	rootCmd.Flags().String("oidc-issuer-url", "", "OIDC issuer URL (e.g., https://dev-xxxx.okta.com)")
 	rootCmd.Flags().String("oidc-client-id", "", "OIDC client ID")
 	rootCmd.Flags().String("oidc-client-secret", "", "OIDC client secret")
@@ -84,6 +88,7 @@ func main() {
 	rootCmd.Flags().StringSlice("oidc-scopes", []string{}, "OIDC scopes (default: openid profile email)")
 	rootCmd.Flags().Bool("oidc-insecure-skip-verify", false, "Skip OIDC server certificate verification")
 
+	// Local login flags
 	rootCmd.Flags().Bool("enable-local-login", false, "Enable local users login)")
 	rootCmd.Flags().Bool("local-users-path", false, "Path to local users file")
 	rootCmd.Flags().Bool("enable-bootstrap-login", false, "Enable bootstrap login (dev only)")
@@ -91,6 +96,23 @@ func main() {
 	rootCmd.Flags().Int("session-ttl-minutes", 60, "Session cookie TTL in minutes")
 	rootCmd.Flags().String("session-cookie-name", "", "Override session cookie name")
 
+	// LDAP flags
+	rootCmd.Flags().String("ldap-url", "", "LDAP server URL (e.g., ldaps://ldap.example.com:636 or ldap://host:389)")
+	rootCmd.Flags().Bool("ldap-start-tls", false, "Use StartTLS (if URL is ldap://)")
+	rootCmd.Flags().Bool("ldap-insecure-skip-verify", false, "Skip LDAP server certificate verification")
+	rootCmd.Flags().String("ldap-bind-dn", "", "LDAP bind DN for searching users (optional)")
+	rootCmd.Flags().String("ldap-bind-password", "", "LDAP bind password for searching users (optional)")
+	rootCmd.Flags().String("ldap-user-dn-template", "", "LDAP user DN template (e.g., uid={username},ou=People,dc=example,dc=com) (optional)")
+	rootCmd.Flags().String("ldap-user-base-dn", "", "LDAP user base DN (e.g., ou=People,dc=example,dc=com) (if not using UserDNTemplate)")
+	rootCmd.Flags().String("ldap-user-filter", "", "LDAP user search filter (e.g., (uid={username})) (if not using UserDNTemplate)")
+	rootCmd.Flags().String("ldap-username-attr", "uid", "LDAP username attribute (e.g., uid or sAMAccountName)")
+	rootCmd.Flags().String("ldap-displayname-attr", "cn", "LDAP display name attribute (e.g., cn or displayName)")
+	rootCmd.Flags().String("ldap-group-base-dn", "", "LDAP group base DN (e.g., ou=Groups,dc=example,dc=com) (optional)")
+	rootCmd.Flags().String("ldap-group-filter", "", "LDAP group search filter (e.g., (member={userDN}) or (memberUid={username})) (optional)")
+	rootCmd.Flags().String("ldap-group-attr", "cn", "LDAP group attribute to read as group name (default: cn) (optional)")
+	rootCmd.Flags().StringToString("ldap-role-mapping", map[string]string{}, "LDAP group name or DN to Codespace role mapping (e.g., 'admins=admin,editors=editor')")
+	rootCmd.Flags().StringSlice("ldap-default-roles", []string{}, "Default roles if no LDAP group matches (default: viewer)")
+	rootCmd.Flags().Bool("ldap-to-lower-username", false, "Convert LDAP username to lower case")
 	// RBAC flags
 	rootCmd.Flags().String("rbac-model-path", "", "Path to Casbin model.conf (overrides default/env)")
 	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
@@ -159,6 +181,9 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	}
 
 	// Authentication overrides
+	overrideString(&cfg.AuthPath, "auth-path")
+	overrideString(&cfg.AuthLogoutPath, "auth-logout-path")
+
 	overrideString(&cfg.OIDCIssuerURL, "oidc-issuer-url")
 	overrideString(&cfg.OIDCClientID, "oidc-client-id")
 	overrideString(&cfg.OIDCClientSecret, "oidc-client-secret")
@@ -173,9 +198,42 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	overrideInt(&cfg.SessionTTLMinutes, "session-ttl-minutes")
 	overrideString(&cfg.SessionCookieName, "session-cookie-name")
 	overrideBool(&cfg.BootstrapLoginAllowed, "enable-bootstrap-login")
+
+	// LDAP overrides
+	overrideString(&cfg.LDAPURL, "ldap-url")
+	overrideBool(&cfg.LDAPStartTLS, "ldap-start-tls")
+	overrideBool(&cfg.LDAPInsecureSkipVerify, "ldap-insecure-skip-verify")
+	overrideString(&cfg.LDAPBindDN, "ldap-bind-dn")
+	overrideString(&cfg.LDAPBindPassword, "ldap-bind-password")
+	overrideString(&cfg.LDAPUserDNTemplate, "ldap-user-dn-template")
+	overrideString(&cfg.LDAPUserBaseDN, "ldap-user-base-dn")
+	overrideString(&cfg.LDAPUserFilter, "ldap-user-filter")
+	overrideString(&cfg.LDAPUsernameAttr, "ldap-username-attr")
+	overrideString(&cfg.LDAPDisplayNameAttr, "ldap-displayname-attr")
+	overrideString(&cfg.LDAPGroupBaseDN, "ldap-group-base-dn")
+	overrideString(&cfg.LDAPGroupFilter, "ldap-group-filter")
+	overrideString(&cfg.LDAPGroupAttr, "ldap-group-attr")
+	if cmd.Flags().Changed("ldap-role-mapping") {
+		raw, err := cmd.Flags().GetStringToString("ldap-role-mapping")
+		if err == nil {
+			cfg.LDAPRoleMapping = server.ParseLDAPRoleMapping(raw)
+		}
+	}
+
+	if cmd.Flags().Changed("ldap-default-roles") {
+		roles, err := cmd.Flags().GetStringSlice("ldap-default-roles")
+		if err == nil {
+			cfg.LDAPDefaultRoles = roles
+		}
+	}
+	overrideBool(&cfg.LDAPToLowerUsername, "ldap-to-lower-username")
 	// RBAC overrides
 	overrideString(&cfg.RBACModelPath, "rbac-model-path")
 	overrideString(&cfg.RBACPolicyPath, "rbac-policy-path")
+
+	// Sanitize paths
+	cfg.AuthPath = strings.TrimRight(cfg.AuthPath, "/")
+	cfg.AuthLogoutPath = strings.TrimRight(cfg.AuthLogoutPath, "/")
 
 	return cfg
 }

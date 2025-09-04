@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -16,11 +17,13 @@ import (
 	"strings"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
+	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 func writeJSON(w http.ResponseWriter, v any) {
@@ -317,4 +320,38 @@ func clientIP(r *http.Request) string {
 		return host
 	}
 	return r.RemoteAddr
+}
+
+// ParseLDAPRoleMapping converts a map[string]string (as returned by Cobra's
+// GetStringToString) into map[string][]string for LDAP role mapping.
+// Each value can contain a comma-separated list of roles.
+func ParseLDAPRoleMapping(raw map[string]string) map[string][]string {
+	out := make(map[string][]string, len(raw))
+	for group, csv := range raw {
+		parts := strings.Split(csv, ",")
+		roles := make([]string, 0, len(parts))
+		seen := map[string]struct{}{}
+		for _, p := range parts {
+			r := strings.TrimSpace(p)
+			if r == "" {
+				continue
+			}
+			if _, dup := seen[r]; dup {
+				continue
+			}
+			seen[r] = struct{}{}
+			roles = append(roles, r)
+		}
+		if len(roles) > 0 {
+			out[group] = roles
+		}
+	}
+	return out
+}
+func ExtractFromAuth(r *http.Request) (*rbac.Principal, error) {
+	cl := auth.FromContext(r)
+	if cl == nil {
+		return nil, errors.New("no auth")
+	}
+	return &rbac.Principal{Subject: cl.Sub, Roles: cl.Roles}, nil
 }

@@ -8,8 +8,7 @@ import (
 	"sort"
 
 	auth "github.com/codespace-operator/common/auth/pkg/auth"
-
-	"github.com/codespace-operator/codespace-operator/internal/common"
+	"github.com/codespace-operator/common/common/pkg/common"
 )
 
 // ClusterInfo contains cluster-level permission information

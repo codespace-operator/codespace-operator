@@ -12,6 +12,7 @@ import (
 	"time"
 
 	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
 	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 // available for all
@@ -156,7 +156,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 			"name", manager.Name,
 			"namespace", manager.Namespace)
 	}
-
+	rbacMW := rbac.NewMiddleware(rbacSystem, ExtractFromAuth, logger)
 	// Create server dependencies with proper interfaces
 	deps := &serverDeps{
 		client:      k8sClient,
@@ -164,7 +164,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 		scheme:      scheme,
 		config:      cfg,
 		rbac:        rbacSystem,
-		rbacMw:      rbac.NewMiddleware(rbacSystem, logger),
+		rbacMw:      rbacMW,
 		authManager: authManager,
 		authMw:      auth.NewMiddleware(authManager, logger),
 		instanceID:  instanceID,
@@ -245,6 +245,9 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 		SessionCookieName: cfg.SessionCookieName,
 		SessionTTL:        cfg.SessionTTL(),
 		AllowTokenParam:   cfg.AllowTokenParam,
+		SameSiteMode:      http.SameSiteStrictMode,
+		AuthPath:          cfg.AuthPath,
+		AuthLogoutPath:    cfg.AuthLogoutPath,
 	}
 
 	// Setup OIDC if configured
@@ -267,6 +270,38 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 			BootstrapLoginAllowed: cfg.BootstrapLoginAllowed,
 			BootstrapUser:         cfg.BootstrapUser,
 			BootstrapPasswd:       cfg.BootstrapPassword,
+		}
+	}
+
+	// Setup LDAP if configured
+	if cfg.LDAPBindDN != "" && cfg.LDAPBindPassword != "" && cfg.LDAPURL != "" {
+		authConfig.LDAP = &auth.LDAPConfig{
+			// Connection
+			URL:                cfg.LDAPURL, // e.g. ldaps://ldap.example.com:636 or ldap://host:389
+			StartTLS:           cfg.LDAPStartTLS,
+			InsecureSkipVerify: cfg.LDAPInsecureSkipVerify,
+
+			// Service bind for search (optional). If empty, you can bind as the user directly (via UserDNTemplate).
+			BindDN:       cfg.LDAPBindDN,
+			BindPassword: cfg.LDAPBindPassword,
+
+			// How to locate the user
+			UserBaseDN:      cfg.LDAPUserBaseDN,
+			UserFilter:      cfg.LDAPUserFilter,
+			UserDNTemplate:  cfg.LDAPUserDNTemplate,
+			UsernameAttr:    cfg.LDAPUsernameAttr,
+			EmailAttr:       cfg.LDAPEmailAttr,
+			DisplayNameAttr: cfg.LDAPDisplayNameAttr,
+
+			// How to resolve groups/roles
+			GroupBaseDN:  cfg.LDAPGroupBaseDN,
+			GroupFilter:  cfg.LDAPGroupFilter,
+			GroupAttr:    cfg.LDAPGroupAttr,
+			RoleMapping:  cfg.LDAPRoleMapping,
+			DefaultRoles: cfg.LDAPDefaultRoles,
+
+			// Optional username canonicalization (trim spaces, lower-case, etc.)
+			ToLowerUsername: cfg.LDAPToLowerUsername,
 		}
 	}
 
