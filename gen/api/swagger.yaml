@@ -125,7 +125,7 @@ definitions:
         example: false
         type: boolean
       localLoginPath:
-        example: /auth/local/login
+        example: /auth/login
         type: string
       ssoEnabled:
         example: true
@@ -158,19 +158,6 @@ definitions:
       error:
         example: Invalid request
         type: string
-    type: object
-  internal_server.LocalLoginRequest:
-    description: Local login credentials
-    properties:
-      password:
-        example: secretpassword
-        type: string
-      username:
-        example: alice
-        type: string
-    required:
-    - password
-    - username
     type: object
   internal_server.LoginResponse:
     description: Successful authentication response
@@ -212,6 +199,19 @@ definitions:
         type: boolean
       watch:
         type: boolean
+    type: object
+  internal_server.PasswordLoginRequest:
+    description: Local login credentials
+    properties:
+      password:
+        example: secretpassword
+        type: string
+      username:
+        example: alice
+        type: string
+    required:
+    - password
+    - username
     type: object
   internal_server.PermissionCheck:
     properties:
@@ -1301,7 +1301,7 @@ paths:
       summary: Get authentication features
       tags:
       - authentication
-  /auth/local/login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -1312,7 +1312,7 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/internal_server.LocalLoginRequest'
+          $ref: '#/definitions/internal_server.PasswordLoginRequest'
       produces:
       - application/json
       responses:

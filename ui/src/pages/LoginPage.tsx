@@ -19,7 +19,7 @@ import logoUrl from "../assets/codespace-operator.svg?url";
 type AuthFeatures = components["schemas"]["internal_server.AuthFeatures"];
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
-  const { loginLocal, loginSSO } = useAuth();
+  const { loginPassword, loginSSO } = useAuth();
   const location = useLocation() as any;
   const next = (location?.state?.from?.pathname as string) || "/sessions";
 
@@ -46,7 +46,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn?: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await loginLocal(username, password);
+      await loginPassword(username, password);
       onLoggedIn?.();
     } catch (e: any) {
       setError(e?.message || "Login failed");

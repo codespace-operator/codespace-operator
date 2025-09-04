@@ -1,4 +1,3 @@
-// ui/src/pages/UserInfo.tsx
 import React, { useMemo } from "react";
 import {
   PageSection,
@@ -10,7 +9,6 @@ import {
   DescriptionListTerm,
   DescriptionListDescription,
   Label,
-  Button,
   Grid,
   GridItem,
   List,
@@ -74,10 +72,11 @@ export function UserInfoPage() {
   };
 
   const tokenPayload = useMemo(() => decodeJWTPayload(token), [token]);
-  const isExpired = tokenPayload?.exp
-    ? Date.now() / 1000 >= tokenPayload.exp
-    : false;
-
+ // Prefer server-provided times when no raw token exists (cookie session)
+ const issuedAtSec = (token ? tokenPayload?.iat : userInfo?.iat) ?? null;
+ const expiresAtSec = (token ? tokenPayload?.exp : userInfo?.exp) ?? null;
+ const isExpired =
+   typeof expiresAtSec === "number" ? Date.now() / 1000 >= expiresAtSec : false;
   const renderBool = (v: boolean) =>
     v ? (
       <CheckCircleIcon className="pf-u-color-success-400" />
@@ -232,30 +231,24 @@ export function UserInfoPage() {
                   </DescriptionListDescription>
                 </DescriptionListGroup>
 
-                {tokenPayload?.iat && (
+                {typeof issuedAtSec === "number" && (
                   <DescriptionListGroup>
                     <DescriptionListTerm>Issued</DescriptionListTerm>
                     <DescriptionListDescription>
-                      {new Date(tokenPayload.iat * 1000).toLocaleString()}
+                      {new Date(issuedAtSec * 1000).toLocaleString()}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 )}
 
-                {tokenPayload?.exp && (
+                {typeof expiresAtSec === "number" && (
                   <DescriptionListGroup>
                     <DescriptionListTerm>Expires</DescriptionListTerm>
                     <DescriptionListDescription>
-                      {new Date(tokenPayload.exp * 1000).toLocaleString()}
+                      {new Date(expiresAtSec * 1000).toLocaleString()}
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                 )}
               </DescriptionList>
-
-              <div className="token-preview">
-                <code>
-                  {token ? `${token.substring(0, 40)}...` : "No token"}
-                </code>
-              </div>
             </CardBody>
           </Card>
         </GridItem>

@@ -28,7 +28,7 @@ bootstrap_user: "admin"
 bootstrap_password: "admin"
 
 # Session cookie
-session_cookie_name: "" # defaults to "codespace_session" when empty
+session_cookie_name: "CODESPACE_SESSION" # defaults to "you_should_change_me" when empty (https://github.com/codespace-operator/common/blob/d9cb42990b3d46f731d3458b97679f87f357e16e/auth/pkg/auth/auth.go#L21)
 session_ttl_minutes: 60
 allow_token_param: false # allow ?access_token=... (NOT recommended)
 

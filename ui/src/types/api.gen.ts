@@ -625,7 +625,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/local/login": {
+    "/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -648,7 +648,7 @@ export interface paths {
             /** @description Login credentials */
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["internal_server.LocalLoginRequest"];
+                    "application/json": components["schemas"]["internal_server.PasswordLoginRequest"];
                 };
             };
             responses: {
@@ -983,7 +983,7 @@ export interface components {
         "internal_server.AuthFeatures": {
             /** @example false */
             localLoginEnabled?: boolean;
-            /** @example /auth/local/login */
+            /** @example /auth/login */
             localLoginPath?: string;
             /** @example true */
             ssoEnabled?: boolean;
@@ -1005,13 +1005,6 @@ export interface components {
         "internal_server.ErrorResponse": {
             /** @example Invalid request */
             error?: string;
-        };
-        /** @description Local login credentials */
-        "internal_server.LocalLoginRequest": {
-            /** @example secretpassword */
-            password: string;
-            /** @example alice */
-            username: string;
         };
         /** @description Successful authentication response */
         "internal_server.LoginResponse": {
@@ -1035,6 +1028,13 @@ export interface components {
         "internal_server.NamespacePermissions": {
             list?: boolean;
             watch?: boolean;
+        };
+        /** @description Local login credentials */
+        "internal_server.PasswordLoginRequest": {
+            /** @example secretpassword */
+            password: string;
+            /** @example alice */
+            username: string;
         };
         "internal_server.PermissionCheck": {
             /** @example create */

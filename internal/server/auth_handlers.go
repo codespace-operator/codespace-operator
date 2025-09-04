@@ -5,7 +5,7 @@
 //
 // Handlers include:
 //   - /auth/features: Returns available authentication methods and endpoints.
-//   - /auth/local/login: Authenticates users via username/password.
+//   - /auth/login: Authenticates users via username/password.
 //   - /auth/sso/login: Initiates OIDC SSO login flow.
 //   - /auth/sso/callback: Handles OIDC provider callback and session creation.
 //   - /auth/logout: Logs out user, clearing session and optionally redirecting to OIDC end-session.
@@ -30,12 +30,12 @@ type AuthFeatures struct {
 	SSOEnabled        bool   `json:"ssoEnabled" example:"true"`
 	LocalLoginEnabled bool   `json:"localLoginEnabled" example:"false"`
 	SSOLoginPath      string `json:"ssoLoginPath" example:"/auth/sso/login"`
-	LocalLoginPath    string `json:"localLoginPath" example:"/auth/local/login"`
+	LocalLoginPath    string `json:"localLoginPath" example:"/auth/login"`
 }
 
-// LocalLoginRequest for username/password authentication
+// PasswordLoginRequest for username/password authentication
 // @Description Local login credentials
-type LocalLoginRequest struct {
+type PasswordLoginRequest struct {
 	Username string `json:"username" validate:"required" example:"alice"`
 	Password string `json:"password" validate:"required" example:"secretpassword"`
 }
@@ -68,10 +68,9 @@ func registerAuthHandlers(mux *http.ServeMux, h *handlers) {
 
 	// Public feature probe
 	mux.HandleFunc(h.deps.config.AuthPath+"/features", h.handleAuthFeatures)
-
 	// Local login (if enabled)
 	if h.deps.config.EnableLocalLogin {
-		mux.HandleFunc(h.deps.config.AuthPath+"/local/login", h.handleLocalLogin)
+		mux.HandleFunc(h.deps.config.AuthPath+"/login", h.handlePasswordLogin)
 		// If no OIDC is configured, local logout handlesh.deps.config.AuthPath +  /logout
 		if h.deps.config.OIDCIssuerURL == "" {
 			mux.HandleFunc(h.deps.config.AuthPath+"/logout", h.handleLocalLogout)
@@ -182,20 +181,20 @@ func (h *handlers) handleLocalLogout(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} AuthFeatures
 // @Router /auth/features [get]
 func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
-	cfg := h.deps.config
-	ssoEnabled := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil &&
-		cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" && cfg.OIDCRedirectURL != ""
-	ldapEnabled := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER) != nil
-	localEnabled := cfg.EnableLocalLogin && h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
+    cfg := h.deps.config
+    ssoEnabled := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil &&
+        cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" && cfg.OIDCRedirectURL != ""
+    ldapEnabled := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER) != nil
+    localEnabled := cfg.EnableLocalLogin && h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
 
-	writeJSON(w, map[string]any{
-		"ssoEnabled":            ssoEnabled,
-		"ldapLoginEnabled":      ldapEnabled,
-		"localLoginEnabled":     localEnabled,
-		"bootstrapLoginAllowed": cfg.BootstrapLoginAllowed,
-		"ssoLoginPath":          cfg.AuthPath + "/sso/login",
-		"localLoginPath":        cfg.AuthPath + "/local/login",
-	})
+    writeJSON(w, map[string]any{
+        "ssoEnabled":            ssoEnabled,
+        "ldapLoginEnabled":      ldapEnabled,
+        "localLoginEnabled":     localEnabled,
+        "bootstrapLoginAllowed": cfg.BootstrapLoginAllowed,
+        "ssoLoginPath":          cfg.AuthPath + "/sso/login",
+        "passwordLoginPath":     cfg.AuthPath + "/login",
+    })
 }
 
 // @Summary Local login
@@ -203,42 +202,69 @@ func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 // @Tags authentication
 // @Accept json
 // @Produce json
-// @Param credentials body LocalLoginRequest true "Login credentials"
+// @Param credentials body PasswordLoginRequest true "Login credentials"
 // @Success 200 {object} LoginResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /auth/local/login [post]
-func (h *handlers) handleLocalLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+// @Router /auth/login [post]
+func (h *handlers) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        w.WriteHeader(http.StatusMethodNotAllowed)
+        return
+    }
 
-	// Use GetLocalProvider method instead of casting
-	lp := h.deps.authManager.GetLocalProvider()
-	if lp == nil {
-		http.Error(w, "local authentication not enabled", http.StatusNotFound)
-		return
-	}
+    var body PasswordLoginRequest
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        errJSON(w, err)
+        return
+    }
 
-	var body LocalLoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		errJSON(w, err)
-		return
-	}
+    // Build the try-order. Default: Local then LDAP.
+    tryOrder := []string{}
+    if lp := h.deps.authManager.GetLocalProvider(); lp != nil {
+        tryOrder = append(tryOrder, auth.LOCAL_PROVIDER)
+    }
+    if p := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER); p != nil {
+        tryOrder = append(tryOrder, auth.LDAP_PROVIDER)
+    }
 
-	claims, err := lp.Authenticate(body.Username, body.Password)
-	if err != nil {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
-	}
+    // If neither provider is available, behave like disabled.
+    if len(tryOrder) == 0 {
+        http.Error(w, "password authentication not enabled", http.StatusNotFound)
+        return
+    }
 
-	// Create session token using token manager
-	token, err := h.deps.authManager.IssueSession(w, r, claims)
-	if err != nil {
-		http.Error(w, "failed to create token", http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, LoginResponse{Token: token, User: claims.Username, Roles: claims.Roles})
+    var claims *auth.TokenClaims
+    var err error
+
+    // Try providers in order, stop at first success.
+    for _, prov := range tryOrder {
+        switch prov {
+        case auth.LOCAL_PROVIDER:
+            if lp := h.deps.authManager.GetLocalProvider(); lp != nil {
+                claims, err = lp.Authenticate(body.Username, body.Password) // existing local path
+                if err == nil { goto ISSUE }
+            }
+        case auth.LDAP_PROVIDER:
+            if p := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER); p != nil {
+                if ldap, ok := p.(auth.LDAPAuthProvider); ok {
+                    claims, err = ldap.Authenticate(body.Username, body.Password)
+                    if err == nil { goto ISSUE }
+                }
+            }
+        }
+    }
+
+    // All backends failed → generic error (don’t leak which one failed)
+    http.Error(w, "invalid credentials", http.StatusUnauthorized)
+    return
+
+ISSUE:
+    token, ierr := h.deps.authManager.IssueSession(w, r, claims)
+    if ierr != nil {
+        http.Error(w, "failed to create token", http.StatusInternalServerError)
+        return
+    }
+    writeJSON(w, LoginResponse{Token: token, User: claims.Username, Roles: claims.Roles})
 }
 
 // POST /auth/refresh

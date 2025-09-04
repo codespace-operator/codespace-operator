@@ -1078,14 +1078,14 @@
                 ]
             }
         },
-        "/auth/local/login": {
+        "/auth/login": {
             "post": {
                 "description": "Authenticate using username and password",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/internal_server.LocalLoginRequest"
+                                "$ref": "#/components/schemas/internal_server.PasswordLoginRequest"
                             }
                         }
                     },
@@ -1466,7 +1466,7 @@
                         "type": "boolean"
                     },
                     "localLoginPath": {
-                        "example": "/auth/local/login",
+                        "example": "/auth/login",
                         "type": "string"
                     },
                     "ssoEnabled": {
@@ -1517,24 +1517,6 @@
                         "type": "string"
                     }
                 },
-                "type": "object"
-            },
-            "internal_server.LocalLoginRequest": {
-                "description": "Local login credentials",
-                "properties": {
-                    "password": {
-                        "example": "secretpassword",
-                        "type": "string"
-                    },
-                    "username": {
-                        "example": "alice",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "password",
-                    "username"
-                ],
                 "type": "object"
             },
             "internal_server.LoginResponse": {
@@ -1595,6 +1577,24 @@
                         "type": "boolean"
                     }
                 },
+                "type": "object"
+            },
+            "internal_server.PasswordLoginRequest": {
+                "description": "Local login credentials",
+                "properties": {
+                    "password": {
+                        "example": "secretpassword",
+                        "type": "string"
+                    },
+                    "username": {
+                        "example": "alice",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "password",
+                    "username"
+                ],
                 "type": "object"
             },
             "internal_server.PermissionCheck": {
