@@ -18,7 +18,8 @@ import (
 type ServerConfig struct {
 	ClusterScope bool `mapstructure:"cluster_scope"`
 	// Network
-	AppName string `mapstructure:"app_name"`
+	AppName       string `mapstructure:"app_name"`
+	DeveloperMode bool   `mapstructure:"developer_mode"`
 
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
@@ -101,6 +102,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("read_timeout", 0)
 	v.SetDefault("write_timeout", 0)
 	v.SetDefault("app_name", "codespace-server")
+	v.SetDefault("developer_mode", false)
 
 	v.SetDefault("allow_origin", "")
 

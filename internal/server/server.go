@@ -239,7 +239,6 @@ func setupRBAC(cfg *ServerConfig, logger *slog.Logger) (rbac.RBACInterface, erro
 // setupAuthentication initializes the authentication system with proper interfaces
 func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthManager, error) {
 	authLogger := common.LoggerWithComponent(logger, "auth")
-
 	authConfig := &auth.AuthConfig{
 		JWTSecret:         cfg.JWTSecret,
 		SessionCookieName: cfg.SessionCookieName,
@@ -248,6 +247,12 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 		SameSiteMode:      http.SameSiteStrictMode,
 		AuthPath:          cfg.AuthPath,
 		AuthLogoutPath:    cfg.AuthLogoutPath,
+	}
+	if cfg.DeveloperMode {
+		authLogger.Warn("-------------------------------- WARNING --------------------------------")
+		authLogger.Warn("Developer mode enabled: SameSiteLax mode set to true. Do not use in production!")
+		authLogger.Warn("-------------------------------- ------- --------------------------------")
+		authConfig.SameSiteMode = http.SameSiteLaxMode
 	}
 
 	// Setup OIDC if configured

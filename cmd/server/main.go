@@ -75,7 +75,8 @@ func main() {
 	rootCmd.Flags().Float32("kube-qps", 50.0, "Kubernetes client QPS limit")
 	rootCmd.Flags().Int("kube-burst", 100, "Kubernetes client burst limit")
 	rootCmd.Flags().Bool("cluster-scope", false, "Enable cluster-scoped mode")
-
+	rootCmd.Flags().String("app-name", DEFAULT_APP_NAME, "Override application name")
+	rootCmd.Flags().Bool("developer-mode", false, "Enable developer mode (less secure, for testing only)")
 	// Authentication flags
 	rootCmd.Flags().String("auth-path", "", "Authentication endpoint path")
 	rootCmd.Flags().String("auth-logout-path", "", "Authentication logout endpoint path")
@@ -116,7 +117,6 @@ func main() {
 	// RBAC flags
 	rootCmd.Flags().String("rbac-model-path", "", "Path to Casbin model.conf (overrides default/env)")
 	rootCmd.Flags().String("rbac-policy-path", "", "Path to Casbin policy.csv (overrides default/env)")
-	rootCmd.Flags().String("app-name", DEFAULT_APP_NAME, "Override application name")
 
 	if err := rootCmd.Execute(); err != nil {
 		logger.Error("Command execution failed", "err", err)
@@ -172,6 +172,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	overrideString(&cfg.AllowOrigin, "allow-origin")
 	overrideString(&cfg.LogLevel, "log-level")
 	overrideString(&cfg.AppName, "app-name")
+	overrideBool(&cfg.DeveloperMode, "developer-mode")
 
 	if cmd.Flags().Changed("kube-qps") {
 		cfg.KubeQPS, _ = cmd.Flags().GetFloat32("kube-qps")

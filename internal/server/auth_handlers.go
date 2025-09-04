@@ -185,11 +185,12 @@ func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 	cfg := h.deps.config
 	ssoEnabled := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil &&
 		cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" && cfg.OIDCRedirectURL != ""
-
+	ldapEnabled := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER) != nil
 	localEnabled := cfg.EnableLocalLogin && h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
 
 	writeJSON(w, map[string]any{
 		"ssoEnabled":            ssoEnabled,
+		"ldapLoginEnabled":      ldapEnabled,
 		"localLoginEnabled":     localEnabled,
 		"bootstrapLoginAllowed": cfg.BootstrapLoginAllowed,
 		"ssoLoginPath":          cfg.AuthPath + "/sso/login",

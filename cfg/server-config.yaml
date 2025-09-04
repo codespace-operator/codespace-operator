@@ -32,6 +32,11 @@ session_cookie_name: "" # defaults to "codespace_session" when empty
 session_ttl_minutes: 60
 allow_token_param: false # allow ?access_token=... (NOT recommended)
 
+# authentication
+auth_path: /auth
+auth_logout_path: /auth/logout
+developer_mode: true
+
 # OIDC (leave blank to disable)
 oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
 oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV" # e.g. "https://dev-xxxx.okta.com"
