@@ -130,7 +130,7 @@ make docker-build-server    # API server (embeds UI)
 Install chart (manager + server + UI):
 
 ```bash
-helm upgrade --install codespace-operator oci://ghcr.io/codespace-operator/charts/codespace-operator
+helm upgrade --install codespace-operator oci://ghcr.io/codespace-operator/charts/codespace
 ```
 
 Cleanup:
@@ -145,7 +145,7 @@ Cleanup:
 
 ### Helm values
 
-See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-operator/charts/blob/main/charts/codespace-operator/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
+See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-operator/charts/blob/main/charts/codespace/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
 
 ### Controller environment
 
