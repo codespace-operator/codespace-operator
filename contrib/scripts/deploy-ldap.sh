@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${SETUP_CONFIG:=misc/tests/config.sh}"
+: "${SETUP_CONFIG:=contrib/scripts/config.sh}"
 source "${SETUP_CONFIG}"
 
 need() { command -v "$1" >/dev/null || { echo "Missing '$1' in PATH"; exit 1; }; }
@@ -22,7 +22,7 @@ echo ">>> Install openldap-stack-ha (single replica)..."
 helm upgrade --install openldap helm-openldap/openldap-stack-ha \
   --version 3.0.2 \
   -n "${LDAP_NAMESPACE}" --create-namespace \
-  -f misc/tests/manifests/openldap-values.yaml
+  -f contrib/manifests/openldap-values.yaml
 
 
 echo ">>> Wait for OpenLDAP to be Ready..."

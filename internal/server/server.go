@@ -14,6 +14,7 @@ import (
 	auth "github.com/codespace-operator/common/auth/pkg/auth"
 	"github.com/codespace-operator/common/common/pkg/common"
 	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
+	"github.com/spf13/viper"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,6 +53,7 @@ type serverDeps struct {
 	rbacMw      *rbac.Middleware
 	authManager *auth.AuthManager
 	authMw      *auth.Middleware
+	authCfg     *auth.AuthConfig
 	instanceID  string
 	manager     common.AnchorMeta
 	logger      *slog.Logger
@@ -65,7 +67,7 @@ type ServerVersionInfo struct {
 }
 
 // RunServer starts the server with proper dependency injection
-func RunServer(cfg *ServerConfig, args []string) {
+func RunServer(cfg *ServerConfig, args []string, v *viper.Viper) {
 	// Initialize logging first
 	logConfig := common.LogConfig{
 		Level:      common.LogLevel(cfg.LogLevel),
@@ -137,8 +139,18 @@ func RunServer(cfg *ServerConfig, args []string) {
 		os.Exit(1)
 	}
 
-	// Setup authentication with proper interface
-	authManager, err := setupAuthentication(cfg, logger)
+	authCfg, err := cfg.BuildAuthConfig(v)
+	if err != nil {
+		logger.Error("Authentication config invalid", "error", err)
+		os.Exit(1)
+	}
+
+	if cfg.DeveloperMode {
+		// override SameSite if you want to relax for dev
+		authCfg.SameSiteMode = http.SameSiteLaxMode
+	}
+
+	authManager, err := auth.NewAuthManager(authCfg, common.LoggerWithComponent(logger, "auth"))
 	if err != nil {
 		logger.Error("Authentication setup failed", "error", err)
 		os.Exit(1)
@@ -166,6 +178,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 		rbac:        rbacSystem,
 		rbacMw:      rbacMW,
 		authManager: authManager,
+		authCfg:     authCfg,
 		authMw:      auth.NewMiddleware(authManager, logger),
 		instanceID:  instanceID,
 		manager:     manager,
@@ -234,92 +247,6 @@ func setupRBAC(cfg *ServerConfig, logger *slog.Logger) (rbac.RBACInterface, erro
 		"policyPath", config.PolicyPath)
 
 	return rbacSystem, nil
-}
-
-// setupAuthentication initializes the authentication system with proper interfaces
-func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthManager, error) {
-	authLogger := common.LoggerWithComponent(logger, "auth")
-	authConfig := &auth.AuthConfig{
-		JWTSecret:         cfg.JWTSecret,
-		SessionCookieName: cfg.SessionCookieName,
-		SessionTTL:        cfg.SessionTTL(),
-		AllowTokenParam:   cfg.AllowTokenParam,
-		SameSiteMode:      http.SameSiteStrictMode,
-		AuthPath:          cfg.AuthPath,
-		AuthLogoutPath:    cfg.AuthLogoutPath,
-	}
-	if cfg.DeveloperMode {
-		authLogger.Warn("-------------------------------- WARNING --------------------------------")
-		authLogger.Warn("Developer mode enabled: SameSiteLax mode set to true. Do not use in production!")
-		authLogger.Warn("-------------------------------- ------- --------------------------------")
-		authConfig.SameSiteMode = http.SameSiteLaxMode
-	}
-
-	// Setup OIDC if configured
-	if cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" {
-		authConfig.OIDC = &auth.OIDCConfig{
-			IssuerURL:          cfg.OIDCIssuerURL,
-			ClientID:           cfg.OIDCClientID,
-			ClientSecret:       cfg.OIDCClientSecret,
-			RedirectURL:        cfg.OIDCRedirectURL,
-			Scopes:             cfg.OIDCScopes,
-			InsecureSkipVerify: cfg.OIDCInsecureSkipVerify,
-		}
-	}
-
-	// Setup local auth if configured
-	if cfg.EnableLocalLogin {
-		authConfig.Local = &auth.LocalConfig{
-			Enabled:               true,
-			UsersPath:             cfg.LocalUsersPath,
-			BootstrapLoginAllowed: cfg.BootstrapLoginAllowed,
-			BootstrapUser:         cfg.BootstrapUser,
-			BootstrapPasswd:       cfg.BootstrapPassword,
-		}
-	}
-
-	// Setup LDAP if configured
-	if cfg.LDAPURL != "" && cfg.LDAPEnabled {
-		authConfig.LDAP = &auth.LDAPConfig{
-			Enabled: true,
-			// Connection
-			URL:                cfg.LDAPURL, // e.g. ldaps://ldap.example.com:636 or ldap://host:389
-			StartTLS:           cfg.LDAPStartTLS,
-			InsecureSkipVerify: cfg.LDAPInsecureSkipVerify,
-
-			// Service bind for search (optional). If empty, you can bind as the user directly (via UserDNTemplate).
-			BindDN:       cfg.LDAPBindDN,
-			BindPassword: cfg.LDAPBindPassword,
-
-			// How to locate the user
-			UserBaseDN:      cfg.LDAPUserBaseDN,
-			UserFilter:      cfg.LDAPUserFilter,
-			UserDNTemplate:  cfg.LDAPUserDNTemplate,
-			UsernameAttr:    cfg.LDAPUsernameAttr,
-			EmailAttr:       cfg.LDAPEmailAttr,
-			DisplayNameAttr: cfg.LDAPDisplayNameAttr,
-
-			// How to resolve groups/roles
-			GroupBaseDN:  cfg.LDAPGroupBaseDN,
-			GroupFilter:  cfg.LDAPGroupFilter,
-			GroupAttr:    cfg.LDAPGroupAttr,
-			RoleMapping:  cfg.LDAPRoleMapping,
-			DefaultRoles: cfg.LDAPDefaultRoles,
-
-			// Optional username canonicalization (trim spaces, lower-case, etc.)
-			ToLowerUsername: cfg.LDAPToLowerUsername,
-		}
-	}
-
-	authManager, err := auth.NewAuthManager(authConfig, authLogger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth manager: %w", err)
-	}
-
-	authLogger.Info("Authentication system initialized",
-		"providers", authManager.ListProviders())
-
-	return authManager, nil
 }
 
 // setupHandlers creates the HTTP handler with proper interface integration

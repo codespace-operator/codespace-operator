@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # --- Config & helpers ---
-: "${SETUP_CONFIG:=misc/tests/config.sh}"
-: "${DEPLOY_SCRIPT:=misc/tests/deploy.sh}"
-: "${BUILD_SCRIPT:=misc/tests/build.sh}"
-: "${CREATE_SESSION_SCRIPT:=misc/tests/create-session.sh}"
+: "${SETUP_CONFIG:=contrib/scripts/config.sh}"
+: "${DEPLOY_SCRIPT:=contrib/scripts/deploy.sh}"
+: "${BUILD_SCRIPT:=contrib/scripts/build.sh}"
+: "${CREATE_SESSION_SCRIPT:=contrib/scripts/create-session.sh}"
 
 source "${SETUP_CONFIG}"
 

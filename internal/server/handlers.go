@@ -221,8 +221,8 @@ func (h *handlers) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
 		},
 		"authentication": map[string]interface{}{
 			"providers":       h.deps.authManager.ListProviders(),
-			"sessionTTL":      h.deps.config.SessionTTL(),
-			"allowTokenParam": h.deps.config.AllowTokenParam,
+			"sessionTTL":      h.deps.authCfg.SessionTTL,
+			"allowTokenParam": h.deps.authCfg.AllowTokenParam,
 		},
 		"rbac": map[string]interface{}{
 			"status": "active",
