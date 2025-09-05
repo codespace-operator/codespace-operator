@@ -145,12 +145,7 @@ Cleanup:
 
 ### Helm values
 
-See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-operator/charts/blob/main/charts/codespace/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
-
-### Controller environment
-
-- `SESSION_NAME_PREFIX` - prefix for child object names (default: `cs-`)
-- `FIELD_OWNER` - SSA field manager used for apply patches (default: `codespace-operator`)
+See [`charts/codespace/values.yaml`](https://github.com/codespace-operator/charts/blob/main/charts/codespace/values.yaml) for all options (service accounts, RBAC, network policy, ingress, resources, etc.).
 
 ### Supported IDE profiles (defaults)
 
@@ -161,8 +156,8 @@ See [`charts/codespace-operator/values.yaml`](https://github.com/codespace-opera
 
 ## Architecture
 
-- **Session Controller** (`cmd/session-controller/`, `internal/controller/`) - reconciles `Session` CRs into `Deployment`/`Service`/`Ingress`/PVC.
-- **Server** (`internal/server/`) - small JSON API used by the UI; serves the built UI from `/static`.
+- **Session Controller** (`cmd/main.go`, `internal/controller/`) - reconciles `Session` CRs into `Deployment`/`Service`/`Ingress`/PVC.
+- **Server** (`internal/server/`) - Core API used by the UI; serves the built UI from `/static`.
 - **Web UI** (`ui/`) - PatternFly + React admin console.
 - **CRDs** (`api/`, generated into `config/crd/bases/`).
 
@@ -186,21 +181,6 @@ This repo uses three **independent release lanes** with semantic‑release:
 - CRD scopes: `crd`, `api`
 
 See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for Conventional Commit rules and PR templates.
-
----
-
-## Repo layout
-
-```
-cmd/
-  session-controller/     # operator manager (targets a binary)
-  server/                 # tiny HTTP JSON API + serves the UI (targets a binary)
-ui/                       # React (Vite) admin UI
-internal/                 # controllers & helpers
-api/                      # CRD Go types
-config/                   # kustomize, generated CRDs under config/crd/bases
-misc/tests/               # local setup scripts for kind
-```
 
 ---
 
