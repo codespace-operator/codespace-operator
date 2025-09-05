@@ -24,8 +24,8 @@ github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK3
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/codespace-operator/common/auth v1.3.1 h1:+4hs8O8HxCs5R7XVz7Ew8ITzmBZFL2e0dfyZ9+lD6pc=
-github.com/codespace-operator/common/auth v1.3.1/go.mod h1:E+EJnWQ2i2rnYshTkcMqgRYW4ogwg8OzxuOK5Cxuk+w=
+github.com/codespace-operator/common/auth v1.5.1 h1:WXpqlNdATyy/yol1uu7OlviurUD7Zald+V8Wg/cDYkE=
+github.com/codespace-operator/common/auth v1.5.1/go.mod h1:E+EJnWQ2i2rnYshTkcMqgRYW4ogwg8OzxuOK5Cxuk+w=
 github.com/codespace-operator/common/common v1.0.1 h1:GyNjQfKfkkP49itnnMm9raEM8laKc5Cv94YRUGCOdLw=
 github.com/codespace-operator/common/common v1.0.1/go.mod h1:tm9fQiRm7F0V4bSwhwK9Pe/IkmmQ6Bokh75OlWhu1NA=
 github.com/codespace-operator/common/rbac v1.2.0 h1:zaAIZ7Pgsad/hz/l8Q1Cv7CdfpBmvXtYzCqew/gs1D0=

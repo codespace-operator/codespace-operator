@@ -2,75 +2,93 @@
 cluster_scope: true
 
 # Network
-host: "" # empty = bind all interfaces
+host: ""
 port: 8080
-read_timeout: 0 # (seconds) currently unused in code
-write_timeout: 0 # (seconds) currently unused in code
+read_timeout: 0
+write_timeout: 0
 
 # CORS
-allow_origin: "*" # e.g. "https://example.com"
+allow_origin: "*"
 
 # Kubernetes client throttling
 kube_qps: 50.0
 kube_burst: 100
 
 # Logging
-log_level: debug # one of: debug, info, warn, error
+log_level: debug
 
-# Sessions / auth
-jwt_secret: "change-me" # HS256 key for server-issued session cookie
-
-# Local login (username/password)
-enable_local_login: true
-local_users_path: ./cfg/server-users.yaml
-bootstrap_login_allowed: true
-bootstrap_user: "admin"
-bootstrap_password: "admin"
-
-# Session cookie
-session_cookie_name: "CODESPACE_SESSION" # defaults to "you_should_change_me" when empty (https://github.com/codespace-operator/common/blob/d9cb42990b3d46f731d3458b97679f87f357e16e/auth/pkg/auth/auth.go#L21)
-session_ttl_minutes: 60
-allow_token_param: false # allow ?access_token=... (NOT recommended)
-
-# authentication
-auth_path: /auth
-auth_logout_path: /auth/logout
+# UI / misc
 developer_mode: true
 
-# OIDC (leave blank to disable)
-oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
-oidc_issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV" # e.g. "https://dev-xxxx.okta.com"
-oidc_client_id: "codespace-server"
-oidc_client_secret: "dev-secret"
-oidc_redirect_url: "http://localhost:8080/auth/sso/callback" # e.g. "https://your-host/auth/callback"
-oidc_scopes: ["openid", "profile", "email"] # default used when empty: ["openid","profile","email"]
+# RBAC (Casbin) files
+rbac_model_path: ./cfg/rbac-casbin/model.conf
+rbac_policy_path: ./cfg/rbac-casbin/policy.csv
 
-# RBAC (Casbin) files - if empty, server uses built-in defaults
-rbac_model_path: "./cfg/rbac-casbin/model.conf" # defaults to /etc/codespace-operator/rbac/model.conf
-rbac_policy_path: "./cfg/rbac-casbin/policy.csv" # defaults to /etc/codespace-operator/rbac/policy.csv
+# 👇 NEW: tell the server where the *auth* config lives
+auth:
+  file: ./cfg/auth.yaml
+# or define directly
+# inline:
+# manager:
+#   # paths
+#   auth_path: /auth
+#   auth_logout_path: /auth/logout
 
-# --- LDAP ---
-ldap_enabled: true
-ldap_url: "ldap://127.0.0.1:1389"
-ldap_start_tls: false
-ldap_insecure_skip_verify: true
-ldap_bind_dn: "cn=admin,dc=codespace,dc=test"
-ldap_bind_password: "admin"
+#   # cookies / JWT
+#   jwt_secret: "change-me"
+#   session_cookie_name: "CODESPACE_SESSION"
+#   session_ttl: "60m"            # replaces session_ttl_minutes
+#   same_site: "Lax"              # default is Lax; dev overrides allowed
+#   absolute_session_max: "24h"   # optional; hard cap for refresh chains
 
-ldap_user_base_dn: "ou=people,dc=codespace,dc=test"
-ldap_user_filter: "(|(uid={username})(mail={username}))"
-ldap_username_attr: "uid"
-ldap_email_attr: "mail"
-ldap_display_name_attr: "cn"
-ldap_to_lower_username: true
+#   # query token (NOT recommended)
+#   allow_token_param: false
 
-ldap_group_base_dn: "ou=groups,dc=codespace,dc=test"
-ldap_group_filter: "(member={dn})"
-ldap_group_attr: "cn"
+# providers:
+#   local:
+#     enabled: true
+#     users_path: "./cfg/server-users.yaml"
+#     bootstrap:
+#       allowed: true
+#       user: "admin"
+#       password: "admin"
 
-ldap_role_mapping:
-  "codespace-operator:admin":  ["admin"]
-  "codespace-operator:editor": ["editor"]
-  "codespace-operator:viewer": ["viewer"]
+#   oidc:
+#     enabled: true
+#     issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV"
+#     client_id: "codespace-server"
+#     client_secret: "dev-secret"
+#     redirect_url: "http://localhost:8080/auth/sso/callback"
+#     scopes: ["openid","profile","email"]
+#     insecure_skip_verify: true   # dev only; do NOT use in prod
 
-ldap_default_roles: ["viewer"]
+#   ldap:
+#     enabled: true
+#     url: "ldap://127.0.0.1:1389"
+#     start_tls: false
+#     insecure_skip_verify: true
+#     bind_dn: "cn=admin,dc=codespace,dc=test"
+#     bind_password: "admin"
+
+#     user:
+#       base_dn: "ou=people,dc=codespace,dc=test"
+#       filter: "(|(uid={username})(mail={username}))"
+#       dn_template: ""              # leave empty since you use search+bind
+#       attrs:
+#         username: "uid"
+#         email: "mail"
+#         display_name: "cn"
+#       to_lower_username: true
+
+#     group:
+#       base_dn: "ou=groups,dc=codespace,dc=test"
+#       # IMPORTANT: use {userDN} (the package replaces {userDN}), NOT {dn}
+#       filter: "(member={userDN})"
+#       attr: "cn"
+
+#     roles:
+#       mapping:
+#         "codespace-operator:admin":  ["admin"]
+#         "codespace-operator:editor": ["editor"]
+#         "codespace-operator:viewer": ["viewer"]
+#       default: ["viewer"]

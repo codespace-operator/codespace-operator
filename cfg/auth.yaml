@@ -1,0 +1,65 @@
+# cfg/auth.yaml  (AuthFileConfig)
+
+manager:
+  # paths
+  auth_path: /auth
+  auth_logout_path: /auth/logout
+
+  # cookies / JWT
+  jwt_secret: "change-me"
+  session_cookie_name: "CODESPACE_SESSION"
+  session_ttl: "60m" # replaces session_ttl_minutes
+  same_site: "Lax" # default is Lax; dev overrides allowed
+  absolute_session_max: "24h" # optional; hard cap for refresh chains
+
+  # query token (NOT recommended)
+  allow_token_param: false
+
+providers:
+  local:
+    enabled: true
+    users_path: "./cfg/server-users.yaml"
+    bootstrap:
+      allowed: true
+      user: "admin"
+      password: "admin"
+
+  oidc:
+    enabled: true
+    issuer_url: "https://keycloak.codespace.test/realms/Codespace-DEV"
+    client_id: "codespace-server"
+    client_secret: "dev-secret"
+    redirect_url: "http://localhost:8080/auth/sso/callback"
+    scopes: ["openid", "profile", "email"]
+    insecure_skip_verify: true # dev only; do NOT use in prod
+
+  ldap:
+    enabled: true
+    url: "ldap://127.0.0.1:1389"
+    start_tls: false
+    insecure_skip_verify: true
+    bind_dn: "cn=admin,dc=codespace,dc=test"
+    bind_password: "admin"
+
+    user:
+      base_dn: "ou=people,dc=codespace,dc=test"
+      filter: "(|(uid={username})(mail={username}))"
+      dn_template: "" # leave empty since you use search+bind
+      attrs:
+        username: "uid"
+        email: "mail"
+        display_name: "cn"
+      to_lower_username: true
+
+    group:
+      base_dn: "ou=groups,dc=codespace,dc=test"
+      # IMPORTANT: use {userDN} (the package replaces {userDN}), NOT {dn}
+      filter: "(member={userDN})"
+      attr: "cn"
+
+    roles:
+      mapping:
+        "codespace-operator:admin": ["admin"]
+        "codespace-operator:editor": ["editor"]
+        "codespace-operator:viewer": ["viewer"]
+      default: ["viewer"]
