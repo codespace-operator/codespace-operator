@@ -9,7 +9,7 @@ manager:
   jwt_secret: "change-me"
   session_cookie_name: "CODESPACE_SESSION"
   session_ttl: "60m" # replaces session_ttl_minutes
-  same_site: "Lax" # default is Lax; dev overrides allowed
+  same_site: "lax" # default is Lax; dev overrides allowed
   absolute_session_max: "24h" # optional; hard cap for refresh chains
 
   # query token (NOT recommended)
