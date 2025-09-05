@@ -3,7 +3,7 @@ module github.com/codespace-operator/codespace-operator
 go 1.25.0
 
 require (
-	github.com/codespace-operator/common/auth v1.5.1
+	github.com/codespace-operator/common/auth v1.5.3
 	github.com/codespace-operator/common/common v1.0.1
 	github.com/codespace-operator/common/rbac v1.2.0
 	github.com/onsi/ginkgo/v2 v2.22.0
