@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/codespace-operator/codespace-operator/compare/operator-1.0.2...operator-1.1.0) (2025-09-05)
+
+
+### Features
+
+* **server:** refactored package, LDAP integration ([#54](https://github.com/codespace-operator/codespace-operator/issues/54)) ([9181ab4](https://github.com/codespace-operator/codespace-operator/commit/9181ab49011bf3e08f73b2d28755dc74a7784611))
+
 ## [1.0.2](https://github.com/codespace-operator/codespace-operator/compare/operator-1.0.1...operator-1.0.2) (2025-09-02)
 
 
