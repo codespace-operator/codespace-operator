@@ -110,6 +110,28 @@ fi
 
 
 
+# ----- Deploy LDAP -----
+echo ">>> Deploying Keycloak (codecentric/keycloakx)..."
+helm repo add codecentric https://codecentric.github.io/helm-charts >/dev/null
+helm repo update >/dev/null
+
+rendered_vals="$(mktemp)"
+sed -e "s#__HOST_DOMAIN__#${HOST_DOMAIN}#g" \
+	-e "s#__HOSTNAME_URL__#${HOSTNAME_URL}#g" \
+	"${KEYCLOAK_VALUES_TMPL}" >"${rendered_vals}"
+
+helm upgrade --install keycloak codecentric/keycloakx \
+	--namespace "${NAMESPACE_KEYCLOAK}" --create-namespace \
+	-f "${rendered_vals}"
+
+echo ">>> Waiting for Keycloak to be Ready..."
+# Prefer Deployment availability; fallback to any pod readiness for this release
+if ! kubectl -n "${NAMESPACE_KEYCLOAK}" wait --for=condition=available --timeout=300s deploy -l "app.kubernetes.io/instance=keycloak"; then
+	kubectl -n "${NAMESPACE_KEYCLOAK}" wait --for=condition=ready --timeout=300s pod -l "app.kubernetes.io/instance=keycloak"
+fi
+
+
+
 ./${BUILD_SCRIPT}
 
 

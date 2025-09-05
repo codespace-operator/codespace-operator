@@ -25,6 +25,16 @@ OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-codespace-server}"
 OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-dev-secret}"
 OIDC_SCOPES="${OIDC_SCOPES:-openid,profile,email}"
 
+# ----- LDAP (dev) -----
+LDAP_NAMESPACE="${LDAP_NAMESPACE:-ldap}"
+LDAP_BIND_DN="${LDAP_BIND_DN:-cn=admin,dc=codespace,dc=test}"
+LDAP_BIND_PASSWORD="${LDAP_BIND_PASSWORD:-admin}"
+LDAP_BASE_DN="${LDAP_BASE_DN:-dc=codespace,dc=test}"
+LDAP_USER_BASE_DN="${LDAP_USER_BASE_DN:-ou=people,dc=codespace,dc=test}"
+LDAP_GROUP_BASE_DN="${LDAP_GROUP_BASE_DN:-ou=groups,dc=codespace,dc=test}"
+LDAP_SERVICE_HOST="openldap.${LDAP_NAMESPACE}.svc.cluster.local"
+LDAP_URL="ldap://${LDAP_SERVICE_HOST}:389"
+
 # ----- Determine scheme & hosts -----
 SCHEME="http"
 CONSOLE_HOST="console.${HOST_DOMAIN}"

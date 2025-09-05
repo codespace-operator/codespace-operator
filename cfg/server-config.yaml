@@ -48,3 +48,31 @@ oidc_scopes: ["openid", "profile", "email"] # default used when empty: ["openid"
 # RBAC (Casbin) files - if empty, server uses built-in defaults
 rbac_model_path: "./cfg/rbac-casbin/model.conf" # defaults to /etc/codespace-operator/rbac/model.conf
 rbac_policy_path: "./cfg/rbac-casbin/policy.csv" # defaults to /etc/codespace-operator/rbac/policy.csv
+
+# --- LDAP ---
+ldap_url: "ldap://openldap.ldap.svc.cluster.local:389"
+ldap_start_tls: false               # dev only; keep traffic inside cluster
+ldap_insecure_skip_verify: true     # dev only
+ldap_bind_dn: "cn=admin,dc=codespace,dc=test"
+ldap_bind_password: "admin"
+
+# Resolve users by uid or email under ou=people
+ldap_user_base_dn: "ou=people,dc=codespace,dc=test"
+ldap_user_filter: "(|(uid={username})(mail={username}))"
+ldap_username_attr: "uid"
+ldap_email_attr: "mail"
+ldap_display_name_attr: "cn"
+ldap_to_lower_username: true
+
+# Groups under ou=groups; match member = user DN
+ldap_group_base_dn: "ou=groups,dc=codespace,dc=test"
+ldap_group_filter: "(member={dn})"
+ldap_group_attr: "cn"
+
+# Map LDAP group CNs to app roles
+ldap_role_mapping:
+  "codespace-operator:admin":  ["admin"]
+  "codespace-operator:editor": ["editor"]
+  "codespace-operator:viewer": ["viewer"]
+
+ldap_default_roles: ["viewer"]    # optional fallback

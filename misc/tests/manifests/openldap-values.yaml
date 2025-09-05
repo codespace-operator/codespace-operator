@@ -1,0 +1,32 @@
+# Bitnami/openldap – single pod for dev (no TLS; in-cluster only)
+image:
+  repository: bitnami/openldap
+  tag: "2.6.7"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+auth:
+  rootDN: "cn=admin,dc=codespace,dc=test"
+  rootPassword: "admin"       # overridden via --set in the script
+  configPassword: "admin"
+
+customLDIFs:
+  enabled: true
+  existingConfigmap: "openldap-bootstrap"
+
+persistence:
+  enabled: false
+
+service:
+  type: ClusterIP
+  ports:
+    ldap: 389
+    ldaps: 636
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
