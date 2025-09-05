@@ -184,18 +184,6 @@ docker-build-server:
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
 
-.PHONY: build-server
-build-server:
-	cd ui && npm run build
-	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
-	cp -r ./ui/dist/* internal/server/static/
-	touch ./internal/server/static/.gitkeep
-	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
-
-.PHONY: build-server-docs
-build-server-docs:
-	$(MAKE) build-server GO_BUILD_TAGS=docs
-
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
@@ -308,7 +296,6 @@ api: api-types
 clean-api:
 	rm -f $(OAPI_JSON) $(TS_TYPES) gen/api/swagger.json $(SWAGGER_YAML)
 
-# Fix build-server to honor tags (so you can ship docs only when desired)
 .PHONY: build-server
 build-server: api  #! Enforces ./ui/src/types/api.gen.ts regeneration during development
 	cd ui && npm run build
