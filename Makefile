@@ -202,13 +202,19 @@ build-server-docs:
 # - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 # - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
+CACHE_DIR ?= .buildx-cache
+CACHE_FROM ?= \
+  --cache-from=type=local,src=$(CACHE_DIR) \
+  --cache-from=type=registry,ref=$(IMG_LATEST)
+
+CACHE_TO ?= \
+  --cache-to=type=local,dest=$(CACHE_DIR),mode=max \
+  --cache-to=type=inline
+
 .PHONY: docker-builder
 docker-builder:
 	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder --use
 	- $(CONTAINER_TOOL) run --privileged --rm tonistiigi/binfmt --install all
-
-CACHE_FLAGS ?= --cache-to=type=registry,ref=ghcr.io/codespace-operator/buildcache:operator,mode=max \
-               --cache-from=type=registry,ref=ghcr.io/codespace-operator/buildcache:operator
 
 PLATFORMS ?= linux/amd64,linux/arm64
 IMG       ?= ghcr.io/codespace-operator/codespace-operator:dev
@@ -222,6 +228,7 @@ docker-buildx: docker-builder
 	  --push \
 	  --provenance=true \
 	  --sbom=true \
+	  --build-arg BUILDKIT_INLINE_CACHE=1 \
 	  $(CACHE_FLAGS) \
 	  -t $(IMG) -t $(IMG_LATEST) \
 	  -f Dockerfile .
@@ -237,6 +244,7 @@ docker-buildx-server: docker-builder
 	  --push \
 	  --provenance=true \
 	  --sbom=true \
+	  --build-arg BUILDKIT_INLINE_CACHE=1 \
 	  $(CACHE_FLAGS) \
 	  -t $(SERVER_IMG) -t $(SERVER_IMG_LATEST) \
 	  -f ui/Dockerfile .

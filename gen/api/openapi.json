@@ -1078,14 +1078,14 @@
                 ]
             }
         },
-        "/auth/local/login": {
+        "/auth/login": {
             "post": {
                 "description": "Authenticate using username and password",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/internal_server.LocalLoginRequest"
+                                "$ref": "#/components/schemas/internal_server.PasswordLoginRequest"
                             }
                         }
                     },
@@ -1142,6 +1142,30 @@
                     }
                 },
                 "summary": "Logout",
+                "tags": [
+                    "authentication"
+                ]
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refresh session token if valid",
+                "responses": {
+                    "204": {
+                        "description": "No Content on success"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_server.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Refresh session",
                 "tags": [
                     "authentication"
                 ]
@@ -1278,6 +1302,23 @@
             }
         },
         "schemas": {
+            "common.AnchorMeta": {
+                "properties": {
+                    "name": {
+                        "description": "release/app/deployment name (sanitized when used as label)",
+                        "type": "string"
+                    },
+                    "namespace": {
+                        "description": "namespace where the manager runs",
+                        "type": "string"
+                    },
+                    "type": {
+                        "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
                 "properties": {
                     "mode": {
@@ -1417,23 +1458,6 @@
                 },
                 "type": "object"
             },
-            "github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta": {
-                "properties": {
-                    "name": {
-                        "description": "release/app/deployment name (sanitized when used as label)",
-                        "type": "string"
-                    },
-                    "namespace": {
-                        "description": "namespace where the manager runs",
-                        "type": "string"
-                    },
-                    "type": {
-                        "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
             "internal_server.AuthFeatures": {
                 "description": "Available authentication features and endpoints",
                 "properties": {
@@ -1442,7 +1466,7 @@
                         "type": "boolean"
                     },
                     "localLoginPath": {
-                        "example": "/auth/local/login",
+                        "example": "/auth/login",
                         "type": "string"
                     },
                     "ssoEnabled": {
@@ -1493,24 +1517,6 @@
                         "type": "string"
                     }
                 },
-                "type": "object"
-            },
-            "internal_server.LocalLoginRequest": {
-                "description": "Local login credentials",
-                "properties": {
-                    "password": {
-                        "example": "secretpassword",
-                        "type": "string"
-                    },
-                    "username": {
-                        "example": "alice",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "password",
-                    "username"
-                ],
                 "type": "object"
             },
             "internal_server.LoginResponse": {
@@ -1573,6 +1579,24 @@
                 },
                 "type": "object"
             },
+            "internal_server.PasswordLoginRequest": {
+                "description": "Local login credentials",
+                "properties": {
+                    "password": {
+                        "example": "secretpassword",
+                        "type": "string"
+                    },
+                    "username": {
+                        "example": "alice",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "password",
+                    "username"
+                ],
+                "type": "object"
+            },
             "internal_server.PermissionCheck": {
                 "properties": {
                     "action": {
@@ -1606,7 +1630,7 @@
                         "type": "string"
                     },
                     "manager": {
-                        "$ref": "#/components/schemas/github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta"
+                        "$ref": "#/components/schemas/common.AnchorMeta"
                     },
                     "namespaces": {
                         "$ref": "#/components/schemas/internal_server.ServerNamespaceInfo"

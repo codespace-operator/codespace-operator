@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"sort"
 
-	"github.com/codespace-operator/codespace-operator/internal/auth"
-	"github.com/codespace-operator/codespace-operator/internal/common"
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
 )
 
 // ClusterInfo contains cluster-level permission information
@@ -523,17 +523,23 @@ func (h *handlers) handleUserPermissions(w http.ResponseWriter, r *http.Request)
 	// If no namespaces specified, discover user's allowed namespaces
 	if len(namespaces) == 0 {
 		ctx := r.Context()
-		discoveredNamespaces, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
+		userAllowedNamespaces, err := getAllowedNamespacesForUser(ctx, h.deps, cl.Sub, cl.Roles)
+		if err != nil {
+			logger.Warn("Failed to fetch namespaces", "err", err)
+			errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
+			return
+		}
 		if err != nil {
 			logger.Warn("Failed to discover namespaces for user permissions", "user", cl.Sub, "err", err)
-			namespaces = []string{"default", "*"} // fallback
+			errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
+			return
 		} else {
-			namespaces = append(discoveredNamespaces, "*") // always include cluster-wide
+			namespaces = append(userAllowedNamespaces, "*") // always include cluster-wide
 		}
 	}
 
 	// Get comprehensive user permissions
-	permissions, err := h.deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, namespaces, actions)
+	permissions, err := h.deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, "session", namespaces, actions)
 	if err != nil {
 		logger.Error("Failed to get user permissions", "err", err, "user", cl.Sub)
 		errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))

@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/codespace-operator/common/common/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 const cmPrefixName = "codespace-server-id"

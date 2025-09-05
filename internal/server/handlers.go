@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/auth"
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 // handlers contains all HTTP handlers with their dependencies

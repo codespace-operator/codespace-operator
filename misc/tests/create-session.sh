@@ -20,7 +20,7 @@ if [[ ${APPLY_DEMO} == "true" ]]; then
 	# Login and get session token
   # In deploy.sh, replace the login section with:
   echo "Logging in with bootstrap credentials..."
-  login_response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST "http://console.${HOST_DOMAIN}/auth/local/login"  -H "Content-Type: application/json" -d '{"username":"admin","password":"admin"}')
+  login_response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST "http://console.${HOST_DOMAIN}/auth/login"  -H "Content-Type: application/json" -d '{"username":"admin","password":"admin"}')
 
   http_status=$(echo "$login_response" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
   response_body=$(echo "$login_response" | sed 's/HTTP_STATUS:[0-9]*$//')

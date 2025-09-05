@@ -934,7 +934,7 @@
                 }
             }
         },
-        "/auth/local/login": {
+        "/auth/login": {
             "post": {
                 "description": "Authenticate using username and password",
                 "consumes": [
@@ -954,7 +954,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_server.LocalLoginRequest"
+                            "$ref": "#/definitions/internal_server.PasswordLoginRequest"
                         }
                     }
                 ],
@@ -993,6 +993,32 @@
                     },
                     "302": {
                         "description": "Redirect to provider end-session if available"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refresh session token if valid",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "authentication"
+                ],
+                "summary": "Refresh session",
+                "responses": {
+                    "204": {
+                        "description": "No Content on success"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_server.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -1079,6 +1105,23 @@
         }
     },
     "definitions": {
+        "common.AnchorMeta": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "release/app/deployment name (sanitized when used as label)",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "namespace where the manager runs",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
             "type": "object",
             "properties": {
@@ -1218,23 +1261,6 @@
                 }
             }
         },
-        "github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "description": "release/app/deployment name (sanitized when used as label)",
-                    "type": "string"
-                },
-                "namespace": {
-                    "description": "namespace where the manager runs",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved",
-                    "type": "string"
-                }
-            }
-        },
         "internal_server.AuthFeatures": {
             "description": "Available authentication features and endpoints",
             "type": "object",
@@ -1245,7 +1271,7 @@
                 },
                 "localLoginPath": {
                     "type": "string",
-                    "example": "/auth/local/login"
+                    "example": "/auth/login"
                 },
                 "ssoEnabled": {
                     "type": "boolean",
@@ -1293,24 +1319,6 @@
                 "error": {
                     "type": "string",
                     "example": "Invalid request"
-                }
-            }
-        },
-        "internal_server.LocalLoginRequest": {
-            "description": "Local login credentials",
-            "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
-            "properties": {
-                "password": {
-                    "type": "string",
-                    "example": "secretpassword"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "alice"
                 }
             }
         },
@@ -1374,6 +1382,24 @@
                 }
             }
         },
+        "internal_server.PasswordLoginRequest": {
+            "description": "Local login credentials",
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "secretpassword"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
         "internal_server.PermissionCheck": {
             "type": "object",
             "properties": {
@@ -1408,7 +1434,7 @@
                     "type": "string"
                 },
                 "manager": {
-                    "$ref": "#/definitions/github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta"
+                    "$ref": "#/definitions/common.AnchorMeta"
                 },
                 "namespaces": {
                     "$ref": "#/definitions/internal_server.ServerNamespaceInfo"

@@ -22,6 +22,8 @@ helm upgrade --install codespace ${HELM_CHART} \
 	--set server.ingress.enabled=true \
 	--set server.ingress.hosts[0].host="${CONSOLE_HOST}" \
 	--set server.ingress.hosts[0].path="/" \
+	--set server.auth.ldap.enabled=true \
+	--set server.auth.ldap.bindPassword='admin' \
 	--set server.auth.enableLocalLogin=true
 	# --set server.oidc.scopes="{openid,profile,email}"
 	# --set server.oidc.insecureSkipVerify=true \

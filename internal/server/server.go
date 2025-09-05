@@ -11,6 +11,9 @@ import (
 	"path"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
+	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,9 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/auth"
-	"github.com/codespace-operator/codespace-operator/internal/common"
-	"github.com/codespace-operator/codespace-operator/internal/rbac"
 )
 
 // available for all
@@ -125,7 +125,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 	}
 
 	// Test Kubernetes connectivity
-	if err := common.TestKubernetesConnection(k8sClient); err != nil {
+	if err := testKubernetesConnection(k8sClient); err != nil {
 		logger.Error("Kubernetes connection test failed", "error", err)
 		os.Exit(1)
 	}
@@ -156,7 +156,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 			"name", manager.Name,
 			"namespace", manager.Namespace)
 	}
-
+	rbacMW := rbac.NewMiddleware(rbacSystem, ExtractFromAuth, logger)
 	// Create server dependencies with proper interfaces
 	deps := &serverDeps{
 		client:      k8sClient,
@@ -164,7 +164,7 @@ func RunServer(cfg *ServerConfig, args []string) {
 		scheme:      scheme,
 		config:      cfg,
 		rbac:        rbacSystem,
-		rbacMw:      rbac.NewMiddleware(rbacSystem, logger),
+		rbacMw:      rbacMW,
 		authManager: authManager,
 		authMw:      auth.NewMiddleware(authManager, logger),
 		instanceID:  instanceID,
@@ -239,12 +239,20 @@ func setupRBAC(cfg *ServerConfig, logger *slog.Logger) (rbac.RBACInterface, erro
 // setupAuthentication initializes the authentication system with proper interfaces
 func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthManager, error) {
 	authLogger := common.LoggerWithComponent(logger, "auth")
-
 	authConfig := &auth.AuthConfig{
 		JWTSecret:         cfg.JWTSecret,
 		SessionCookieName: cfg.SessionCookieName,
 		SessionTTL:        cfg.SessionTTL(),
 		AllowTokenParam:   cfg.AllowTokenParam,
+		SameSiteMode:      http.SameSiteStrictMode,
+		AuthPath:          cfg.AuthPath,
+		AuthLogoutPath:    cfg.AuthLogoutPath,
+	}
+	if cfg.DeveloperMode {
+		authLogger.Warn("-------------------------------- WARNING --------------------------------")
+		authLogger.Warn("Developer mode enabled: SameSiteLax mode set to true. Do not use in production!")
+		authLogger.Warn("-------------------------------- ------- --------------------------------")
+		authConfig.SameSiteMode = http.SameSiteLaxMode
 	}
 
 	// Setup OIDC if configured
@@ -267,6 +275,39 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 			BootstrapLoginAllowed: cfg.BootstrapLoginAllowed,
 			BootstrapUser:         cfg.BootstrapUser,
 			BootstrapPasswd:       cfg.BootstrapPassword,
+		}
+	}
+
+	// Setup LDAP if configured
+	if cfg.LDAPURL != "" && cfg.LDAPEnabled {
+		authConfig.LDAP = &auth.LDAPConfig{
+			Enabled: true,
+			// Connection
+			URL:                cfg.LDAPURL, // e.g. ldaps://ldap.example.com:636 or ldap://host:389
+			StartTLS:           cfg.LDAPStartTLS,
+			InsecureSkipVerify: cfg.LDAPInsecureSkipVerify,
+
+			// Service bind for search (optional). If empty, you can bind as the user directly (via UserDNTemplate).
+			BindDN:       cfg.LDAPBindDN,
+			BindPassword: cfg.LDAPBindPassword,
+
+			// How to locate the user
+			UserBaseDN:      cfg.LDAPUserBaseDN,
+			UserFilter:      cfg.LDAPUserFilter,
+			UserDNTemplate:  cfg.LDAPUserDNTemplate,
+			UsernameAttr:    cfg.LDAPUsernameAttr,
+			EmailAttr:       cfg.LDAPEmailAttr,
+			DisplayNameAttr: cfg.LDAPDisplayNameAttr,
+
+			// How to resolve groups/roles
+			GroupBaseDN:  cfg.LDAPGroupBaseDN,
+			GroupFilter:  cfg.LDAPGroupFilter,
+			GroupAttr:    cfg.LDAPGroupAttr,
+			RoleMapping:  cfg.LDAPRoleMapping,
+			DefaultRoles: cfg.LDAPDefaultRoles,
+
+			// Optional username canonicalization (trim spaces, lower-case, etc.)
+			ToLowerUsername: cfg.LDAPToLowerUsername,
 		}
 	}
 

@@ -28,9 +28,14 @@ bootstrap_user: "admin"
 bootstrap_password: "admin"
 
 # Session cookie
-session_cookie_name: "" # defaults to "codespace_session" when empty
+session_cookie_name: "CODESPACE_SESSION" # defaults to "you_should_change_me" when empty (https://github.com/codespace-operator/common/blob/d9cb42990b3d46f731d3458b97679f87f357e16e/auth/pkg/auth/auth.go#L21)
 session_ttl_minutes: 60
 allow_token_param: false # allow ?access_token=... (NOT recommended)
+
+# authentication
+auth_path: /auth
+auth_logout_path: /auth/logout
+developer_mode: true
 
 # OIDC (leave blank to disable)
 oidc_insecure_skip_verify: true # skip TLS verification when connecting to OIDC server (dev only; do not use in production)
@@ -43,3 +48,29 @@ oidc_scopes: ["openid", "profile", "email"] # default used when empty: ["openid"
 # RBAC (Casbin) files - if empty, server uses built-in defaults
 rbac_model_path: "./cfg/rbac-casbin/model.conf" # defaults to /etc/codespace-operator/rbac/model.conf
 rbac_policy_path: "./cfg/rbac-casbin/policy.csv" # defaults to /etc/codespace-operator/rbac/policy.csv
+
+# --- LDAP ---
+ldap_enabled: true
+ldap_url: "ldap://127.0.0.1:1389"
+ldap_start_tls: false
+ldap_insecure_skip_verify: true
+ldap_bind_dn: "cn=admin,dc=codespace,dc=test"
+ldap_bind_password: "admin"
+
+ldap_user_base_dn: "ou=people,dc=codespace,dc=test"
+ldap_user_filter: "(|(uid={username})(mail={username}))"
+ldap_username_attr: "uid"
+ldap_email_attr: "mail"
+ldap_display_name_attr: "cn"
+ldap_to_lower_username: true
+
+ldap_group_base_dn: "ou=groups,dc=codespace,dc=test"
+ldap_group_filter: "(member={dn})"
+ldap_group_attr: "cn"
+
+ldap_role_mapping:
+  "codespace-operator:admin":  ["admin"]
+  "codespace-operator:editor": ["editor"]
+  "codespace-operator:viewer": ["viewer"]
+
+ldap_default_roles: ["viewer"]

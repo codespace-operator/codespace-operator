@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codespace-operator/common/common/pkg/common"
 	"github.com/spf13/viper"
-
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 // -----------------------------
@@ -19,7 +18,8 @@ import (
 type ServerConfig struct {
 	ClusterScope bool `mapstructure:"cluster_scope"`
 	// Network
-	AppName string `mapstructure:"app_name"`
+	AppName       string `mapstructure:"app_name"`
+	DeveloperMode bool   `mapstructure:"developer_mode"`
 
 	Port         int    `mapstructure:"port"`
 	Host         string `mapstructure:"host"`
@@ -50,6 +50,10 @@ type ServerConfig struct {
 	SessionTTLMinutes int    `mapstructure:"session_ttl_minutes"`
 	AllowTokenParam   bool   `mapstructure:"allow_token_param"`
 
+	// Auth Paths
+	AuthPath       string `mapstructure:"auth_path"`
+	AuthLogoutPath string `mapstructure:"auth_logout_path"`
+
 	// OIDC
 	OIDCInsecureSkipVerify bool     `mapstructure:"oidc_insecure_skip_verify"`
 	OIDCIssuerURL          string   `mapstructure:"oidc_issuer_url"`
@@ -57,6 +61,26 @@ type ServerConfig struct {
 	OIDCClientSecret       string   `mapstructure:"oidc_client_secret"`
 	OIDCRedirectURL        string   `mapstructure:"oidc_redirect_url"`
 	OIDCScopes             []string `mapstructure:"oidc_scopes"`
+
+	// LDAP
+	LDAPEnabled            bool                `mapstructure:"ldap_enabled"`
+	LDAPURL                string              `mapstructure:"ldap_url"`
+	LDAPStartTLS           bool                `mapstructure:"ldap_start_tls"`
+	LDAPInsecureSkipVerify bool                `mapstructure:"ldap_insecure_skip_verify"`
+	LDAPBindDN             string              `mapstructure:"ldap_bind_dn"`
+	LDAPBindPassword       string              `mapstructure:"ldap_bind_password"`
+	LDAPUserDNTemplate     string              `mapstructure:"ldap_user_dn_template"`
+	LDAPUserBaseDN         string              `mapstructure:"ldap_user_base_dn"`
+	LDAPUserFilter         string              `mapstructure:"ldap_user_filter"`
+	LDAPUsernameAttr       string              `mapstructure:"ldap_username_attr"`
+	LDAPEmailAttr          string              `mapstructure:"ldap_email_attr"`
+	LDAPDisplayNameAttr    string              `mapstructure:"ldap_display_name_attr"`
+	LDAPGroupBaseDN        string              `mapstructure:"ldap_group_base_dn"`
+	LDAPGroupFilter        string              `mapstructure:"ldap_group_filter"`
+	LDAPGroupAttr          string              `mapstructure:"ldap_group_attr"`
+	LDAPRoleMapping        map[string][]string `mapstructure:"ldap_role_mapping"`
+	LDAPDefaultRoles       []string            `mapstructure:"ldap_default_roles"`
+	LDAPToLowerUsername    bool                `mapstructure:"ldap_to_lower_username"`
 
 	// RBAC (Casbin) files
 	RBACModelPath  string `mapstructure:"rbac_model_path"`
@@ -79,6 +103,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	v.SetDefault("read_timeout", 0)
 	v.SetDefault("write_timeout", 0)
 	v.SetDefault("app_name", "codespace-server")
+	v.SetDefault("developer_mode", false)
 
 	v.SetDefault("allow_origin", "")
 

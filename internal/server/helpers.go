@@ -6,19 +6,24 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	"github.com/codespace-operator/common/common/pkg/common"
+	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 func writeJSON(w http.ResponseWriter, v any) {
@@ -220,6 +225,21 @@ func discoverNamespacesWithSessions(ctx context.Context, deps *serverDeps) ([]st
 	return sessionNamespaces, nil
 }
 
+// testKubernetesConnection verifies that we can connect to the Kubernetes API
+func testKubernetesConnection(c client.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var sessionList codespacev1.SessionList
+	// It would make more sense to test to its own namespace
+	ns, _ := common.ResolveAnchorNamespace()
+	if err := c.List(ctx, &sessionList, client.InNamespace(ns), client.Limit(1)); err != nil {
+		return fmt.Errorf("failed to connect to Kubernetes API: %w", err)
+	}
+	log.Printf("✅ Successfully connected to Kubernetes API (found %d sessions in %s namespace)", len(sessionList.Items), ns)
+	return nil
+}
+
 // getAllowedNamespacesForUser determines which namespaces a user can access
 // by checking their RBAC permissions against known namespaces
 func getAllowedNamespacesForUser(ctx context.Context, deps *serverDeps, subject string, roles []string) ([]string, error) {
@@ -239,7 +259,7 @@ func getAllowedNamespacesForUser(ctx context.Context, deps *serverDeps, subject 
 
 	// Check each namespace individually
 	for _, ns := range allNamespaces {
-		if canAccess, _ := deps.rbac.CanAccessNamespace(subject, roles, ns); canAccess {
+		if canAccess, _ := deps.rbac.Enforce(subject, roles, "session", "list", ns); canAccess {
 			allowedNamespaces = append(allowedNamespaces, ns)
 		}
 	}
@@ -300,4 +320,38 @@ func clientIP(r *http.Request) string {
 		return host
 	}
 	return r.RemoteAddr
+}
+
+// ParseLDAPRoleMapping converts a map[string]string (as returned by Cobra's
+// GetStringToString) into map[string][]string for LDAP role mapping.
+// Each value can contain a comma-separated list of roles.
+func ParseLDAPRoleMapping(raw map[string]string) map[string][]string {
+	out := make(map[string][]string, len(raw))
+	for group, csv := range raw {
+		parts := strings.Split(csv, ",")
+		roles := make([]string, 0, len(parts))
+		seen := map[string]struct{}{}
+		for _, p := range parts {
+			r := strings.TrimSpace(p)
+			if r == "" {
+				continue
+			}
+			if _, dup := seen[r]; dup {
+				continue
+			}
+			seen[r] = struct{}{}
+			roles = append(roles, r)
+		}
+		if len(roles) > 0 {
+			out[group] = roles
+		}
+	}
+	return out
+}
+func ExtractFromAuth(r *http.Request) (*rbac.Principal, error) {
+	cl := auth.FromContext(r)
+	if cl == nil {
+		return nil, errors.New("no auth")
+	}
+	return &rbac.Principal{Subject: cl.Sub, Roles: cl.Roles}, nil
 }

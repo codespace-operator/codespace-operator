@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	auth "github.com/codespace-operator/common/auth/pkg/auth"
+	common "github.com/codespace-operator/common/common/pkg/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -15,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	codespacev1 "github.com/codespace-operator/codespace-operator/api/v1"
-	"github.com/codespace-operator/codespace-operator/internal/auth"
-	"github.com/codespace-operator/codespace-operator/internal/common"
 )
 
 // Request/Response types for OpenAPI documentation
@@ -122,7 +122,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	if allNamespaces {
 		domain = "*"
 	}
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "list", domain)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "list", domain)
 	if !ok {
 		return
 	}
@@ -138,14 +138,14 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := h.deps.client.List(r.Context(), &sl, opts...); err != nil {
-			logger.Error("Failed to list sessions across all namespaces", "err", err, "user", cl.Sub)
+			logger.Error("Failed to list sessions across all namespaces", "err", err, "user", pr.Subject)
 			errJSON(w, fmt.Errorf("failed to list sessions: %w", err))
 			return
 		}
 		nsSet := make(map[string]struct{})
 		for _, s := range sl.Items {
 			// keep RBAC namespace filter for non-admins
-			if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, s.Namespace); err != nil || !canAccess {
+			if canAccess, err := h.deps.rbac.Enforce(pr.Subject, pr.Roles, "session", "list", s.Namespace); err != nil || !canAccess {
 				continue
 			}
 			sessions = append(sessions, s)
@@ -163,7 +163,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			opts = append(opts, client.MatchingLabels{common.InstanceIDLabel: h.deps.instanceID})
 		}
 		if err := h.deps.client.List(r.Context(), &sessionList, opts...); err != nil {
-			logger.Error("Failed to list sessions", "namespace", namespace, "err", err, "user", cl.Sub)
+			logger.Error("Failed to list sessions", "namespace", namespace, "err", err, "user", pr.Subject)
 			errJSON(w, fmt.Errorf("failed to list sessions in namespace %s: %w", namespace, err))
 			return
 		}
@@ -258,15 +258,15 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check RBAC permissions for the target namespace
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "create", req.Namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "create", req.Namespace)
 	if !ok {
 		return
 	}
 
-	creatorID := common.SubjectToLabelID(cl.Sub)
+	creatorID := common.SubjectToLabelID(pr.Subject)
 	ann := map[string]string{
 		"codespace.dev/created-at": time.Now().Format(time.RFC3339),
-		common.AnnotationCreatedBy: cl.Sub, // raw, reversible
+		common.AnnotationCreatedBy: pr.Subject, // raw, reversible
 	}
 	// Construct the session object
 	session := &codespacev1.Session{
@@ -309,7 +309,7 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.deps.client.Create(r.Context(), session); err != nil {
-		logger.Error("Failed to create session", "name", req.Name, "namespace", req.Namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to create session", "name", req.Name, "namespace", req.Namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("failed to create session: %w", err))
 		return
 	}
@@ -343,14 +343,14 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "get", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "get", namespace)
 	if !ok {
 		return
 	}
 
 	var session codespacev1.Session
 	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
-		logger.Error("Failed to get session", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to get session", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
@@ -391,7 +391,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// RBAC
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "delete", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "delete", namespace)
 	if !ok {
 		return
 	}
@@ -399,7 +399,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	// FETCH then verify instance-id before deleting
 	var session codespacev1.Session
 	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
-		logger.Error("Failed to get session for delete", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to get session for delete", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
@@ -409,12 +409,12 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.deps.client.Delete(r.Context(), &session); err != nil {
-		logger.Error("Failed to delete session", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to delete session", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("failed to delete session: %w", err))
 		return
 	}
 
-	logger.Info("Deleted session", "name", name, "namespace", namespace, "user", cl.Sub)
+	logger.Info("Deleted session", "name", name, "namespace", namespace, "user", pr.Subject)
 	writeJSON(w, map[string]string{"status": "deleted", "name": name, "namespace": namespace})
 }
 
@@ -451,7 +451,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "scale", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "scale", namespace)
 	if !ok {
 		return
 	}
@@ -471,7 +471,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	// Get the current session
 	var session codespacev1.Session
 	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
-		logger.Error("Failed to get session for scaling", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to get session for scaling", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
@@ -487,12 +487,12 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	if err := common.RetryOnConflict(func() error {
 		return h.deps.client.Update(r.Context(), &session)
 	}); err != nil {
-		logger.Error("Failed to scale session", "name", name, "namespace", namespace, "replicas", req.Replicas, "err", err, "user", cl.Sub)
+		logger.Error("Failed to scale session", "name", name, "namespace", namespace, "replicas", req.Replicas, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("failed to scale session: %w", err))
 		return
 	}
 
-	logger.Info("Scaled session", "name", name, "namespace", namespace, "replicas", req.Replicas, "user", cl.Sub)
+	logger.Info("Scaled session", "name", name, "namespace", namespace, "replicas", req.Replicas, "user", pr.Subject)
 	writeJSON(w, session)
 }
 
@@ -529,7 +529,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "update", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "update", namespace)
 	if !ok {
 		return
 	}
@@ -537,7 +537,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 	// Get the current session
 	var session codespacev1.Session
 	if err := h.deps.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, &session); err != nil {
-		logger.Error("Failed to get session for update", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to get session for update", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("session not found: %w", err))
 		return
 	}
@@ -599,18 +599,18 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 		session.Annotations = make(map[string]string)
 	}
 	session.Annotations["codespace.dev/updated-at"] = time.Now().Format(time.RFC3339)
-	session.Annotations["codespace.dev/updated-by"] = cl.Sub
+	session.Annotations["codespace.dev/updated-by"] = pr.Subject
 
 	// Update with retry logic
 	if err := common.RetryOnConflict(func() error {
 		return h.deps.client.Update(r.Context(), &session)
 	}); err != nil {
-		logger.Error("Failed to update session", "name", name, "namespace", namespace, "err", err, "user", cl.Sub)
+		logger.Error("Failed to update session", "name", name, "namespace", namespace, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("failed to update session: %w", err))
 		return
 	}
 
-	logger.Info("Updated session", "name", name, "namespace", namespace, "user", cl.Sub)
+	logger.Info("Updated session", "name", name, "namespace", namespace, "user", pr.Subject)
 	writeJSON(w, session)
 }
 
@@ -638,7 +638,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check RBAC permissions
-	cl, ok := h.deps.rbacMw.MustCan(w, r, "session", "watch", domain)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "watch", domain)
 	if !ok {
 		return
 	}
@@ -672,7 +672,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		logger.Error("Failed to start session watch", "namespace", namespace, "all", allNamespaces, "err", err, "user", cl.Sub)
+		logger.Error("Failed to start session watch", "namespace", namespace, "all", allNamespaces, "err", err, "user", pr.Subject)
 		errJSON(w, fmt.Errorf("failed to start watch: %w", err))
 		return
 	}
@@ -682,7 +682,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	writeSSE(w, "ping", map[string]string{"status": "connected"})
 	flusher.Flush()
 
-	logger.Info("Started session stream", "namespace", namespace, "all", allNamespaces, "user", cl.Sub)
+	logger.Info("Started session stream", "namespace", namespace, "all", allNamespaces, "user", pr.Subject)
 
 	// Optional enrichment index for cluster-scope
 	var idx map[string]common.AnchorMeta
@@ -697,19 +697,19 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	for {
 		select {
 		case <-r.Context().Done():
-			logger.Debug("Session stream ended by client", "user", cl.Sub)
+			logger.Debug("Session stream ended by client", "user", pr.Subject)
 			return
 		case <-ticker.C:
 			writeSSE(w, "ping", map[string]string{"timestamp": time.Now().Format(time.RFC3339)})
 			flusher.Flush()
 		case ev, ok := <-watcher.ResultChan():
 			if !ok {
-				logger.Debug("Session stream ended by server", "user", cl.Sub)
+				logger.Debug("Session stream ended by server", "user", pr.Subject)
 				return
 			}
 
 			if ev.Type == watch.Error {
-				logger.Error("Watch error in session stream", "err", ev.Object, "user", cl.Sub)
+				logger.Error("Watch error in session stream", "err", ev.Object, "user", pr.Subject)
 				continue
 			}
 
@@ -727,7 +727,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 
 			// Apply namespace-level filtering for cross-namespace watches
 			if allNamespaces {
-				if canAccess, err := h.deps.rbac.CanAccessNamespace(cl.Sub, cl.Roles, session.Namespace); err != nil || !canAccess {
+				if canAccess, err := h.deps.rbac.Enforce(pr.Subject, pr.Roles, "session", "list", session.Namespace); err != nil || !canAccess {
 					continue
 				}
 			}

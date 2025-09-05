@@ -1,5 +1,4 @@
 const nonReleasingTypes = /^(docs|chore|build|ci|test|refactor)$/;
-
 const operatorScopes = /(?:^|,)\s*(operator|server|ui)\s*(?:,|$)/;
 
 module.exports = {

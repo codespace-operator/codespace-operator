@@ -625,7 +625,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/local/login": {
+    "/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -648,7 +648,7 @@ export interface paths {
             /** @description Login credentials */
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["internal_server.LocalLoginRequest"];
+                    "application/json": components["schemas"]["internal_server.PasswordLoginRequest"];
                 };
             };
             responses: {
@@ -720,6 +720,52 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh session
+         * @description Refresh session token if valid
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content on success */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_server.ErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -860,6 +906,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        "common.AnchorMeta": {
+            /** @description release/app/deployment name (sanitized when used as label) */
+            name?: string;
+            /** @description namespace where the manager runs */
+            namespace?: string;
+            /** @description argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved */
+            type?: string;
+        };
         "github_com_codespace-operator_codespace-operator_api_v1.AuthSpec": {
             /** @description +kubebuilder:validation:Enum=oauth2proxy;none
              *     +kubebuilder:default=none */
@@ -925,19 +979,11 @@ export interface components {
             reason?: string;
             url?: string;
         };
-        "github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta": {
-            /** @description release/app/deployment name (sanitized when used as label) */
-            name?: string;
-            /** @description namespace where the manager runs */
-            namespace?: string;
-            /** @description argo|helm|deployment|statefulset|daemonset|cronjob|job|pod|namespace|unresolved */
-            type?: string;
-        };
         /** @description Available authentication features and endpoints */
         "internal_server.AuthFeatures": {
             /** @example false */
             localLoginEnabled?: boolean;
-            /** @example /auth/local/login */
+            /** @example /auth/login */
             localLoginPath?: string;
             /** @example true */
             ssoEnabled?: boolean;
@@ -959,13 +1005,6 @@ export interface components {
         "internal_server.ErrorResponse": {
             /** @example Invalid request */
             error?: string;
-        };
-        /** @description Local login credentials */
-        "internal_server.LocalLoginRequest": {
-            /** @example secretpassword */
-            password: string;
-            /** @example alice */
-            username: string;
         };
         /** @description Successful authentication response */
         "internal_server.LoginResponse": {
@@ -990,6 +1029,13 @@ export interface components {
             list?: boolean;
             watch?: boolean;
         };
+        /** @description Local login credentials */
+        "internal_server.PasswordLoginRequest": {
+            /** @example secretpassword */
+            password: string;
+            /** @example alice */
+            username: string;
+        };
         "internal_server.PermissionCheck": {
             /** @example create */
             action?: string;
@@ -1004,7 +1050,7 @@ export interface components {
             capabilities?: components["schemas"]["internal_server.SystemCapabilities"];
             cluster?: components["schemas"]["internal_server.ClusterInfo"];
             instanceID?: string;
-            manager?: components["schemas"]["github_com_codespace-operator_codespace-operator_internal_common.AnchorMeta"];
+            manager?: components["schemas"]["common.AnchorMeta"];
             namespaces?: components["schemas"]["internal_server.ServerNamespaceInfo"];
             version?: components["schemas"]["internal_server.ServerVersionInfo"];
         };
