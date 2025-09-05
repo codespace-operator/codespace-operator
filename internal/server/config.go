@@ -63,6 +63,7 @@ type ServerConfig struct {
 	OIDCScopes             []string `mapstructure:"oidc_scopes"`
 
 	// LDAP
+	LDAPEnabled            bool                `mapstructure:"ldap_enabled"`
 	LDAPURL                string              `mapstructure:"ldap_url"`
 	LDAPStartTLS           bool                `mapstructure:"ldap_start_tls"`
 	LDAPInsecureSkipVerify bool                `mapstructure:"ldap_insecure_skip_verify"`

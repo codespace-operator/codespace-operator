@@ -1,32 +1,107 @@
-# Bitnami/openldap – single pod for dev (no TLS; in-cluster only)
-image:
-  repository: bitnami/openldap
-  tag: "2.6.7"
-  pullPolicy: IfNotPresent
-
+# jp-gouin/openldap-stack-ha — single replica for dev
 replicaCount: 1
 
-auth:
-  rootDN: "cn=admin,dc=codespace,dc=test"
-  rootPassword: "admin"       # overridden via --set in the script
-  configPassword: "admin"
+image:
+  repository: osixia/openldap
+  tag: "1.5.0"
+  pullPolicy: IfNotPresent
 
-customLDIFs:
+# misc/tests/manifests/openldap-stack-values.yaml
+
+env:
+  LDAP_ORGANISATION: "Codespace"
+  LDAP_DOMAIN: "codespace.test"
+  LDAP_BACKEND: "mdb"
+  LDAP_TLS: "false"
+  CONTAINER_LOG_LEVEL: "debug"
+  LDAP_ADMIN_PASSWORD: "admin"
+  LDAP_CONFIG_PASSWORD: "admin"
+
+readinessProbe:
   enabled: true
-  existingConfigmap: "openldap-bootstrap"
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 20 
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 10
 
-persistence:
-  enabled: false
+
+# Inline bootstrap LDIF (users, groups)
+customLdifFiles:
+  bootstrap.ldif: |
+    dn: dc=codespace,dc=test
+    objectClass: top
+    objectClass: dcObject
+    objectClass: organization
+    o: Codespace
+    dc: codespace
+
+    dn: ou=people,dc=codespace,dc=test
+    objectClass: top
+    objectClass: organizationalUnit
+    ou: people
+
+    dn: ou=groups,dc=codespace,dc=test
+    objectClass: top
+    objectClass: organizationalUnit
+    ou: groups
+
+    # Users
+    dn: uid=admin,ou=people,dc=codespace,dc=test
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    cn: Admin User
+    sn: Admin
+    uid: admin
+    mail: admin@codespace.test
+    userPassword: admin
+
+    dn: uid=alice,ou=people,dc=codespace,dc=test
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    cn: Alice Doe
+    sn: Doe
+    uid: alice
+    mail: alice@codespace.test
+    userPassword: alice
+
+    dn: uid=bob,ou=people,dc=codespace,dc=test
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    cn: Bob Smith
+    sn: Smith
+    uid: bob
+    mail: bob@codespace.test
+    userPassword: bob
+
+    # Role groups (groupOfNames with member = user DN)
+    dn: cn=codespace-operator:admin,ou=groups,dc=codespace,dc=test
+    objectClass: groupOfNames
+    cn: codespace-operator:admin
+    member: uid=admin,ou=people,dc=codespace,dc=test
+
+    dn: cn=codespace-operator:editor,ou=groups,dc=codespace,dc=test
+    objectClass: groupOfNames
+    cn: codespace-operator:editor
+    member: uid=alice,ou=people,dc=codespace,dc=test
+
+    dn: cn=codespace-operator:viewer,ou=groups,dc=codespace,dc=test
+    objectClass: groupOfNames
+    cn: codespace-operator:viewer
+    member: uid=bob,ou=people,dc=codespace,dc=test
 
 service:
   type: ClusterIP
   ports:
     ldap: 389
-    ldaps: 636
 
-resources:
-  requests:
-    cpu: 50m
-    memory: 128Mi
-  limits:
-    memory: 256Mi
+phpldapadmin:
+  enabled: false    # set true if you want a GUI

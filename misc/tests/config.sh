@@ -18,7 +18,7 @@ DEMO_NAME="${DEMO_NAME:-demo}"
 APPLY_DEMO="${APPLY_DEMO:-true}"
 
 DEMO_SESSION_FILE="${DEMO_SESSION_FILE:-misc/tests/manifests/demo-session.yaml}"
-HELM_CHART="${HELM_CHART:-../charts/charts/codespace-operator}"
+HELM_CHART="${HELM_CHART:-../charts/charts/codespace}"
 
 # ----- OIDC (must match realm.json) -----
 OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-codespace-server}"

@@ -98,6 +98,7 @@ func main() {
 	rootCmd.Flags().String("session-cookie-name", "", "Override session cookie name")
 
 	// LDAP flags
+	rootCmd.Flags().Bool("ldap-enabled", false, "Enable LDAP authentication")
 	rootCmd.Flags().String("ldap-url", "", "LDAP server URL (e.g., ldaps://ldap.example.com:636 or ldap://host:389)")
 	rootCmd.Flags().Bool("ldap-start-tls", false, "Use StartTLS (if URL is ldap://)")
 	rootCmd.Flags().Bool("ldap-insecure-skip-verify", false, "Skip LDAP server certificate verification")
@@ -201,6 +202,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	overrideBool(&cfg.BootstrapLoginAllowed, "enable-bootstrap-login")
 
 	// LDAP overrides
+	overrideBool(&cfg.LDAPEnabled, "ldap-enabled")
 	overrideString(&cfg.LDAPURL, "ldap-url")
 	overrideBool(&cfg.LDAPStartTLS, "ldap-start-tls")
 	overrideBool(&cfg.LDAPInsecureSkipVerify, "ldap-insecure-skip-verify")

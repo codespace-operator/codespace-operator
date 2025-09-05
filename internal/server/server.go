@@ -279,8 +279,9 @@ func setupAuthentication(cfg *ServerConfig, logger *slog.Logger) (*auth.AuthMana
 	}
 
 	// Setup LDAP if configured
-	if cfg.LDAPBindDN != "" && cfg.LDAPBindPassword != "" && cfg.LDAPURL != "" {
+	if cfg.LDAPURL != "" && cfg.LDAPEnabled {
 		authConfig.LDAP = &auth.LDAPConfig{
+			Enabled: true,
 			// Connection
 			URL:                cfg.LDAPURL, // e.g. ldaps://ldap.example.com:636 or ldap://host:389
 			StartTLS:           cfg.LDAPStartTLS,
