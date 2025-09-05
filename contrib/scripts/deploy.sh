@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SETUP_CONFIG="${SETUP_CONFIG:-misc/tests/config.sh}"
+SETUP_CONFIG="${SETUP_CONFIG:-contrib/scripts/config.sh}"
 source "${SETUP_CONFIG}"
 
 echo ">>> Install CRD..."

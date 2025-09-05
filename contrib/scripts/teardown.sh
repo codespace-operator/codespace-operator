@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SETUP_CONFIG="${SETUP_CONFIG:-misc/tests/config.sh}"
+SETUP_CONFIG="${SETUP_CONFIG:-contrib/scripts/config.sh}"
 [[ -f "${SETUP_CONFIG}" ]] && source "${SETUP_CONFIG}"
 
 CLUSTER_NAME="${CLUSTER_NAME:-codespace}"

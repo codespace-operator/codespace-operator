@@ -6,7 +6,7 @@ image:
   tag: "1.5.0"
   pullPolicy: IfNotPresent
 
-# misc/tests/manifests/openldap-stack-values.yaml
+# contrib/manifests/openldap-stack-values.yaml
 
 env:
   LDAP_ORGANISATION: "Codespace"
@@ -22,14 +22,13 @@ readinessProbe:
   initialDelaySeconds: 10
   periodSeconds: 5
   timeoutSeconds: 3
-  failureThreshold: 20 
+  failureThreshold: 20
 livenessProbe:
   enabled: true
   initialDelaySeconds: 20
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 10
-
 
 # Inline bootstrap LDIF (users, groups)
 customLdifFiles:
@@ -104,4 +103,4 @@ service:
     ldap: 389
 
 phpldapadmin:
-  enabled: false    # set true if you want a GUI
+  enabled: false # set true if you want a GUI
