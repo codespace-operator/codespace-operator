@@ -184,41 +184,30 @@ docker-build-server:
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
 
-.PHONY: build-server
-build-server:
-	cd ui && npm run build
-	rm -rf ./internal/server/static && mkdir -p ./internal/server/static/
-	cp -r ./ui/dist/* internal/server/static/
-	touch ./internal/server/static/.gitkeep
-	go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/codespace-server ./cmd/server
+PLATFORMS ?= linux/amd64,linux/arm64
 
-.PHONY: build-server-docs
-build-server-docs:
-	$(MAKE) build-server GO_BUILD_TAGS=docs
+# Image tags
+IMG         ?= ghcr.io/codespace-operator/codespace-operator:dev
+IMG_LATEST  ?= ghcr.io/codespace-operator/codespace-operator:latest
 
-# PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
-# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
-# - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
-# - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-# - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
-# To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
+SERVER_IMG        ?= ghcr.io/codespace-operator/codespace-server:dev
+SERVER_IMG_LATEST ?= ghcr.io/codespace-operator/codespace-server:latest
+
+ifdef GITHUB_ACTIONS
+CACHE_FLAGS ?= \
+  --cache-from=type=gha \
+  --cache-to=type=gha,mode=max
+else
 CACHE_DIR ?= .buildx-cache
-CACHE_FROM ?= \
+CACHE_FLAGS ?= \
   --cache-from=type=local,src=$(CACHE_DIR) \
-  --cache-from=type=registry,ref=$(IMG_LATEST)
-
-CACHE_TO ?= \
-  --cache-to=type=local,dest=$(CACHE_DIR),mode=max \
-  --cache-to=type=inline
-
+  --cache-to=type=local,dest=$(CACHE_DIR),mode=max
+endif
 .PHONY: docker-builder
 docker-builder:
 	- $(CONTAINER_TOOL) buildx create --name codespace-operator-builder --use
+	# GA runners usually already have binfmt; this is harmless if present.
 	- $(CONTAINER_TOOL) run --privileged --rm tonistiigi/binfmt --install all
-
-PLATFORMS ?= linux/amd64,linux/arm64
-IMG       ?= ghcr.io/codespace-operator/codespace-operator:dev
-IMG_LATEST?= ghcr.io/codespace-operator/codespace-operator:latest
 
 .PHONY: docker-buildx
 docker-buildx: docker-builder
@@ -228,13 +217,9 @@ docker-buildx: docker-builder
 	  --push \
 	  --provenance=true \
 	  --sbom=true \
-	  --build-arg BUILDKIT_INLINE_CACHE=1 \
 	  $(CACHE_FLAGS) \
 	  -t $(IMG) -t $(IMG_LATEST) \
 	  -f Dockerfile .
-
-SERVER_IMG ?= ghcr.io/codespace-operator/codespace-server:dev
-SERVER_IMG_LATEST ?= ghcr.io/codespace-operator/codespace-server:latest
 
 .PHONY: docker-buildx-server
 docker-buildx-server: docker-builder
@@ -244,10 +229,10 @@ docker-buildx-server: docker-builder
 	  --push \
 	  --provenance=true \
 	  --sbom=true \
-	  --build-arg BUILDKIT_INLINE_CACHE=1 \
 	  $(CACHE_FLAGS) \
 	  -t $(SERVER_IMG) -t $(SERVER_IMG_LATEST) \
 	  -f ui/Dockerfile .
+
 
 
 .PHONY: build-installer
