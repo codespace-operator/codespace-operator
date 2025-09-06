@@ -1,3 +1,5 @@
+# [2.0.0](https://github.com/codespace-operator/codespace-operator/compare/operator-1.1.0...operator-2.0.0) (2025-09-06)
+
 # [1.1.0](https://github.com/codespace-operator/codespace-operator/compare/operator-1.0.2...operator-1.1.0) (2025-09-05)
 
 
