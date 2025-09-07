@@ -355,3 +355,13 @@ func ExtractFromAuth(r *http.Request) (*rbac.Principal, error) {
 	}
 	return &rbac.Principal{Subject: cl.Sub, Roles: cl.Roles}, nil
 }
+
+// isKubeProbe returns true for readiness/liveness probes
+func isKubeProbe(r *http.Request) bool {
+	p := r.URL.Path
+	if p == "/readyz" || p == "/healthz" || p == "/livez" {
+		return true
+	}
+	ua := r.Header.Get("User-Agent")
+	return strings.HasPrefix(ua, "kube-probe/") || strings.HasPrefix(ua, "kubelet/")
+}

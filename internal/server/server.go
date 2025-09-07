@@ -467,9 +467,12 @@ func requestLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handl
 			reqLogger := common.LoggerWithRequestID(logger, reqID)
 			r = r.WithContext(common.WithLogger(r.Context(), reqLogger))
 
-			// Wrap response writer to capture status code
 			rw := &common.ResponseWriter{ResponseWriter: w}
 			next.ServeHTTP(rw, r)
+			// suppress noisy, successful probes
+			if isKubeProbe(r) && rw.StatusCode() < 400 {
+				return
+			}
 
 			// Extract user info for logging
 			user := "-"
