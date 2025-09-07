@@ -47,3 +47,4 @@ HOSTNAME_URL="${SCHEME}://${KEYCLOAK_HOST}"
 # ----- Keycloak manifests/templates -----
 KEYCLOAK_REALM_TMPL="${KEYCLOAK_REALM_TMPL:-contrib/manifests/realm.json}"
 KEYCLOAK_VALUES_TMPL="${KEYCLOAK_VALUES_TMPL:-contrib/manifests/keycloak-values.yaml}"
+LDAP_VALUES="${LDAP_VALUES:-contrib/manifests/openldap-values.yaml}"

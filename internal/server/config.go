@@ -8,7 +8,6 @@ import (
 	"github.com/codespace-operator/common/auth/pkg/auth"
 	"github.com/codespace-operator/common/common/pkg/common"
 	"github.com/spf13/viper"
-	"go.yaml.in/yaml/v2"
 )
 
 // -----------------------------
@@ -35,24 +34,14 @@ type ServerConfig struct {
 	KubeBurst int     `mapstructure:"kube_burst"`
 
 	// Logging
-	LogLevel         string `mapstructure:"log_level"`
-	SameSiteOverride string `mapstructure:"same_site_override"`
+	LogLevel string `mapstructure:"log_level"`
+
 	// RBAC (Casbin) files
 	RBACModelPath  string `mapstructure:"rbac_model_path"`
 	RBACPolicyPath string `mapstructure:"rbac_policy_path"`
-	LocalUsersPath string `mapstructure:"local_users_path"`
 
-	Auth AuthNode `mapstructure:"auth"`
-}
-
-// What the server accepts under the `auth:` key
-// - `file`   : path to a YAML file with the canonical auth schema (AuthFileConfig)
-// - `inline` : arbitrary YAML/JSON object to merge on top (same schema)
-// - additional keys (e.g. providers.ldap.url) are allowed and merged too.
-type AuthNode struct {
-	File   string         `mapstructure:"file"`
-	Inline map[string]any `mapstructure:"inline"`
-	Extra  map[string]any `mapstructure:",remain"` // everything else under auth:
+	// Auth config file path - note the correct mapstructure tag
+	AuthConfigPath string `mapstructure:"auth_config_path"`
 }
 
 // -----------------------------
@@ -65,6 +54,7 @@ func LoadServerConfig() (*ServerConfig, *viper.Viper, error) {
 	setServerDefaults(v)
 
 	// Standard project helper: config dir or file, env prefix, etc.
+	// Only handles CODESPACE_SERVER_* variables
 	common.SetupViper(v, "CODESPACE_SERVER", "server-config")
 
 	var cfg ServerConfig
@@ -85,6 +75,7 @@ func (c *ServerConfig) GetAddr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
+// Important for env registration as well for AutomaticEnv()
 func setServerDefaults(v *viper.Viper) {
 	v.SetDefault("cluster_scope", false)
 	v.SetDefault("host", "")
@@ -99,77 +90,32 @@ func setServerDefaults(v *viper.Viper) {
 	v.SetDefault("kube_burst", 100)
 	v.SetDefault("log_level", "info")
 
-	// RBAC locations (can be overridden)
 	v.SetDefault("rbac_model_path", "/etc/codespace-operator/rbac/model.conf")
 	v.SetDefault("rbac_policy_path", "/etc/codespace-operator/rbac/policy.csv")
 
-	// Local users path default (only used if auth.providers.local.enabled)
-	v.SetDefault("local_users_path", "/etc/codespace-operator/local-users.yaml")
-
-	// auth: defaults are set by the auth package itself; we don’t duplicate here
-	v.SetDefault("auth.file", "")
-	v.SetDefault("auth.inline", map[string]any{})
+	v.SetDefault("local_users_path", "/etc/codespace-operator/auth/local-users.yaml")
+	v.SetDefault("auth_config_path", "/etc/codespace-operator/auth/auth.yaml")
 }
 
-/*
-	-----------------------------
-	  Auth assembly (precedence)
-	  defaults < auth.file < env/flags under auth.* < auth.inline
-
------------------------------
-*/
-func (c *ServerConfig) BuildAuthConfig(v *viper.Viper) (*auth.AuthConfig, error) {
-	merged := map[string]any{}
-	// 1) file config
-	if strings.TrimSpace(c.Auth.File) != "" {
-		b, err := os.ReadFile(c.Auth.File)
-		if err != nil {
-			return nil, fmt.Errorf("read auth.file: %w", err)
-		}
-		var m map[string]any
-		if err := yaml.Unmarshal(b, &m); err != nil {
-			return nil, fmt.Errorf("parse auth.file: %w", err)
-		}
-		deepMerge(merged, m)
-	}
-
-	// 2) env / CLI (already in viper)
-	if sub := v.Sub("auth"); sub != nil {
-		envMap := sub.AllSettings()
-		delete(envMap, "file")
-		delete(envMap, "inline")
-		deepMerge(merged, envMap)
-	}
-
-	// 3) inline
-	if c.Auth.Inline != nil {
-		deepMerge(merged, c.Auth.Inline)
-	}
-
-	// 4) re-unmarshal merged map into YAML, then let auth validate
-	b, err := yaml.Marshal(merged)
-	if err != nil {
-		return nil, fmt.Errorf("marshal merged auth: %w", err)
-	}
-
-	return auth.LoadAuthConfigFromYAML(b)
+func (c *ServerConfig) BuildAuthConfig() (*auth.AuthConfig, error) {
+	return auth.LoadAuthConfigWithEnv("AUTH", c.AuthConfigPath)
 }
 
-/* -----------------------------
-   tiny merge helper (map or struct)
------------------------------ */
+// Alternative: if you want to be more explicit about the steps
+func (c *ServerConfig) BuildAuthConfigExplicit() (*auth.AuthConfig, error) {
+	// Set up viper with AUTH_ environment variables
+	authViper := auth.SetupAuthViper("AUTH")
 
-func deepMerge(dst, src map[string]any) {
-	for k, v := range src {
-		if v == nil {
-			continue
-		}
-		if sm, ok := v.(map[string]any); ok {
-			if dm, ok2 := dst[k].(map[string]any); ok2 {
-				deepMerge(dm, sm)
-				continue
+	// Load file if specified
+	if c.AuthConfigPath != "" {
+		if _, err := os.Stat(c.AuthConfigPath); err == nil {
+			authViper.SetConfigFile(c.AuthConfigPath)
+			if err := authViper.ReadInConfig(); err != nil {
+				return nil, fmt.Errorf("read auth config file: %w", err)
 			}
 		}
-		dst[k] = v
 	}
+	logger.Info("Auth configuration loaded", "source", c.AuthConfigPath)
+	// Convert to auth config
+	return auth.LoadAuthConfigFromViper(authViper)
 }

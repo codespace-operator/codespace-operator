@@ -46,8 +46,6 @@ import (
 
 	"github.com/codespace-operator/common/common/pkg/common"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.yaml.in/yaml/v2"
 
 	server "github.com/codespace-operator/codespace-operator/internal/server"
 )
@@ -62,8 +60,8 @@ func main() {
 		Short: "Codespace Operator Web Server",
 		Long:  `A web server that provides a REST API and UI for managing Codespace sessions.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg, v := loadConfigWithOverrides(cmd)
-			runServer(cfg, args, v)
+			cfg := loadConfigWithOverrides(cmd)
+			runServer(cfg, args)
 		},
 	}
 
@@ -87,8 +85,7 @@ func main() {
 	rootCmd.Flags().String("local-users-path", "", "Path to local users file")
 
 	// Auth node pointers (the canonical way to configure auth)
-	rootCmd.Flags().String("auth.file", "", "Path to auth YAML (canonical schema)")
-	rootCmd.Flags().String("auth.inline", "", "Inline YAML/JSON to merge on top of auth (highest precedence)")
+	rootCmd.Flags().String("auth-config-file", "", "Path to auth configuration YAML file")
 
 	if err := rootCmd.Execute(); err != nil {
 		logger.Error("Command execution failed", "err", err)
@@ -96,12 +93,12 @@ func main() {
 }
 
 // Wrapper to run server package
-func runServer(cfg *server.ServerConfig, args []string, v *viper.Viper) {
-	server.RunServer(cfg, args, v) // pass viper so server can BuildAuthConfig(v)
+func runServer(cfg *server.ServerConfig, args []string) {
+	server.RunServer(cfg, args)
 }
 
 // loadConfigWithOverrides loads configuration with CLI flag overrides
-func loadConfigWithOverrides(cmd *cobra.Command) (*server.ServerConfig, *viper.Viper) {
+func loadConfigWithOverrides(cmd *cobra.Command) *server.ServerConfig {
 	// Honor --config for where viper should look
 	if cmd.Flags().Changed("config") {
 		if p, _ := cmd.Flags().GetString("config"); strings.TrimSpace(p) != "" {
@@ -109,7 +106,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) (*server.ServerConfig, *viper.V
 		}
 	}
 
-	cfg, v, err := server.LoadServerConfig()
+	cfg, _, err := server.LoadServerConfig()
 	if err != nil {
 		logger.Error("Failed to load configuration", "err", err)
 	}
@@ -151,23 +148,7 @@ func loadConfigWithOverrides(cmd *cobra.Command) (*server.ServerConfig, *viper.V
 	ovStr(&cfg.RBACModelPath, "rbac-model-path")
 	ovStr(&cfg.RBACPolicyPath, "rbac-policy-path")
 
-	// auth pointers (not the content)
-	if cmd.Flags().Changed("auth.file") {
-		cfg.Auth.File, _ = cmd.Flags().GetString("auth.file")
-	}
-	if cmd.Flags().Changed("auth.inline") {
-		raw, _ := cmd.Flags().GetString("auth.inline")
-		// Let viper/yaml parse the inline string into map[string]any
-		m := map[string]any{}
-		if err := v.UnmarshalKey("auth.inline", &m); err == nil && len(m) > 0 && raw == "" {
-			// env-overrides already filled it (rare), do nothing
-		} else {
-			_ = yaml.Unmarshal([]byte(raw), &m)
-		}
-		cfg.Auth.Inline = m
-	}
-
-	// sanitize
-	cfg.Auth.File = strings.TrimSpace(cfg.Auth.File)
-	return cfg, v
+	// auth
+	ovStr(&cfg.AuthConfigPath, "auth-config-file")
+	return cfg
 }

@@ -14,7 +14,6 @@ import (
 	auth "github.com/codespace-operator/common/auth/pkg/auth"
 	"github.com/codespace-operator/common/common/pkg/common"
 	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
-	"github.com/spf13/viper"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,7 +66,7 @@ type ServerVersionInfo struct {
 }
 
 // RunServer starts the server with proper dependency injection
-func RunServer(cfg *ServerConfig, args []string, v *viper.Viper) {
+func RunServer(cfg *ServerConfig, args []string) {
 	// Initialize logging first
 	logConfig := common.LogConfig{
 		Level:      common.LogLevel(cfg.LogLevel),
@@ -139,7 +138,7 @@ func RunServer(cfg *ServerConfig, args []string, v *viper.Viper) {
 		os.Exit(1)
 	}
 
-	authCfg, err := cfg.BuildAuthConfig(v)
+	authCfg, err := cfg.BuildAuthConfig()
 	if err != nil {
 		logger.Error("Authentication config invalid", "error", err)
 		os.Exit(1)
@@ -242,7 +241,7 @@ func setupRBAC(cfg *ServerConfig, logger *slog.Logger) (rbac.RBACInterface, erro
 		return nil, fmt.Errorf("failed to initialize RBAC: %w", err)
 	}
 
-	rbacLogger.Info("RBAC system initialized",
+	rbacLogger.Info("✅ RBAC system initialized",
 		"modelPath", config.ModelPath,
 		"policyPath", config.PolicyPath)
 
@@ -410,7 +409,7 @@ func (h *handlers) handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 	if err != nil || spec == "" {
 		http.Error(w, "OpenAPI spec not available", http.StatusNotFound)
 		if err != nil {
-			logger.Error("Error reading OpenAPI spec:", err)
+			logger.Error("Error reading OpenAPI spec:", "err", err)
 		}
 		return
 	}

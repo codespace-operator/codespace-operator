@@ -63,28 +63,30 @@ type UserInfo struct {
 
 // imports: trim anything oauth2/oidc-specific that handlers no longer need.
 // Keep: net/http, encoding/json, strings, time, etc., plus internal deps.
-
 func registerAuthHandlers(mux *http.ServeMux, h *handlers) {
+	base := h.deps.authCfg.AuthPath
 
 	// Public feature probe
-	mux.HandleFunc(h.deps.authCfg.AuthPath+"/features", h.handleAuthFeatures)
+	mux.HandleFunc(base+"/features", h.handleAuthFeatures)
+
 	// Local login (if enabled)
-	if h.deps.authCfg.Local.Enabled {
-		mux.HandleFunc(h.deps.authCfg.AuthPath+"/login", h.handlePasswordLogin)
-		// If no OIDC is configured, local logout handlesh.deps.authCfg.AuthPath +  /logout
-		if h.deps.authCfg.OIDC.IssuerURL == "" {
-			mux.HandleFunc(h.deps.authCfg.AuthPath+"/logout", h.handleLocalLogout)
+	if h.deps.authCfg != nil && h.deps.authCfg.Local != nil && h.deps.authCfg.Local.Enabled {
+		mux.HandleFunc(base+"/login", h.handlePasswordLogin)
+		// If NO OIDC provider is registered, local handles /logout
+		if h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) == nil {
+			mux.HandleFunc(base+"/logout", h.handleLocalLogout)
 		}
 	}
 
-	// OIDC (if provider exists)
-	if p := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER); p != nil {
-		mux.HandleFunc(h.deps.authCfg.AuthPath+"/sso/login", h.handleOIDCStart)
-		mux.HandleFunc(h.deps.authCfg.AuthPath+"/sso/callback", h.handleOIDCCallback)
-		// OIDC logout wins if both local+OIDC exist
-		mux.HandleFunc(h.deps.authCfg.AuthPath+"/logout", h.handleLogout)
+	// OIDC endpoints only if provider exists
+	if h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil {
+		mux.HandleFunc(base+"/sso/login", h.handleOIDCStart)
+		mux.HandleFunc(base+"/sso/callback", h.handleOIDCCallback)
+		// OIDC logout wins when both exist
+		mux.HandleFunc(base+"/logout", h.handleLogout)
 	}
-	mux.HandleFunc(h.deps.authCfg.AuthPath+"/refresh", h.handleRefresh)
+
+	mux.HandleFunc(base+"/refresh", h.handleRefresh)
 }
 
 // --- OIDC handlers (provider-based) ---
@@ -182,16 +184,23 @@ func (h *handlers) handleLocalLogout(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/features [get]
 func (h *handlers) handleAuthFeatures(w http.ResponseWriter, r *http.Request) {
 	cfg := h.deps.authCfg
-	ssoEnabled := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil &&
-		cfg.OIDC.IssuerURL != "" && cfg.OIDC.ClientID != "" && cfg.OIDC.RedirectURL != ""
+	hasOIDC := h.deps.authManager.GetProvider(auth.OIDC_PROVIDER) != nil
+
+	ssoEnabled := hasOIDC
+	if ssoEnabled && cfg != nil && cfg.OIDC != nil {
+		// keep the stricter check but guard nils:
+		ssoEnabled = cfg.OIDC.IssuerURL != "" && cfg.OIDC.ClientID != "" && cfg.OIDC.RedirectURL != ""
+	}
+
 	ldapEnabled := h.deps.authManager.GetProvider(auth.LDAP_PROVIDER) != nil
-	localEnabled := cfg.Local.Enabled && h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
+	localEnabled := cfg != nil && cfg.Local != nil && cfg.Local.Enabled &&
+		h.deps.authManager.GetProvider(auth.LOCAL_PROVIDER) != nil
 
 	writeJSON(w, map[string]any{
 		"ssoEnabled":            ssoEnabled,
 		"ldapLoginEnabled":      ldapEnabled,
 		"localLoginEnabled":     localEnabled,
-		"bootstrapLoginAllowed": cfg.Local.BootstrapLoginAllowed,
+		"bootstrapLoginAllowed": cfg != nil && cfg.Local != nil && cfg.Local.BootstrapLoginAllowed,
 		"ssoLoginPath":          cfg.AuthPath + "/sso/login",
 		"passwordLoginPath":     cfg.AuthPath + "/login",
 	})

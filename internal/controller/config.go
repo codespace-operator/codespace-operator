@@ -67,6 +67,8 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	v.SetDefault("field_owner", "codespace-operator")
 
 	v.SetDefault("debug", false)
+	// Auth config file path - must have a default for viper to recognize the env var
+	v.SetDefault("auth_config_path", "")
 
 	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
 

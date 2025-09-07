@@ -17,14 +17,22 @@ helm upgrade --install codespace ${HELM_CHART} \
 	--set operator.image.repository="${IMG%:*}" \
 	--set operator.image.tag="${IMG##*:}" \
 	--set server.enabled=true \
+	--set server.logLevel="debug" \
 	--set server.image.repository="${SERVER_IMG%:*}" \
 	--set server.image.tag="${SERVER_IMG##*:}" \
 	--set server.ingress.enabled=true \
 	--set server.ingress.hosts[0].host="${CONSOLE_HOST}" \
 	--set server.ingress.hosts[0].path="/" \
-	--set server.auth.providers.ldap.enabled=true \
-	--set server.auth.providers.ldap.bindPassword='admin' \
-	--set server.auth.providers.local.enabled=true
+	--set-string server.auth.providers.ldap.url="${LDAP_URL}" \
+	--set-string server.auth.providers.ldap.bind_dn="${LDAP_BIND_DN}" \
+	--set-string server.auth.providers.ldap.bind_password="${LDAP_BIND_PASSWORD}" \
+	--set-string server.auth.providers.ldap.user.base_dn="${LDAP_USER_BASE_DN}" \
+	--set-string server.auth.providers.ldap.user.filter="(|(uid={username})(mail={username}))" \
+	--set-string server.auth.providers.ldap.group.base_dn="${LDAP_GROUP_BASE_DN}" \
+	--set-string server.auth.providers.ldap.group.filter="(member={userDN})" \
+	--set-string server.auth.providers.ldap.group.attr="cn" \
+	--set-json server.auth.providers.ldap.roles.mapping='{"codespace-operator:admin":["admin"],"codespace-operator:editor":["editor"],"codespace-operator:viewer":["viewer"]}' \
+	--set-json server.auth.providers.ldap.roles.default='["viewer"]'
 	# --set server.auth.providers.oidc.scopes="{openid,profile,email}"
 	# --set server.auth.providers.oidc.insecureSkipVerify=true \
 	# --set server.auth.providers.oidc.issuerURL="${ISSUER_URL}" \

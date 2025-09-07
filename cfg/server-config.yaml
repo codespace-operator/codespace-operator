@@ -25,8 +25,7 @@ rbac_model_path: ./cfg/rbac-casbin/model.conf
 rbac_policy_path: ./cfg/rbac-casbin/policy.csv
 
 # 👇 NEW: tell the server where the *auth* config lives
-auth:
-  file: ./cfg/auth.yaml
+auth_config_path: ./cfg/auth.yaml
 # or define directly
 # inline:
 # manager:
