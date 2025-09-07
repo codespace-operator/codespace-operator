@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/codespace-operator/codespace-operator/compare/operator-2.0.1...operator-2.0.2) (2025-09-07)
+
+
+### Bug Fixes
+
+* **server:** suppress unwanted logs ([4233c6e](https://github.com/codespace-operator/codespace-operator/commit/4233c6e4dbbee62fc85023a5345adfef771c4281))
+
 ## [2.0.1](https://github.com/codespace-operator/codespace-operator/compare/operator-2.0.0...operator-2.0.1) (2025-09-07)
 
 
