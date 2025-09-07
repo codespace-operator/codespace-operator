@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/codespace-operator/codespace-operator/compare/operator-2.0.0...operator-2.0.1) (2025-09-07)
+
+
+### Bug Fixes
+
+* **server:** separate config files, add tests ([c0d33c8](https://github.com/codespace-operator/codespace-operator/commit/c0d33c8a0201e94462aa4442a022ac1267a1f517))
+
 # [2.0.0](https://github.com/codespace-operator/codespace-operator/compare/operator-1.1.0...operator-2.0.0) (2025-09-06)
 
 # [1.1.0](https://github.com/codespace-operator/codespace-operator/compare/operator-1.0.2...operator-1.1.0) (2025-09-05)
