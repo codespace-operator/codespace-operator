@@ -122,7 +122,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	if allNamespaces {
 		domain = "*"
 	}
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "list", domain)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "list", domain)
 	if !ok {
 		return
 	}
@@ -145,7 +145,7 @@ func (h *handlers) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		nsSet := make(map[string]struct{})
 		for _, s := range sl.Items {
 			// keep RBAC namespace filter for non-admins
-			if canAccess, err := h.deps.rbac.Enforce(pr.Subject, pr.Roles, "session", "list", s.Namespace); err != nil || !canAccess {
+			if canAccess, err := h.deps.rbac.Enforce(pr.Subject, pr.Roles, SESSION_RESOURCE_STRING, "list", s.Namespace); err != nil || !canAccess {
 				continue
 			}
 			sessions = append(sessions, s)
@@ -258,7 +258,7 @@ func (h *handlers) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check RBAC permissions for the target namespace
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "create", req.Namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "create", req.Namespace)
 	if !ok {
 		return
 	}
@@ -343,7 +343,7 @@ func (h *handlers) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "get", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "get", namespace)
 	if !ok {
 		return
 	}
@@ -391,7 +391,7 @@ func (h *handlers) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// RBAC
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "delete", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "delete", namespace)
 	if !ok {
 		return
 	}
@@ -451,7 +451,7 @@ func (h *handlers) handleScaleSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "scale", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "scale", namespace)
 	if !ok {
 		return
 	}
@@ -529,7 +529,7 @@ func (h *handlers) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 	namespace, name := parts[0], parts[1]
 
 	// Check RBAC permissions
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "update", namespace)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "update", namespace)
 	if !ok {
 		return
 	}
@@ -638,7 +638,7 @@ func (h *handlers) handleStreamSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check RBAC permissions
-	pr, ok := h.deps.rbacMw.MustCan(w, r, "session", "watch", domain)
+	pr, ok := h.deps.rbacMw.MustCan(w, r, SESSION_RESOURCE_STRING, "watch", domain)
 	if !ok {
 		return
 	}
@@ -796,7 +796,7 @@ func (h *handlers) handleAdoptSession(w http.ResponseWriter, r *http.Request) {
 	// RBAC: allow if admin(*/*/*) OR session:update in the target namespace
 	isAdmin, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "*", "admin", "*")
 	if !isAdmin {
-		ok, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "update", ns)
+		ok, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, "update", ns)
 		if !ok {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return

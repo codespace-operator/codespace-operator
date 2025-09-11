@@ -11,8 +11,8 @@ g, codespace-operator:viewer, viewer
 # Admin permissions (full access everywhere)
 p, admin, *, *, *, allow
 
-# p, admin, session, *, *, allow
-# p, admin, namespaces, *, *, allow
+p, admin, session, *, *, allow
+p, admin, namespace, *, *, allow
 
 # Editor permissions (CRUD sessions)
 p, editor, session, get, *, allow

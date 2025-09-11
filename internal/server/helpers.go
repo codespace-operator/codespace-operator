@@ -57,6 +57,7 @@ func isSafeRelative(p string) bool {
 	}
 	return !u.IsAbs()
 }
+
 func q(r *http.Request, key, dflt string) string {
 	if v := r.URL.Query().Get(key); v != "" {
 		return v
@@ -252,14 +253,14 @@ func getAllowedNamespacesForUser(ctx context.Context, deps *serverDeps, subject 
 	allowedNamespaces := []string{}
 
 	// Always check cluster-wide access first
-	if hasClusterAccess, _ := deps.rbac.Enforce(subject, roles, "session", "list", "*"); hasClusterAccess {
+	if hasClusterAccess, _ := deps.rbac.Enforce(subject, roles, SESSION_RESOURCE_STRING, "list", "*"); hasClusterAccess {
 		// User has cluster-wide access, return all namespaces
 		return allNamespaces, nil
 	}
 
 	// Check each namespace individually
 	for _, ns := range allNamespaces {
-		if canAccess, _ := deps.rbac.Enforce(subject, roles, "session", "list", ns); canAccess {
+		if canAccess, _ := deps.rbac.Enforce(subject, roles, SESSION_RESOURCE_STRING, "list", ns); canAccess {
 			allowedNamespaces = append(allowedNamespaces, ns)
 		}
 	}

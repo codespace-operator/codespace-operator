@@ -11,6 +11,9 @@ import (
 	"github.com/codespace-operator/common/common/pkg/common"
 )
 
+const SESSION_RESOURCE_STRING = "session"
+const NAMESPACE_RESOURCE_STRING = "namespace"
+
 // ClusterInfo contains cluster-level permission information
 type ClusterInfo struct {
 	Casbin               CasbinPermissions  `json:"casbin"`
@@ -146,9 +149,9 @@ func (h *handlers) handleUserIntrospect(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check cluster-level permissions for user
-	hasClusterList, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
-	hasClusterWatch, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "watch", "*")
-	nsListAllowed, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
+	hasClusterList, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, "list", "*")
+	hasClusterWatch, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, "watch", "*")
+	nsListAllowed, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, NAMESPACE_RESOURCE_STRING, "list", "*")
 
 	// Determine target namespaces for permission checking
 	var targetNamespaces []string
@@ -187,7 +190,7 @@ func (h *handlers) handleUserIntrospect(w http.ResponseWriter, r *http.Request) 
 		canDelete := false
 
 		for _, action := range actions {
-			allowed, err := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", action, ns)
+			allowed, err := h.deps.rbac.Enforce(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, action, ns)
 			if err != nil {
 				logger.Warn("RBAC enforcement error", "subject", cl.Sub, "action", action, "namespace", ns, "err", err)
 				allowed = false
@@ -277,8 +280,8 @@ func (h *handlers) handleServerIntrospect(w http.ResponseWriter, r *http.Request
 	}
 
 	// Require at least some level of cluster access to see server info
-	hasClusterAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "namespaces", "list", "*")
-	hasSessionAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, "session", "list", "*")
+	hasClusterAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, NAMESPACE_RESOURCE_STRING, "list", "*")
+	hasSessionAccess, _ := h.deps.rbac.Enforce(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, "list", "*")
 	if !hasClusterAccess && !hasSessionAccess {
 		http.Error(w, "insufficient permissions to view server information", http.StatusForbidden)
 		return
@@ -539,7 +542,7 @@ func (h *handlers) handleUserPermissions(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get comprehensive user permissions
-	permissions, err := h.deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, "session", namespaces, actions)
+	permissions, err := h.deps.rbac.GetUserPermissions(cl.Sub, cl.Roles, SESSION_RESOURCE_STRING, namespaces, actions)
 	if err != nil {
 		logger.Error("Failed to get user permissions", "err", err, "user", cl.Sub)
 		errJSON(w, fmt.Errorf("failed to retrieve permissions: %w", err))
