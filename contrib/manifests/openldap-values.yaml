@@ -53,35 +53,28 @@ customLdifFiles:
     # Users
     dn: uid=admin,ou=people,dc=codespace,dc=test
     objectClass: inetOrgPerson
-    objectClass: organizationalPerson
-    objectClass: person
     cn: Admin User
     sn: Admin
     uid: admin
     mail: admin@codespace.test
-    userPassword: admin
+    userPassword: password
 
     dn: uid=alice,ou=people,dc=codespace,dc=test
     objectClass: inetOrgPerson
-    objectClass: organizationalPerson
-    objectClass: person
     cn: Alice Doe
     sn: Doe
     uid: alice
     mail: alice@codespace.test
-    userPassword: alice
+    userPassword: password
 
     dn: uid=bob,ou=people,dc=codespace,dc=test
     objectClass: inetOrgPerson
-    objectClass: organizationalPerson
-    objectClass: person
     cn: Bob Smith
     sn: Smith
     uid: bob
     mail: bob@codespace.test
-    userPassword: bob
+    userPassword: password
 
-    # Role groups (groupOfNames with member = user DN)
     dn: cn=codespace-operator:admin,ou=groups,dc=codespace,dc=test
     objectClass: groupOfNames
     cn: codespace-operator:admin

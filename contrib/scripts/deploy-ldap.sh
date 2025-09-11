@@ -35,3 +35,4 @@ echo ">>> OpenLDAP service: openldap.${LDAP_NAMESPACE}.svc.cluster.local:389"
 echo "    Base DN: dc=codespace,dc=test"
 echo "    Bind DN: cn=admin,dc=codespace,dc=test"
 echo "    Users:   admin/admin, alice/alice, bob/bob"
+z

@@ -109,8 +109,11 @@ if ! kubectl -n "${NAMESPACE_KEYCLOAK}" wait --for=condition=available --timeout
 fi
 
 
-
 # ----- Deploy LDAP -----
+echo ">>> Deploying OpenLDAP (jp-gouin/openldap)..."
+./${DEPLOY_LDAP_SCRIPT}
+
+# ----- Deploy Keycloak -----
 echo ">>> Deploying Keycloak (codecentric/keycloakx)..."
 helm repo add codecentric https://codecentric.github.io/helm-charts >/dev/null
 helm repo update >/dev/null

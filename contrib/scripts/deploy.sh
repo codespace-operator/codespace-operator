@@ -9,6 +9,10 @@ make install
 
 kubectl create namespace "${NAMESPACE_KEYCLOAK}" --dry-run=client -o yaml | kubectl apply -f -
 
+export LDAP_NAMESPACE=${LDAP_NAMESPACE:-ldap}
+export LDAP_BIND_PASSWORD="$(kubectl -n "$LDAP_NAMESPACE" \
+  get secret openldap -o jsonpath='{.data.LDAP_ADMIN_PASSWORD}' | base64 -d)"
+echo "LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD}"
 
 # ----- Deploy Codespace Operator & Server via Helm -----
 echo ">>> Deploying Codespace Operator & Server..."
@@ -31,6 +35,7 @@ helm upgrade --install codespace ${HELM_CHART} \
 	--set-string server.auth.providers.ldap.group.base_dn="${LDAP_GROUP_BASE_DN}" \
 	--set-string server.auth.providers.ldap.group.filter="(member={userDN})" \
 	--set-string server.auth.providers.ldap.group.attr="cn" \
+	--set server.networkPolicy.enabled=false \
 	--set-json server.auth.providers.ldap.roles.mapping='{"codespace-operator:admin":["admin"],"codespace-operator:editor":["editor"],"codespace-operator:viewer":["viewer"]}' \
 	--set-json server.auth.providers.ldap.roles.default='["viewer"]'
 	# --set server.auth.providers.oidc.scopes="{openid,profile,email}"
