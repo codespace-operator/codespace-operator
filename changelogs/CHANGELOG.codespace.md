@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/codespace-operator/codespace-operator/compare/operator-2.0.2...operator-2.0.3) (2025-09-11)
+
+
+### Bug Fixes
+
+* **server:** namespaces -> namespace, use const ([b3d31fb](https://github.com/codespace-operator/codespace-operator/commit/b3d31fb3f9dc9cbc546803a01818dca8f7f2d076))
+
 ## [2.0.2](https://github.com/codespace-operator/codespace-operator/compare/operator-2.0.1...operator-2.0.2) (2025-09-07)
 
 
