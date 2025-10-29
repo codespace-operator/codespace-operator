@@ -31,6 +31,11 @@ type ControllerConfig struct {
 	EnableHTTP2   bool `mapstructure:"enable_http2"`
 
 	// Session settings
+	InitImage        string `mapstructure:"init_image"`
+	InitUser         int64  `mapstructure:"init_user"`
+	InitGroup        int64  `mapstructure:"init_group"`
+	InitExtraEnv     map[string]string `mapstructure:"init_extra_env"`
+
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
 	ProfileStoreDSN string `mapstructure:"profile_store_dsn"`
@@ -70,6 +75,12 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	v.SetDefault("auth_config_path", "")
 	v.SetDefault("profile_store_dsn", "")
 	v.SetDefault("profile_store_kind", "postgres")
+
+	v.SetDefault("init_image", "alpine/git:2.45.2")
+	v.SetDefault("init_user", 1000)
+	v.SetDefault("init_group", 1000)
+	v.SetDefault("init_extra_env", map[string]string{})
+
 
 	v.SetDefault("debug", false)
 	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
