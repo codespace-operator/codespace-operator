@@ -1,9 +1,18 @@
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+type GitSpec struct {
+  URL string `json:"url"`                          // required
+  Ref string `json:"ref,omitempty"`                // branch/tag/sha; default "main"
+  SubPath string `json:"subPath,omitempty"`        // optional subdir
+  CredentialsRef *corev1.LocalObjectReference `json:"credentialsRef,omitempty"`
+}
 
+// Optional per-session settings that override user defaults.
+type SettingsSpec map[string]string
 type ProfileSpec struct {
 	// +kubebuilder:validation:Enum=jupyterlab;vscode;rstudio;custom
 	IDE string `json:"ide"`
@@ -47,6 +56,8 @@ type SessionSpec struct {
 	Scratch    *PVCSpec    `json:"scratch,omitempty"`
 	Networking *NetSpec    `json:"networking,omitempty"`
 	Replicas   *int32      `json:"replicas,omitempty"`
+	Git      *GitSpec     `json:"git,omitempty"`
+  	Settings SettingsSpec `json:"settings,omitempty"`
 }
 
 type SessionStatus struct {

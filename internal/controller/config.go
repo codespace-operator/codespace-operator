@@ -31,8 +31,17 @@ type ControllerConfig struct {
 	EnableHTTP2   bool `mapstructure:"enable_http2"`
 
 	// Session settings
+	InitImage        string `mapstructure:"init_image"`
+	InitUser         int64  `mapstructure:"init_user"`
+	InitGroup        int64  `mapstructure:"init_group"`
+	InitExtraEnv     map[string]string `mapstructure:"init_extra_env"`
+
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
+	ProfileStoreKind    string            `mapstructure:"profile_store_kind"`      // http | postgres | memory
+	ProfileStoreBaseURL string            `mapstructure:"profile_store_base_url"`  // when kind=http, e.g. "http://codespace-server:8443"
+	ProfileStoreToken   string            `mapstructure:"profile_store_token"`     // when kind=http
+	ProfileStoreDSN     string            `mapstructure:"profile_store_dsn"`       // when kind=postgres
 
 	// Logging
 	Debug bool `mapstructure:"debug"`
@@ -66,10 +75,19 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	v.SetDefault("session_name_prefix", "cs-")
 	v.SetDefault("field_owner", "codespace-operator")
 
-	v.SetDefault("debug", false)
-	// Auth config file path - must have a default for viper to recognize the env var
 	v.SetDefault("auth_config_path", "")
+	v.SetDefault("profile_store_kind", "http")
+	v.SetDefault("profile_store_base_url", "")
+	v.SetDefault("profile_store_token", "")
+	v.SetDefault("profile_store_dsn", "")
 
+	v.SetDefault("init_image", "alpine/git:2.45.2")
+	v.SetDefault("init_user", 1000)
+	v.SetDefault("init_group", 1000)
+	v.SetDefault("init_extra_env", map[string]string{})
+
+
+	v.SetDefault("debug", false)
 	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
 
 	var cfg ControllerConfig
@@ -78,3 +96,5 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	}
 	return &cfg, nil
 }
+
+
