@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -20,7 +20,9 @@ type ProfileStore interface {
 }
 
 type PostgresStore struct{ dsn string }
+
 func NewPostgresStore(dsn string) *PostgresStore { return &PostgresStore{dsn} }
+
 func (s *PostgresStore) GetProfile(ctx context.Context, id string) (*UserProfile, error) {
   if s.dsn == "" { return &UserProfile{Data: map[string]string{}}, nil }
   conn, err := pgx.Connect(ctx, s.dsn)
@@ -36,12 +38,19 @@ func (s *PostgresStore) GetProfile(ctx context.Context, id string) (*UserProfile
   return u, nil
 }
 
-type HTTPStore struct{ base string }
-func NewHTTPStore(base string) *HTTPStore { return &HTTPStore{base} }
+type HTTPStore struct {
+  base  string
+  token string
+}
+
+func NewHTTPStore(base, token string) *HTTPStore { return &HTTPStore{base: strings.TrimRight(base, "/"), token: token} }
+
 func (s *HTTPStore) GetProfile(ctx context.Context, id string) (*UserProfile, error) {
-  if s.base == "" { return &UserProfile{Data: map[string]string{}}, nil }
+  if s.base == "" || id == "" { return &UserProfile{Data: map[string]string{}}, nil }
   req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/user-profiles/%s", s.base, id), nil)
-  req.Header.Set("Authorization", os.Getenv("PROFILE_STORE_TOKEN"))
+  if s.token != "" {
+    req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.token))
+  }
   resp, err := http.DefaultClient.Do(req)
   if err != nil || resp.StatusCode >= 400 { return &UserProfile{Data: map[string]string{}}, nil }
   defer resp.Body.Close()

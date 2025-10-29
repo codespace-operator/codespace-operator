@@ -38,8 +38,11 @@ type ControllerConfig struct {
 
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
-	ProfileStoreDSN string `mapstructure:"profile_store_dsn"`
-	ProfileStoreKind string `mapstructure:"profile_store_kind"`
+	ProfileStoreKind    string            `mapstructure:"profile_store_kind"`      // http | postgres | memory
+	ProfileStoreBaseURL string            `mapstructure:"profile_store_base_url"`  // when kind=http, e.g. "http://codespace-server:8443"
+	ProfileStoreToken   string            `mapstructure:"profile_store_token"`     // when kind=http
+	ProfileStoreDSN     string            `mapstructure:"profile_store_dsn"`       // when kind=postgres
+
 	// Logging
 	Debug bool `mapstructure:"debug"`
 }
@@ -73,8 +76,10 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	v.SetDefault("field_owner", "codespace-operator")
 
 	v.SetDefault("auth_config_path", "")
+	v.SetDefault("profile_store_kind", "http")
+	v.SetDefault("profile_store_base_url", "")
+	v.SetDefault("profile_store_token", "")
 	v.SetDefault("profile_store_dsn", "")
-	v.SetDefault("profile_store_kind", "postgres")
 
 	v.SetDefault("init_image", "alpine/git:2.45.2")
 	v.SetDefault("init_user", 1000)

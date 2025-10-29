@@ -146,7 +146,7 @@ func (r *SessionReconciler) getProfileStore() ProfileStore {
   cfg, _ := LoadControllerConfig()
   switch cfg.ProfileStoreKind {
   case "http":
-    profStore = NewHTTPStore(cfg.ProfileStoreDSN)
+    profStore = NewHTTPStore(cfg.ProfileStoreBaseURL, cfg.ProfileStoreToken)
   default:
     profStore = NewPostgresStore(cfg.ProfileStoreDSN)
   }
