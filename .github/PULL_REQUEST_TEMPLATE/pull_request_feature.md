@@ -12,7 +12,9 @@
 
 ### Scope (required)
 
-- [ ] operator / controller / server / ui
+- [ ] operator / controller
+- [ ] server
+- [ ] ui
 - [ ] crd / api
 
 ### Breaking changes
