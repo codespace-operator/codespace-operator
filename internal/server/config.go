@@ -42,6 +42,11 @@ type ServerConfig struct {
 
 	// Auth config file path - note the correct mapstructure tag
 	AuthConfigPath string `mapstructure:"auth_config_path"`
+
+	ProfileStoreKind  string `mapstructure:"profile_store_kind"`  // postgres | memory
+	ProfileStoreDSN   string `mapstructure:"profile_store_dsn"`   // DSN when kind=postgres
+	ProfileStoreToken string `mapstructure:"profile_store_token"` // shared bearer for controller
+
 }
 
 // -----------------------------
@@ -95,6 +100,9 @@ func setServerDefaults(v *viper.Viper) {
 
 	v.SetDefault("local_users_path", "/etc/codespace-operator/auth/local-users.yaml")
 	v.SetDefault("auth_config_path", "/etc/codespace-operator/auth/auth.yaml")
+	v.SetDefault("profile_store_kind", "memory") // memory | postgres
+    v.SetDefault("profile_store_dsn", "")        // e.g. postgres://user:pw@host:5432/db?sslmode=disable
+    v.SetDefault("profile_store_token", "")      // shared bearer for controller → server
 }
 
 func (c *ServerConfig) BuildAuthConfig() (*auth.AuthConfig, error) {

@@ -14,6 +14,7 @@ import (
 	auth "github.com/codespace-operator/common/auth/pkg/auth"
 	"github.com/codespace-operator/common/common/pkg/common"
 	rbac "github.com/codespace-operator/common/rbac/pkg/rbac"
+	"github.com/jackc/pgx/v5"
 	"github.com/swaggo/swag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -280,9 +281,21 @@ func setupHandlers(deps *serverDeps) *http.ServeMux {
 	// === Authentication Endpoints ===
 	registerAuthHandlers(mux, h)
 
+	// === Profile Endpoints ===
+	registerProfileHandlers(mux, h)
+
+	openPg = func(ctx context.Context, dsn string) (pgConn, error) {
+		if dsn == "" {
+			return nil, fmt.Errorf("empty DSN")
+		}
+		c, err := pgx.Connect(ctx, dsn)
+		if err != nil {
+			return nil, err
+		}
+		return &pgxConn{Conn: c}, nil
+	}
 	// === OpenAPI Documentation ===
 	setupOpenAPIHandlers(mux, h)
-
 	// === Static UI ===
 	setupStaticUI(mux)
 

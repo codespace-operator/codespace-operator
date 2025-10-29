@@ -16,6 +16,7 @@ import (
 // handlers contains all HTTP handlers with their dependencies
 type handlers struct {
 	deps *serverDeps
+	profile  profileStore
 }
 
 // newHandlers creates a new handlers instance
