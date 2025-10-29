@@ -33,6 +33,8 @@ import (
 )
 
 func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codespacev1.Session, name string, labels map[string]string) (*appsv1.Deployment, error) {
+	cfg, _ := LoadControllerConfig()
+
 	ns := sess.Namespace
 	port := r.determinePort(sess)
 	vols, mounts := r.buildVolumesAndMounts(sess, name)
@@ -40,85 +42,125 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 	prof, _ := r.getProfileStore().GetProfile(ctx, uLabel) // external store
 	cmName, _ := r.reconcileSessionConfig(ctx, sess, name, prof)
 
-
-
 	initArgs := `
-	set -eu
-	WORK=/workspace
+	set -euo pipefail
+
+	# Detect sensible HOME
+	HOME="${HOME:-/home/coder}"
+	[ -d "$HOME" ] || HOME="/home/jovyan"
+	export HOME
+
+	WORK="${WORKSPACE:-/workspace}"
 	mkdir -p "$WORK"
+
+	# Apply IDE settings if present
 	if [ -f /session/ide.settings.json ]; then
 	case "{{IDE}}" in
 		vscode)
-		mkdir -p ${HOME}/.local/share/code-server/User
-		echo "${SETTINGS}" > ${HOME}/.local/share/code-server/User/settings.json
+		mkdir -p "$HOME/.local/share/code-server/User"
+		cat /session/ide.settings.json > "$HOME/.local/share/code-server/User/settings.json"
 		;;
 		jupyterlab)
-		mkdir -p ${HOME}/.jupyter
-		echo "${SETTINGS}" > ${HOME}/.jupyter/codespace_settings.json
+		mkdir -p "$HOME/.jupyter"
+		cat /session/ide.settings.json > "$HOME/.jupyter/codespace_settings.json"
 		;;
 	esac
 	fi
 
-	# git identity
+
+	# Configure git identity
 	if [ -f /session/git.name ];  then git config --global user.name  "$(cat /session/git.name)";  fi
 	if [ -f /session/git.email ]; then git config --global user.email "$(cat /session/git.email)"; fi
 
-	# creds (SSH or PAT)
+	# Setup credentials (SSH or PAT)
+	
+	git config --global core.sshCommand "ssh -o StrictHostKeyChecking=yes"
+
 	if [ -f /creds/ssh_privatekey ]; then
-	mkdir -p ~/.ssh && chmod 700 ~/.ssh
-	cp /creds/ssh_privatekey ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-	[ -f /creds/known_hosts ] && cp /creds/known_hosts ~/.ssh/known_hosts
+		mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+		cp /creds/ssh_privatekey "$HOME/.ssh/id_rsa" && chmod 600 "$HOME/.ssh/id_rsa"
+	[ -f /creds/known_hosts ] && cp /creds/known_hosts "$HOME/.ssh/known_hosts"
 	fi
 	if [ -f /creds/pat ]; then
-	host=$(echo $(cat /session/repo.url) | sed -E 's#(ssh://)?(git@)?([^/:]+).*#\3#')
-	echo "https://TOKEN:x-oauth-basic@${host}" > ~/.git-credentials
-	git config --global credential.helper store
+		host=$(sed -E 's#(ssh://)?(git@)?([^/:]+).*#\3#' /session/repo.url)
+		TOKEN="$(cat /creds/pat)"
+		printf "https://%s:x-oauth-basic@%s\n" "$TOKEN" "$host" > "$HOME/.git-credentials"
+		git config --global credential.helper store
 	fi
 
-	# clone / checkout
+
+	# Clone repo (owned by IDE UID)
 	REPO=$(cat /session/repo.url)
 	REF=$(cat /session/repo.ref || echo main)
 	SUB=$(cat /session/repo.subPath 2>/dev/null || true)
+	DEST="${WORK}${SUB:+/${SUB}}"
 
-	DEST="$WORK"
-	[ -n "$SUB" ] && DEST="${WORK}/${SUB}"
 	mkdir -p "$DEST"
-
 	if [ ! -d "$DEST/.git" ]; then
-	git clone --recursive "$REPO" "$DEST"
+		git clone --recursive "$REPO" "$DEST"
 	fi
-	cd "$DEST" && git fetch --all && git checkout "$REF" || true
+	cd "$DEST"
+	git fetch --all || true
+	git checkout "$REF" || true
+
+	# Adjust ownership if not running as root
+	if id coder >/dev/null 2>&1; then chown -R coder:coder "$WORK" || true; fi
+	if id jovyan >/dev/null 2>&1; then chown -R jovyan:jovyan "$WORK" || true; fi
 	`
-	settingsJSON := ""
-	if cmName != "" {
-	// pass settings via env (so the script can write it)
-	// (ide.settings.json is also mounted; env avoids jq in the image)
-	settingsJSON = "$(cat /session/ide.settings.json 2>/dev/null || echo '{}')"
-	}
+
 	initC := corev1apply.Container().
 	WithName("git-setup").
-	WithImage("alpine/git:2.45.2").
-	WithCommand("sh","-c").
+	WithImage(cfg.InitImage).
+	WithCommand("sh", "-c").
 	WithArgs(strings.ReplaceAll(initArgs, "{{IDE}}", sess.Spec.Profile.IDE)).
-	WithEnv(
-		corev1apply.EnvVar().WithName("SETTINGS").WithValue(settingsJSON),
-	).
-	WithVolumeMounts(
-		corev1apply.VolumeMount().WithName("session-config").WithMountPath("/session").WithReadOnly(true),
-		corev1apply.VolumeMount().WithName("git-cred").WithMountPath("/creds").WithReadOnly(true),
-		// mount the home workspace PVC path (use your existing mountPath)
-		corev1apply.VolumeMount().WithName("home").WithMountPath(sess.Spec.Home.MountPath),
+	WithSecurityContext(
+		corev1apply.SecurityContext().
+		WithRunAsUser(cfg.InitUser).
+		WithRunAsGroup(cfg.InitGroup).
+		WithRunAsNonRoot(true),
 	)
+
+	// always mount session-config if present
+	if cmName != "" {
+	initC = initC.WithVolumeMounts(
+		corev1apply.VolumeMount().
+		WithName("session-config").
+		WithMountPath("/session").
+		WithReadOnly(true),
+	)
+	}
+
+	// mount git-cred only if provided
+	if sess.Spec.Git != nil && sess.Spec.Git.CredentialsRef != nil {
+	initC = initC.WithVolumeMounts(
+		corev1apply.VolumeMount().
+		WithName("git-cred").
+		WithMountPath("/creds").
+		WithReadOnly(true),
+	)
+	}
+
+	// pass WORKSPACE env and mount home only when Home PVC exists
+	workspacePath := "/workspace"
+	if sess.Spec.Home != nil && sess.Spec.Home.MountPath != "" {
+	workspacePath = sess.Spec.Home.MountPath
+	initC = initC.WithVolumeMounts(
+		corev1apply.VolumeMount().
+		WithName("home").
+		WithMountPath(workspacePath),
+	)
+	}
+	initC = initC.WithEnv(
+	corev1apply.EnvVar().WithName("WORKSPACE").WithValue(workspacePath),
+	)
+
+	// inject any extra env from config
+	for k, v := range cfg.InitExtraEnv {
+	initC = initC.WithEnv(corev1apply.EnvVar().WithName(k).WithValue(v))
+	}
 
 
 	var acVols []*corev1apply.VolumeApplyConfiguration
-	// existing PVC volumes...
-	for _, v := range vols {
-	acVols = append(acVols, corev1apply.Volume().
-		WithName(v.Name).
-		WithPersistentVolumeClaim(corev1apply.PersistentVolumeClaimVolumeSource().WithClaimName(v.PersistentVolumeClaim.ClaimName)))
-	}
-
 	// Add projected config/creds if present
 	if cmName != "" {
 	acVols = append(acVols, corev1apply.Volume().WithName("session-config").
@@ -184,7 +226,6 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 		}
 		containers = append(containers, sidecar)
 	}
-
 	dep := appsv1apply.Deployment(name, ns).
 		WithLabels(labels).
 		WithSpec(
@@ -197,6 +238,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 						WithSpec(
 							corev1apply.PodSpec().
 								WithServiceAccountName(name).
+								WithSecurityContext(corev1apply.PodSecurityContext().WithFSGroup(cfg.InitGroup)).
 								WithVolumes(acVols...).
 								WithInitContainers(initC).
 								WithContainers(containers...),
