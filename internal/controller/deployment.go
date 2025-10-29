@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,13 +36,108 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 	ns := sess.Namespace
 	port := r.determinePort(sess)
 	vols, mounts := r.buildVolumesAndMounts(sess, name)
+	uLabel := sess.Labels["codespace.dev/created-by"] // server sets it on create
+	prof, _ := r.getProfileStore().GetProfile(ctx, uLabel) // external store
+	cmName, _ := r.reconcileSessionConfig(ctx, sess, name, prof)
+
+
+
+	initArgs := `
+	set -eu
+	WORK=/workspace
+	mkdir -p "$WORK"
+	if [ -f /session/ide.settings.json ]; then
+	case "{{IDE}}" in
+		vscode)
+		mkdir -p ${HOME}/.local/share/code-server/User
+		echo "${SETTINGS}" > ${HOME}/.local/share/code-server/User/settings.json
+		;;
+		jupyterlab)
+		mkdir -p ${HOME}/.jupyter
+		echo "${SETTINGS}" > ${HOME}/.jupyter/codespace_settings.json
+		;;
+	esac
+	fi
+
+	# git identity
+	if [ -f /session/git.name ];  then git config --global user.name  "$(cat /session/git.name)";  fi
+	if [ -f /session/git.email ]; then git config --global user.email "$(cat /session/git.email)"; fi
+
+	# creds (SSH or PAT)
+	if [ -f /creds/ssh_privatekey ]; then
+	mkdir -p ~/.ssh && chmod 700 ~/.ssh
+	cp /creds/ssh_privatekey ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+	[ -f /creds/known_hosts ] && cp /creds/known_hosts ~/.ssh/known_hosts
+	fi
+	if [ -f /creds/pat ]; then
+	host=$(echo $(cat /session/repo.url) | sed -E 's#(ssh://)?(git@)?([^/:]+).*#\3#')
+	echo "https://TOKEN:x-oauth-basic@${host}" > ~/.git-credentials
+	git config --global credential.helper store
+	fi
+
+	# clone / checkout
+	REPO=$(cat /session/repo.url)
+	REF=$(cat /session/repo.ref || echo main)
+	SUB=$(cat /session/repo.subPath 2>/dev/null || true)
+
+	DEST="$WORK"
+	[ -n "$SUB" ] && DEST="${WORK}/${SUB}"
+	mkdir -p "$DEST"
+
+	if [ ! -d "$DEST/.git" ]; then
+	git clone --recursive "$REPO" "$DEST"
+	fi
+	cd "$DEST" && git fetch --all && git checkout "$REF" || true
+	`
+	settingsJSON := ""
+	if cmName != "" {
+	// pass settings via env (so the script can write it)
+	// (ide.settings.json is also mounted; env avoids jq in the image)
+	settingsJSON = "$(cat /session/ide.settings.json 2>/dev/null || echo '{}')"
+	}
+	initC := corev1apply.Container().
+	WithName("git-setup").
+	WithImage("alpine/git:2.45.2").
+	WithCommand("sh","-c").
+	WithArgs(strings.ReplaceAll(initArgs, "{{IDE}}", sess.Spec.Profile.IDE)).
+	WithEnv(
+		corev1apply.EnvVar().WithName("SETTINGS").WithValue(settingsJSON),
+	).
+	WithVolumeMounts(
+		corev1apply.VolumeMount().WithName("session-config").WithMountPath("/session").WithReadOnly(true),
+		corev1apply.VolumeMount().WithName("git-cred").WithMountPath("/creds").WithReadOnly(true),
+		// mount the home workspace PVC path (use your existing mountPath)
+		corev1apply.VolumeMount().WithName("home").WithMountPath(sess.Spec.Home.MountPath),
+	)
+
+
+	var acVols []*corev1apply.VolumeApplyConfiguration
+	// existing PVC volumes...
+	for _, v := range vols {
+	acVols = append(acVols, corev1apply.Volume().
+		WithName(v.Name).
+		WithPersistentVolumeClaim(corev1apply.PersistentVolumeClaimVolumeSource().WithClaimName(v.PersistentVolumeClaim.ClaimName)))
+	}
+
+	// Add projected config/creds if present
+	if cmName != "" {
+	acVols = append(acVols, corev1apply.Volume().WithName("session-config").
+		WithConfigMap(corev1apply.ConfigMapVolumeSource().WithName(cmName)))
+	}
+	credName := ""
+	if sess.Spec.Git != nil && sess.Spec.Git.CredentialsRef != nil {
+	credName = sess.Spec.Git.CredentialsRef.Name
+	}
+	if credName != "" {
+	acVols = append(acVols, corev1apply.Volume().WithName("git-cred").
+		WithSecret(corev1apply.SecretVolumeSource().WithSecretName(credName)))
+	}
 
 	// Convert mounts/volumes to apply configurations
 	var acMounts []*corev1apply.VolumeMountApplyConfiguration
 	for _, m := range mounts {
 		acMounts = append(acMounts, corev1apply.VolumeMount().WithName(m.Name).WithMountPath(m.MountPath))
 	}
-	var acVols []*corev1apply.VolumeApplyConfiguration
 	for _, v := range vols {
 		acVols = append(acVols, corev1apply.Volume().
 			WithName(v.Name).
@@ -102,6 +198,7 @@ func (r *SessionReconciler) reconcileDeployment(ctx context.Context, sess *codes
 							corev1apply.PodSpec().
 								WithServiceAccountName(name).
 								WithVolumes(acVols...).
+								WithInitContainers(initC).
 								WithContainers(containers...),
 						),
 				),

@@ -138,3 +138,17 @@ func (r *SessionReconciler) failStatus(ctx context.Context, sess *codespacev1.Se
 	}
 	return ctrl.Result{}, err
 }
+
+var profStore ProfileStore
+
+func (r *SessionReconciler) getProfileStore() ProfileStore {
+  if profStore != nil { return profStore }
+  cfg, _ := LoadControllerConfig()
+  switch cfg.ProfileStoreKind {
+  case "http":
+    profStore = NewHTTPStore(cfg.ProfileStoreDSN)
+  default:
+    profStore = NewPostgresStore(cfg.ProfileStoreDSN)
+  }
+  return profStore
+}

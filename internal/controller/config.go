@@ -33,7 +33,8 @@ type ControllerConfig struct {
 	// Session settings
 	SessionNamePrefix string `mapstructure:"session_name_prefix"`
 	FieldOwner        string `mapstructure:"field_owner"`
-
+	ProfileStoreDSN string `mapstructure:"profile_store_dsn"`
+	ProfileStoreKind string `mapstructure:"profile_store_kind"`
 	// Logging
 	Debug bool `mapstructure:"debug"`
 }
@@ -66,10 +67,11 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	v.SetDefault("session_name_prefix", "cs-")
 	v.SetDefault("field_owner", "codespace-operator")
 
-	v.SetDefault("debug", false)
-	// Auth config file path - must have a default for viper to recognize the env var
 	v.SetDefault("auth_config_path", "")
+	v.SetDefault("profile_store_dsn", "")
+	v.SetDefault("profile_store_kind", "postgres")
 
+	v.SetDefault("debug", false)
 	common.SetupViper(v, "CODESPACE_CONTROLLER", "controller-config")
 
 	var cfg ControllerConfig
@@ -78,3 +80,5 @@ func LoadControllerConfig() (*ControllerConfig, error) {
 	}
 	return &cfg, nil
 }
+
+
